@@ -212,6 +212,38 @@
     100% { transform: translate(var(--dx), var(--dy)) scale(0.55) rotate(18deg); opacity: 0; }
   }
   button.mini.sentok { background: linear-gradient(180deg, var(--moss), #5C8A4D); border-color: #46703B; color: #10210D; }
+  .q-icon.rock { display: inline-block; animation: iconRock 5.5s ease-in-out infinite; }
+  .q-card:nth-child(3n+1) .q-icon.rock { animation-delay: 0.6s; }
+  .q-card:nth-child(3n+2) .q-icon.rock { animation-delay: 1.4s; }
+  @keyframes iconRock {
+    0%, 86%, 100% { transform: rotate(0); }
+    90% { transform: rotate(-9deg); } 94% { transform: rotate(8deg); } 97% { transform: rotate(-4deg); }
+  }
+  .stamp { position: absolute; right: 86px; top: 50%; z-index: 6; font-size: 11px; font-weight: 800;
+    letter-spacing: 0.08em; color: #10210D; background: var(--moss); border: 2px solid #46703B;
+    border-radius: 8px; padding: 3px 8px; box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+    animation: stampIn 0.45s cubic-bezier(.2,1.6,.4,1) both; }
+  @keyframes stampIn {
+    0% { transform: translateY(-50%) rotate(-30deg) scale(2.2); opacity: 0; }
+    60% { opacity: 1; }
+    100% { transform: translateY(-50%) rotate(-12deg) scale(1); }
+  }
+  .flight { position: fixed; z-index: 60; font-size: 22px; pointer-events: none;
+    animation: flyToTab 0.75s cubic-bezier(.4,0,.8,1) both; }
+  @keyframes flyToTab {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0.35); opacity: 0; }
+  }
+  .cat-bar { flex: 1; height: 5px; border-radius: 999px; background: #14100C;
+    border: 1px solid var(--edge); overflow: hidden; }
+  .cat-bar i { display: block; height: 100%;
+    background: linear-gradient(90deg, var(--ember-deep), var(--gold)); transition: width 0.6s ease; }
+  .qpet { display: inline-flex; width: 46px; height: 46px; border-radius: 50%; overflow: hidden;
+    border: 2px solid var(--ember); box-shadow: 0 0 12px rgba(232,133,61,0.6); background: #1C1510; flex: 0 0 auto; }
+  .qpet img { width: 100%; height: 100%; object-fit: cover; }
+  .qpet .fallback { display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%; font-size: 22px; }
+  .qpet.hop { animation: petHop 0.6s cubic-bezier(.34,1.56,.64,1); }
   .qd { display: inline-flex; gap: 3px; margin-right: 7px; vertical-align: middle; }
   .qd i { width: 6px; height: 6px; border-radius: 50%; background: #3A2C1F; }
   .qd i.on { background: var(--gold); box-shadow: 0 0 5px rgba(224,180,92,0.6); }
@@ -586,6 +618,8 @@
     body:not(.motion-force) .qp, body:not(.motion-force) .raid-live > img,
     body:not(.motion-force) .pet-token.march, body:not(.motion-force) .pet-token.home,
     body:not(.motion-force) .rlog li.new, body:not(.motion-force) button.btn.pulse,
+    body:not(.motion-force) .q-icon.rock, body:not(.motion-force) .stamp,
+    body:not(.motion-force) .flight, body:not(.motion-force) .qpet.hop,
     body:not(.motion-force) .plot img.cut, body:not(.motion-force) .plot .tok,
     body:not(.motion-force) .puff, body:not(.motion-force) .ffly,
     body:not(.motion-force) .hero-duo img.cut, body:not(.motion-force) .duo-pet { animation: none !important; }
@@ -4604,9 +4638,28 @@ function useQuestJuice(store) {
   const [sent, setSent] = useState({});
   const [ok, setOk] = useState({});
   const [bursts, setBursts] = useState([]);
-  async function submit(q) {
+  const [flights, setFlights] = useState([]);
+  const [tick, setTick] = useState(0);
+  async function submit(q, ev) {
+    let from = null;
+    if (ev && ev.currentTarget && ev.currentTarget.getBoundingClientRect) {
+      const r0 = ev.currentTarget.getBoundingClientRect();
+      from = { x: r0.left + r0.width / 2, y: r0.top + r0.height / 2 };
+    }
     const r = await store.dispatch(A.submitQuest(q.id));
     if (!r.ok) return;
+    setTick(function (t) { return t + 1; });
+    if (from) {
+      const f = {
+        id: Date.now() + Math.random(), x: from.x, y: from.y,
+        dx: (window.innerWidth * 0.3 - from.x) + 'px',
+        dy: (window.innerHeight - 46 - from.y) + 'px',
+      };
+      setFlights(function (list) { return list.concat(f); });
+      setTimeout(function () {
+        setFlights(function (list) { return list.filter(function (x) { return x.id !== f.id; }); });
+      }, 850);
+    }
     Sfx.submit();
     setSent(function (s) { const n = Object.assign({}, s); n[q.id] = true; return n; });
     setTimeout(function () {
@@ -4630,7 +4683,22 @@ function useQuestJuice(store) {
       setBursts(function (list) { return list.filter(function (x) { return x.id !== burst.id; }); });
     }, 1100);
   }
-  return { sent: sent, ok: ok, bursts: bursts, submit: submit };
+  return { sent: sent, ok: ok, bursts: bursts, flights: flights, tick: tick, submit: submit };
+}
+
+function QFlights(props) {
+  return (
+    <React.Fragment>
+      {props.J.flights.map(function (f) {
+        return (
+          <span key={f.id} className="flight"
+            style={{ left: f.x + 'px', top: f.y + 'px', '--dx': f.dx, '--dy': f.dy }}>
+            ✉️
+          </span>
+        );
+      })}
+    </React.Fragment>
+  );
 }
 
 const RAID_EVENTS = [
@@ -5180,7 +5248,8 @@ function HomeScreen(props) {
           return (
             <div className={'q-card' + (J.sent[b.quest.id] ? ' justSent' : '')} key={b.quest.id}>
               <QBurst J={J} qid={b.quest.id} />
-              <span className="q-icon">{b.quest.icon}</span>
+              {J.ok[b.quest.id] && <span className="stamp">✉️ SENT</span>}
+              <span className="q-icon rock">{b.quest.icon}</span>
               <span className="q-main">
                 <span className="q-title">{b.quest.title}</span>
                 <div className="q-sub">
@@ -5190,7 +5259,7 @@ function HomeScreen(props) {
                 </div>
               </span>
               <button className={'mini ' + (J.ok[b.quest.id] ? 'sentok' : 'go')}
-                onClick={function () { J.submit(b.quest); }}>
+                onClick={function (e) { J.submit(b.quest, e); }}>
                 {J.ok[b.quest.id] ? '✓ Sent!' : 'I did it!'}
               </button>
             </div>
@@ -5200,6 +5269,7 @@ function HomeScreen(props) {
           See the whole quest board ⭐
         </button>
       </div>
+      <QFlights J={J} />
     </React.Fragment>
   );
 }
@@ -5207,7 +5277,15 @@ function HomeScreen(props) {
 /* ---------------- quests ---------------- */
 function QuestsScreen(props) {
   const state = props.state;
+  const g = state.guardian;
   const J = useQuestJuice(props.store);
+  const [cheer, setCheer] = useState(false);
+  useEffect(function () {
+    if (J.tick === 0) return;
+    setCheer(true);
+    const id = setTimeout(function () { setCheer(false); }, 700);
+    return function () { clearTimeout(id); };
+  }, [J.tick]);
   const groups = {};
   state.questBoard.forEach(function (b) {
     const c = b.quest.category;
@@ -5216,10 +5294,16 @@ function QuestsScreen(props) {
   });
   return (
     <React.Fragment>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1 style={{ fontSize: 24, marginBottom: 4 }}>Quest board</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        {g && (
+          <span className={'qpet' + (cheer ? ' hop' : '')}>
+            <Art srcs={stageArt(g.species, g.level)} emoji={speciesOf(g.species).emoji} alt={g.name} />
+          </span>
+        )}
+        <h1 style={{ fontSize: 24, marginBottom: 4, flex: 1 }}>Quest board</h1>
         <span className="chip streak">🔥 <b>{S.selectGlobalStreak(state)}</b></span>
       </div>
+      <QFlights J={J} />
       <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>Do it in the real world first, then tap "I did it!" — a parent releases the reward.</p>
       {state.questBoard.length > 0 && state.questBoard.every(function (x) { return x.remainingToday === 0; }) && (
         <div className="card" style={{ borderColor: '#6B5326', textAlign: 'center' }}>
@@ -5236,7 +5320,10 @@ function QuestsScreen(props) {
             <div className="cat-label">
               <span>{CATEGORY[cat].icon}</span>
               <span className="eyebrow">{CATEGORY[cat].label}</span>
-              <span className="cat-rule" />
+              <span className="cat-bar"><i style={{
+                width: Math.round(100 * list.reduce(function (s, x) { return s + (x.quest.maxPerDay - x.remainingToday); }, 0)
+                  / Math.max(1, list.reduce(function (s, x) { return s + x.quest.maxPerDay; }, 0))) + '%'
+              }} /></span>
             </div>
             {list.map(function (b) {
               const spent = b.remainingToday === 0;
@@ -5244,7 +5331,8 @@ function QuestsScreen(props) {
               return (
                 <div className={'q-card' + (J.sent[b.quest.id] ? ' justSent' : '')} key={b.quest.id} style={spent ? { opacity: 0.55 } : null}>
                   <QBurst J={J} qid={b.quest.id} />
-                  <span className="q-icon">{b.quest.icon}</span>
+              {J.ok[b.quest.id] && <span className="stamp">✉️ SENT</span>}
+                  <span className="q-icon rock">{b.quest.icon}</span>
                   <span className="q-main">
                     <span className="q-title">{b.quest.title}</span>
                     <div className="q-sub">
@@ -5254,7 +5342,7 @@ function QuestsScreen(props) {
                     </div>
                   </span>
                   <button className={'mini ' + (J.ok[b.quest.id] ? 'sentok' : 'go')} disabled={spent}
-                    onClick={function () { J.submit(b.quest); }}>
+                    onClick={function (e) { J.submit(b.quest, e); }}>
                     {J.ok[b.quest.id] ? '✓ Sent!' : 'I did it!'}
                   </button>
                 </div>
@@ -5962,7 +6050,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-1.7 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-1.8 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

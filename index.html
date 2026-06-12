@@ -326,6 +326,83 @@
   .rlog li:last-child { border-bottom: none; }
   .rlog li.new { animation: logIn 0.45s ease both; color: var(--ink); }
   @keyframes logIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+  /* ---------- battle arena ---------- */
+  .battle { position: fixed; inset: 0; z-index: 49; display: flex; flex-direction: column;
+    background: #14100C; animation: veilIn 250ms ease both; }
+  .battle .bd { position: absolute; inset: 0; }
+  .battle .bd img { width: 100%; height: 100%; object-fit: cover; opacity: 0.55; }
+  .battle .bd::after { content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(20,14,22,0.75), rgba(16,12,9,0.55) 40%, rgba(16,12,9,0.92)); }
+  .b-top { position: relative; z-index: 2; padding: max(14px, env(safe-area-inset-top)) 16px 0; }
+  .b-foe-name { display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--display); font-size: 18px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+  .hp { height: 14px; margin-top: 6px; border-radius: 999px; background: #14100C;
+    border: 1px solid var(--edge); overflow: hidden; }
+  .hp > i { display: block; height: 100%; transition: width 0.35s cubic-bezier(.22,1,.36,1);
+    background: linear-gradient(90deg, #5FA052, #8FD06F); }
+  .hp.mid > i { background: linear-gradient(90deg, #B8862E, #E0B45C); }
+  .hp.low > i { background: linear-gradient(90deg, #8F2F26, #C75146); }
+  .arena { position: relative; z-index: 2; flex: 1; min-height: 0; }
+  .arena.shake { animation: arenaShake 0.3s ease; }
+  @keyframes arenaShake {
+    0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-7px, 3px); }
+    50% { transform: translate(6px, -4px); } 75% { transform: translate(-4px, 2px); }
+  }
+  .b-foe { position: absolute; right: 7%; top: 16%; width: 46%; max-width: 250px;
+    display: flex; align-items: center; justify-content: center;
+    animation: menace 2.6s ease-in-out infinite; }
+  @keyframes menace { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-9px) rotate(1.5deg); } }
+  .b-foe img { width: 100%; filter: drop-shadow(0 12px 22px rgba(0,0,0,0.6)); }
+  .b-foe .fallback { font-size: 110px; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.6)); }
+  .b-foe.hurt { animation: foeHurt 0.4s ease; }
+  @keyframes foeHurt {
+    0%, 100% { transform: translateX(0); filter: none; }
+    20% { transform: translateX(12px) rotate(4deg); filter: brightness(2.2) saturate(0.3) sepia(1) hue-rotate(-50deg); }
+    55% { transform: translateX(-9px); filter: brightness(1.6); }
+  }
+  .b-foe.swipe { animation: foeSwipe 0.42s ease; }
+  @keyframes foeSwipe { 0%, 100% { transform: translateX(0); } 45% { transform: translateX(-34%) scale(1.06); } }
+  .b-foe.defeat { animation: foeDefeat 0.9s ease both; }
+  @keyframes foeDefeat {
+    0% { transform: scale(1) rotate(0); opacity: 1; filter: brightness(1); }
+    35% { transform: scale(1.15); filter: brightness(3); }
+    100% { transform: scale(0.1) rotate(220deg); opacity: 0; }
+  }
+  .b-me { position: absolute; left: 7%; bottom: 14%; width: 96px; height: 96px;
+    border-radius: 24px; overflow: hidden; border: 3px solid var(--ember);
+    box-shadow: 0 0 22px rgba(232,133,61,0.7); background: #1C1510;
+    animation: marchBob 1.6s ease-in-out infinite; }
+  .b-me img { width: 100%; height: 100%; object-fit: cover; }
+  .b-me .fallback { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 50px; }
+  .b-me.lunge { animation: lunge 0.45s cubic-bezier(.3,1.2,.5,1); }
+  @keyframes lunge { 0%, 100% { transform: translate(0, 0); } 45% { transform: translate(130%, -36%) rotate(8deg) scale(1.08); } }
+  .b-me.hop2 { animation: petHop 0.45s ease; }
+  .dmgnum { position: absolute; z-index: 4; font-family: var(--mono); font-weight: 800; font-size: 30px;
+    color: #FF8A7A; text-shadow: 0 2px 6px rgba(0,0,0,0.8); pointer-events: none;
+    animation: dmgUp 0.85s ease-out both; }
+  .dmgnum.crit { font-size: 42px; color: var(--gold); }
+  @keyframes dmgUp {
+    0% { transform: translateY(6px) scale(0.6); opacity: 0; }
+    18% { opacity: 1; transform: scale(1.15); }
+    100% { transform: translateY(-58px) scale(1); opacity: 0; }
+  }
+  .atkban { position: absolute; left: 50%; top: 8%; transform: translateX(-50%); z-index: 4;
+    font-family: var(--display); font-size: 19px; font-weight: 700; white-space: nowrap;
+    background: rgba(26,20,16,0.88); border: 1px solid var(--ember-deep); border-radius: 999px;
+    padding: 7px 16px; animation: pop 0.35s cubic-bezier(.2,1.5,.4,1) both;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+  .atkban.crit { border-color: var(--gold); color: var(--gold); }
+  .atkban.dodge { border-color: #5B9BD5; color: #BFD9F2; }
+  .vspark { position: absolute; z-index: 4; font-size: 26px; pointer-events: none;
+    animation: qFly 0.9s ease-out both; }
+  .victory-wrap { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px; }
+  .victory-text { font-family: var(--display); font-size: 44px; font-weight: 700; color: var(--gold);
+    text-shadow: 0 0 30px rgba(224,180,92,0.8), 0 4px 12px rgba(0,0,0,0.8);
+    animation: pop 0.5s cubic-bezier(.2,1.5,.4,1) both; }
+  .b-controls { position: relative; z-index: 3; padding: 0 16px calc(16px + env(safe-area-inset-bottom));
+    display: flex; gap: 10px; }
+  .b-controls .btn { flex: 1; min-height: 58px; font-size: 17px; }
   button.btn.pulse { animation: btnPulse 1.4s ease-in-out infinite; }
   @keyframes btnPulse {
     0%, 100% { box-shadow: 0 0 0 rgba(232,133,61,0); }
@@ -630,6 +707,12 @@
     body:not(.motion-force) .chip.flash, body:not(.motion-force) .tab.on .ti,
     body:not(.motion-force) .shell-main > *, body:not(.motion-force) .chest-wrap img,
     body:not(.motion-force) .isl-card.built, body:not(.motion-force) .q-card.justSent,
+    body:not(.motion-force) .b-foe, body:not(.motion-force) .b-foe.hurt,
+    body:not(.motion-force) .b-foe.swipe, body:not(.motion-force) .b-foe.defeat,
+    body:not(.motion-force) .b-me, body:not(.motion-force) .b-me.lunge,
+    body:not(.motion-force) .arena.shake, body:not(.motion-force) .dmgnum,
+    body:not(.motion-force) .atkban, body:not(.motion-force) .vspark,
+    body:not(.motion-force) .victory-text, body:not(.motion-force) .battle,
     body:not(.motion-force) .qp, body:not(.motion-force) .raid-live > img,
     body:not(.motion-force) .pet-token.march, body:not(.motion-force) .pet-token.home,
     body:not(.motion-force) .rlog li.new, body:not(.motion-force) button.btn.pulse,
@@ -4510,6 +4593,9 @@ const Sfx = (function () {
     achieve: function () { blip(784, 0.12, 'triangle', 0.1); blip(988, 0.12, 'triangle', 0.1, 0.1); blip(1318, 0.24, 'triangle', 0.1, 0.2); },
     levelUp: function () { blip(523, 0.12, 'triangle', 0.12); blip(659, 0.12, 'triangle', 0.12, 0.11); blip(784, 0.12, 'triangle', 0.12, 0.22); blip(1046, 0.3, 'triangle', 0.13, 0.33); },
     error: function () { blip(180, 0.12, 'square', 0.05, 0, 140); },
+    growl: function () { blip(95, 0.3, 'sawtooth', 0.1, 0, 55); blip(70, 0.32, 'sawtooth', 0.08, 0.05, 50); },
+    hit: function () { blip(150, 0.1, 'square', 0.2, 0, 70); blip(620, 0.05, 'square', 0.1, 0.01); },
+    swish: function () { blip(700, 0.09, 'sine', 0.06, 0, 1500); },
     build: function () { blip(196, 0.05, 'square', 0.1); blip(196, 0.05, 'square', 0.1, 0.09); blip(523, 0.2, 'triangle', 0.09, 0.2); },
     _ctx: function () { return ensure(); },
   };
@@ -5499,10 +5585,178 @@ function QuestsScreen(props) {
   );
 }
 
+/* ---------------- battles ---------------- */
+const ENEMIES = {
+  dgn_glade: { name: 'Glade Sprite', emoji: '🍄' },
+  dgn_tide: { name: 'Tide Serpent', emoji: '🐍' },
+  dgn_ember: { name: 'Ember Imp', emoji: '👹' },
+  dgn_sky: { name: 'Sky Harpy', emoji: '🦅' },
+  dgn_void: { name: 'Void Wisp', emoji: '👻' },
+};
+const ATTACK_NAMES = ['Ember Dash', 'Star Pounce', 'Hearth Howl', 'Acorn Slam', 'Moonlight Swipe', 'Brave Tackle', 'Sparkle Spin'];
+
+function BattleOverlay(props) {
+  const g = props.g;
+  const foe = ENEMIES[props.def.id] || { name: 'Shadow', emoji: '👾' };
+  const foeFile = 'enemy-' + props.def.id.replace('dgn_', '') + '.png';
+  const plan = useRef(null);
+  if (!plan.current) {
+    const rand = G.RNG.mulberry32(((props.run.seed >>> 0) + 13) >>> 0);
+    const hits = 3 + Math.floor(rand() * 3);
+    const maxHp = 24 + Math.floor(rand() * 16);
+    const dmgs = [];
+    let left = maxHp;
+    for (let i = 0; i < hits; i++) {
+      const d = i === hits - 1 ? left : Math.max(2, Math.floor(maxHp / hits) + Math.floor(rand() * 5) - 2);
+      const take = Math.min(d, left);
+      dmgs.push(take);
+      left -= take;
+    }
+    if (left > 0) dmgs[dmgs.length - 1] += left;
+    plan.current = {
+      maxHp: maxHp,
+      dmgs: dmgs,
+      crit: Math.floor(rand() * dmgs.length),
+      names: dmgs.map(function () { return ATTACK_NAMES[Math.floor(rand() * ATTACK_NAMES.length)]; }),
+      dodges: dmgs.map(function (x, i) { return i > 0 && rand() < 0.45; }),
+    };
+  }
+  const P = plan.current;
+  const [hp, setHp] = useState(P.maxHp);
+  const [idx, setIdx] = useState(0);
+  const [lock, setLock] = useState(false);
+  const [fx, setFx] = useState({});
+  const [nums, setNums] = useState([]);
+  const [phase, setPhase] = useState('intro');
+  const [foeFail, setFoeFail] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(function () {
+    Sfx.growl();
+    const t = setTimeout(function () { setPhase('fight'); }, 950);
+    return function () { clearTimeout(t); };
+  }, []);
+  function popNum(val, crit) {
+    const n = { id: Date.now() + Math.random(), val: val, crit: crit, x: 52 + Math.random() * 22, y: 24 + Math.random() * 12 };
+    setNums(function (list) { return list.concat(n); });
+    setTimeout(function () {
+      setNums(function (list) { return list.filter(function (z) { return z.id !== n.id; }); });
+    }, 900);
+  }
+  function attack() {
+    if (lock || phase !== 'fight') return;
+    setLock(true);
+    const i = idx;
+    function strike() {
+      setFx({ lunge: true });
+      Sfx.swish();
+      setTimeout(function () {
+        const crit = i === P.crit;
+        Sfx.hit();
+        if (crit) Sfx.hit();
+        setFx({ hurt: true, shake: true, atkName: P.names[i], crit: crit });
+        popNum(P.dmgs[i], crit);
+        const nhp = Math.max(0, hp - P.dmgs[i]);
+        setHp(nhp);
+        setIdx(i + 1);
+        setTimeout(function () {
+          if (nhp <= 0) {
+            setFx({ defeat: true });
+            Sfx.levelUp();
+            setTimeout(function () { setPhase('win'); }, 750);
+          } else {
+            setFx({});
+          }
+          setLock(false);
+        }, 460);
+      }, 240);
+    }
+    if (P.dodges[i]) {
+      setFx({ swipe: true, atkName: g.name + ' dodged!', dodgeTag: true });
+      Sfx.growl();
+      setTimeout(function () {
+        setFx({ hop2: true });
+        Sfx.swish();
+        setTimeout(function () { setFx({}); strike(); }, 240);
+      }, 430);
+    } else {
+      strike();
+    }
+  }
+  async function finish() {
+    if (busy) return;
+    setBusy(true);
+    await props.store.dispatch(A.claimDungeon(props.runId));
+    props.onClose();
+  }
+  const pct = Math.round(100 * hp / P.maxHp);
+  const hpClass = pct <= 30 ? 'hp low' : pct <= 60 ? 'hp mid' : 'hp';
+  return (
+    <div className="battle">
+      <div className="bd">
+        <Art srcs={[props.def.id.replace('dgn_', 'dungeon-') + '.jpg']} emoji="" alt="" />
+      </div>
+      <div className="b-top">
+        <div className="b-foe-name">
+          <span>{foe.emoji} {foe.name}</span>
+          <span className="num" style={{ fontSize: 13, color: 'var(--dim)' }}>{hp}/{P.maxHp}</span>
+        </div>
+        <div className={hpClass}><i style={{ width: pct + '%' }} /></div>
+      </div>
+      <div className={'arena' + (fx.shake ? ' shake' : '')}>
+        {phase === 'intro' && <div className="atkban">A wild {foe.name} appears!</div>}
+        {fx.atkName && phase === 'fight' && (
+          <div className={'atkban' + (fx.crit ? ' crit' : '') + (fx.dodgeTag ? ' dodge' : '')}>
+            {fx.crit ? 'CRITICAL! ' : ''}{fx.atkName}{fx.crit || fx.dodgeTag ? '' : '!'}
+          </div>
+        )}
+        <div className={'b-foe' + (fx.hurt ? ' hurt' : '') + (fx.swipe ? ' swipe' : '') + (fx.defeat || phase === 'win' ? ' defeat' : '')}>
+          {!foeFail ? (
+            <img src={'./' + foeFile} alt={foe.name} onError={function () { setFoeFail(true); }} />
+          ) : (
+            <span className="fallback">{foe.emoji}</span>
+          )}
+        </div>
+        <div className={'b-me' + (fx.lunge ? ' lunge' : '') + (fx.hop2 ? ' hop2' : '')}>
+          <Art srcs={stageArt(g.species, g.level)} emoji={speciesOf(g.species).emoji} alt={g.name} />
+        </div>
+        {nums.map(function (n) {
+          return (
+            <span key={n.id} className={'dmgnum' + (n.crit ? ' crit' : '')}
+              style={{ left: n.x + '%', top: n.y + '%' }}>
+              -{n.val}
+            </span>
+          );
+        })}
+        {phase === 'win' && (
+          <div className="victory-wrap">
+            <span className="vspark" style={{ left: '58%', top: '34%', '--dx': '-50px', '--dy': '-60px' }}>✨</span>
+            <span className="vspark" style={{ left: '66%', top: '30%', '--dx': '54px', '--dy': '-48px' }}>⭐</span>
+            <span className="vspark" style={{ left: '62%', top: '38%', '--dx': '10px', '--dy': '-76px' }}>💫</span>
+            <div className="victory-text">VICTORY!</div>
+            <button className="btn primary pulse" style={{ minWidth: '70%' }} disabled={busy} onClick={finish}>
+              {busy ? 'Opening…' : 'Open the haul 🎒'}
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="b-controls">
+        {phase === 'fight' && (
+          <React.Fragment>
+            <button className="btn primary" disabled={lock} onClick={attack}>⚔️ ATTACK</button>
+            <button className="btn" style={{ flex: '0 0 auto' }} disabled={busy} onClick={finish}>Skip ⏭</button>
+          </React.Fragment>
+        )}
+        {phase === 'intro' && <button className="btn" style={{ width: '100%' }} disabled>…</button>}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- raids ---------------- */
 function RaidsScreen(props) {
   const state = props.state;
   const g = state.guardian;
+  const [battle, setBattle] = useState(null);
   const view = S.selectDungeonView(state);
   const active = view.find(function (d) { return d.isActive; });
   const run = S.selectActiveRun(state);
@@ -5549,8 +5803,8 @@ function RaidsScreen(props) {
               <React.Fragment>
                 <p className="note" style={{ margin: '0 0 10px' }}>The satchel is heavy with treasure…</p>
                 <button className="btn primary pulse" style={{ width: '100%' }}
-                  onClick={function () { props.store.dispatch(A.claimDungeon(active.runId)); }}>
-                  Open the haul 🎒
+                  onClick={function () { setBattle({ def: active.def, runId: active.runId }); }}>
+                  ⚔️ Fight for the haul!
                 </button>
               </React.Fragment>
             )}
@@ -5582,6 +5836,10 @@ function RaidsScreen(props) {
           </div>
         );
       })}
+      {battle && run && g && (
+        <BattleOverlay store={props.store} g={g} def={battle.def} run={run} runId={battle.runId}
+          onClose={function () { setBattle(null); }} />
+      )}
     </React.Fragment>
   );
 }
@@ -6186,7 +6444,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-2.0 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-2.1 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

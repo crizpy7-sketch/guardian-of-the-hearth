@@ -1,0 +1,3531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#1A1410" />
+<title>Guardian of the Hearth — Phase 4 Inspection</title>
+<style>
+  :root {
+    --bg: #1A1410;
+    --panel: #241B14;
+    --panel-edge: #3A2C1F;
+    --ink: #EDE3D2;
+    --dim: #8A7A66;
+    --ember: #E8853D;
+    --pass: #7FB069;
+    --fail: #C75146;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(1200px 600px at 50% -10%, #261C13 0%, var(--bg) 55%) var(--bg);
+    color: var(--ink);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  .eyebrow {
+    font-size: 11px; letter-spacing: 0.22em; color: var(--dim);
+    text-transform: uppercase; margin: 4px 0 6px;
+  }
+  h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 600; font-size: 28px; line-height: 1.15;
+    margin: 0 0 4px; color: var(--ink);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .ember {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #FFC98A, var(--ember) 60%, #8C3D12);
+    box-shadow: 0 0 12px 2px rgba(232,133,61,0.55);
+    flex: 0 0 auto;
+    animation: emberpulse 2.6s ease-in-out infinite;
+  }
+  @keyframes emberpulse {
+    0%, 100% { box-shadow: 0 0 10px 1px rgba(232,133,61,0.45); transform: scale(1); }
+    50% { box-shadow: 0 0 18px 5px rgba(232,133,61,0.75); transform: scale(1.12); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ember { animation: none; }
+  }
+  .sub { color: var(--dim); font-size: 13px; margin: 0 0 18px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: 12px;
+    padding: 14px;
+    margin: 0 0 14px;
+  }
+  .card h2 {
+    font-family: Georgia, serif; font-size: 17px; font-weight: 600;
+    margin: 0 0 10px; color: var(--ink);
+  }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 10px; }
+  button {
+    appearance: none; border: 1px solid var(--panel-edge);
+    background: #2E2218; color: var(--ink);
+    font: inherit; font-size: 14px;
+    border-radius: 10px; padding: 12px 14px;
+    min-height: 46px; flex: 1 1 45%;
+    cursor: pointer;
+  }
+  button.primary {
+    background: linear-gradient(180deg, #F09A52, var(--ember));
+    border-color: #B85F1E; color: #241303; font-weight: 700;
+    flex-basis: 100%;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+  .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip {
+    border: 1px solid var(--panel-edge); border-radius: 999px;
+    padding: 4px 12px; font-size: 13px; color: var(--dim);
+  }
+  .chip.pass { color: var(--pass); border-color: rgba(127,176,105,0.5); }
+  .chip.fail { color: var(--fail); border-color: rgba(199,81,70,0.5); }
+  .ledger { list-style: none; margin: 0; padding: 0; }
+  .ledger li {
+    border-left: 3px solid var(--pass);
+    background: #1F1812;
+    border-radius: 0 8px 8px 0;
+    padding: 8px 10px; margin: 0 0 6px;
+    font-size: 13px;
+    display: flex; justify-content: space-between; gap: 10px;
+  }
+  .ledger li.fail { border-left-color: var(--fail); }
+  .ledger li .ms { color: var(--dim); flex: 0 0 auto; }
+  .ledger li .err {
+    display: block; color: var(--fail); margin-top: 4px;
+    white-space: pre-wrap; word-break: break-word; width: 100%;
+  }
+  .ledger li .row { flex: 1 1 auto; }
+  .note { color: var(--dim); font-size: 13px; margin: 8px 0 0; }
+  .msg {
+    border: 1px solid var(--panel-edge); border-radius: 10px;
+    background: #1F1812; padding: 10px 12px; font-size: 13px;
+    margin-top: 10px; white-space: pre-wrap; word-break: break-word;
+  }
+  .msg.ok { border-color: rgba(127,176,105,0.5); color: var(--pass); }
+  input.field {
+    display: block; width: 100%;
+    background: #1F1812; border: 1px solid var(--panel-edge);
+    color: var(--ink); font: inherit; font-size: 16px;
+    border-radius: 10px; padding: 12px 14px; margin: 0 0 10px;
+  }
+  input.field:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+  .bar { height: 8px; background: #14100C; border: 1px solid var(--panel-edge);
+    border-radius: 999px; overflow: hidden; margin-top: 6px; }
+  .bar > span { display: block; height: 100%;
+    background: linear-gradient(90deg, #B85F1E, var(--ember)); }
+  .rowline { display: flex; justify-content: space-between; align-items: center;
+    gap: 10px; padding: 9px 2px; border-bottom: 1px solid #2A2018; font-size: 13px; }
+  .rowline:last-child { border-bottom: none; }
+  .rowline .grow { flex: 1 1 auto; min-width: 0; }
+  .rowline .dim { color: var(--dim); }
+  button.mini { flex: 0 0 auto; min-height: 38px; padding: 7px 12px; font-size: 13px; }
+  .msg.bad { border-color: rgba(199,81,70,0.5); color: var(--fail); }
+  table.counts { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.counts td {
+    padding: 6px 4px; border-bottom: 1px solid var(--panel-edge);
+  }
+  table.counts td:last-child { text-align: right; color: var(--ember); }
+  footer { color: var(--dim); font-size: 12px; margin-top: 22px; line-height: 1.6; }
+  footer b { color: var(--ink); font-weight: 600; }
+</style>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script>
+/* ============================================================================
+   GUARDIAN OF THE HEARTH — CORE (Phase 2)
+   Layers shipped in this phase:
+     01_CONFIG        game/economy configuration (data only, frozen)
+     02_DOMAIN        pure functions: ids, rng, leveling, loot, streaks,
+                      rewards, time, canonical hashing
+     02b_VALIDATION   entity validators + status-transition rules
+     03_DB            schema definition, migrations, IndexedDB backend,
+                      backend-agnostic DB wrapper
+     04_REPOSITORIES  repository layer (the ONLY code that touches the DB)
+     05_SERVICES      SeedService, BackupService (more services in Phase 3+)
+     09_TESTSUITE     shared verification suite (runs in node AND on-device)
+
+   Dependency rule: lower layers never import from higher layers.
+   No UI code lives in this module. No direct DB access outside repositories.
+   ========================================================================== */
+(function (root) {
+  'use strict';
+
+  const GOTH = {};
+
+  /* ==========================================================================
+     01_CONFIG — every balance number lives here. Logic never hardcodes values.
+     ========================================================================== */
+  const CONFIG = {
+    DB: { name: 'guardian_hearth', version: 1, testName: 'guardian_hearth_test' },
+
+    LIMITS: {
+      LEVEL_CAP: 200,
+      MAX_GOLD: 1000000000,
+      MAX_BUNDLE_FIELD: 100000,   // per-field ceiling on any reward bundle value
+      MAX_QTY: 1000000,
+      NAME_MIN: 1,
+      NAME_MAX: 24,
+      NOTE_MAX: 300,
+    },
+
+    SECURITY: {
+      ALGO: 'PBKDF2-SHA256',
+      PBKDF2_ITERATIONS: 310000,
+      SALT_BYTES: 16,
+      PARENT_SESSION_MS: 5 * 60 * 1000,
+      MAX_PIN_ATTEMPTS: 3,
+      LOCKOUT_BASE_MS: 60 * 1000,
+      AUDIT_GENESIS: 'GENESIS',
+    },
+
+    // XP required to go from level L to L+1 = base + per * (L - offset),
+    // for the first band whose upTo >= L. Bands per Phase 1 spec §5.
+    XP_BANDS: [
+      { upTo: 10, base: 60, per: 20, offset: 0 },
+      { upTo: 25, base: 260, per: 35, offset: 10 },
+      { upTo: 50, base: 800, per: 60, offset: 25 },
+      { upTo: Infinity, base: 2300, per: 100, offset: 50 },
+    ],
+
+    ECONOMY: {
+      BASE_MAX_ENERGY: 100,
+      SANCTUARY_ENERGY_PER_LEVEL: 10,
+      AFFECTION_MAX: 100,
+      BUILDING_COST_GROWTH: 1.6,
+      CRAFT_ENERGY_COST: 10,
+      DUNGEON_ENERGY: { SHORT: 15, MEDIUM: 30, LONG: 50 },
+    },
+
+    RARITY_WEIGHTS: { COMMON: 50, UNCOMMON: 27, RARE: 13, EPIC: 6, LEGENDARY: 3, MYTHIC: 1 },
+
+    STREAK: { DECAY_PER_MISSED_DAY: 0.8 },
+
+    SPECIES: {
+      DRAGON: { emoji: '🐉', flavor: 'Bold keeper of ember and sky.' },
+      WOLF: { emoji: '🐺', flavor: 'Loyal sentinel of the night watch.' },
+      FOX: { emoji: '🦊', flavor: 'Clever scout of hidden paths.' },
+      OWL: { emoji: '🦉', flavor: 'Wise reader of moonlit pages.' },
+      TURTLE: { emoji: '🐢', flavor: 'Patient warden of the shore.' },
+      BEAR: { emoji: '🐻', flavor: 'Gentle giant of the deep wood.' },
+      PHOENIX: { emoji: '🪶', flavor: 'Radiant flame that always returns.' },
+    },
+
+    // Default reward bundles per quest category (parents tune these later).
+    REWARD_DEFAULTS: {
+      HYDRATION: { coins: 5, energy: 5, xp: 10, affection: 0, materials: [], lootCrates: 0 },
+      HEALTH: { coins: 10, energy: 8, xp: 15, affection: 0, materials: [], lootCrates: 0 },
+      LEARNING: { coins: 15, energy: 10, xp: 25, affection: 0, materials: [], lootCrates: 0 },
+      RESPONSIBILITY: { coins: 15, energy: 10, xp: 20, affection: 0, materials: [], lootCrates: 0 },
+      KINDNESS: { coins: 20, energy: 8, xp: 25, affection: 5, materials: [], lootCrates: 0 },
+      FITNESS: { coins: 15, energy: 10, xp: 20, affection: 0, materials: [], lootCrates: 0 },
+    },
+
+    MAX_PER_DAY_DEFAULTS: { HYDRATION: 4, HEALTH: 2, LEARNING: 3, RESPONSIBILITY: 3, KINDNESS: 3, FITNESS: 2 },
+
+    ITEMS: [
+      // Materials
+      { id: 'itm_wood', name: 'Hearthwood', rarity: 'COMMON', type: 'MATERIAL', description: 'Sturdy timber for building.' },
+      { id: 'itm_stone', name: 'River Stone', rarity: 'COMMON', type: 'MATERIAL', description: 'Smooth stone from the shallows.' },
+      { id: 'itm_fiber', name: 'Wild Fiber', rarity: 'COMMON', type: 'MATERIAL', description: 'Tough strands for rope and cloth.' },
+      { id: 'itm_clay', name: 'Soft Clay', rarity: 'UNCOMMON', type: 'MATERIAL', description: 'Shapes into bricks and pots.' },
+      { id: 'itm_iron', name: 'Iron Chunk', rarity: 'UNCOMMON', type: 'MATERIAL', description: 'Raw metal for the forge.' },
+      { id: 'itm_herbs', name: 'Healing Herbs', rarity: 'UNCOMMON', type: 'MATERIAL', description: 'Fragrant leaves with gentle power.' },
+      { id: 'itm_crystal', name: 'Glow Crystal', rarity: 'RARE', type: 'MATERIAL', description: 'Hums softly with stored light.' },
+      { id: 'itm_moonpetal', name: 'Moonpetal', rarity: 'RARE', type: 'MATERIAL', description: 'Blooms only under a full moon.' },
+      { id: 'itm_starsteel', name: 'Starsteel Ingot', rarity: 'EPIC', type: 'MATERIAL', description: 'Forged from a fallen star.' },
+      { id: 'itm_phoenix_feather', name: 'Phoenix Feather', rarity: 'LEGENDARY', type: 'MATERIAL', description: 'Warm to the touch, never burns out.' },
+      { id: 'itm_aether_shard', name: 'Aether Shard', rarity: 'MYTHIC', type: 'MATERIAL', description: 'A splinter of the world between worlds.' },
+      { id: 'itm_loot_crate', name: 'Mystery Loot Crate', rarity: 'UNCOMMON', type: 'MATERIAL', description: 'Sealed tight. Opens in the Workshop.' },
+      // Food
+      { id: 'itm_berry', name: 'Sunberry', rarity: 'COMMON', type: 'FOOD', description: 'Sweet and a little fizzy.' },
+      { id: 'itm_apple', name: 'Orchard Apple', rarity: 'COMMON', type: 'FOOD', description: 'Crisp guardian favorite.' },
+      { id: 'itm_honey', name: 'Wild Honey', rarity: 'UNCOMMON', type: 'FOOD', description: 'Golden energy in a jar.' },
+      { id: 'itm_royal_stew', name: 'Royal Stew', rarity: 'RARE', type: 'FOOD', description: 'A feast fit for a guardian.' },
+      // Equipment
+      { id: 'itm_wood_sword', name: 'Training Sword', rarity: 'COMMON', type: 'EQUIPMENT', description: 'Every hero starts somewhere.' },
+      { id: 'itm_leather_cap', name: 'Leather Cap', rarity: 'COMMON', type: 'EQUIPMENT', description: 'Simple, dependable headgear.' },
+      { id: 'itm_iron_shield', name: 'Iron Shield', rarity: 'UNCOMMON', type: 'EQUIPMENT', description: 'Holds the line at the Hearth.' },
+      { id: 'itm_scout_boots', name: 'Scout Boots', rarity: 'UNCOMMON', type: 'EQUIPMENT', description: 'Quiet steps on any path.' },
+      { id: 'itm_runed_blade', name: 'Runed Blade', rarity: 'RARE', type: 'EQUIPMENT', description: 'Old letters glow along the edge.' },
+      { id: 'itm_guardian_plate', name: 'Guardian Plate', rarity: 'EPIC', type: 'EQUIPMENT', description: 'Armor of the sworn protectors.' },
+      { id: 'itm_dawn_crown', name: 'Crown of Dawn', rarity: 'LEGENDARY', type: 'EQUIPMENT', description: 'Morning light, made to wear.' },
+      // Cosmetics
+      { id: 'itm_red_scarf', name: 'Red Scarf', rarity: 'COMMON', type: 'COSMETIC', description: 'Adventure-ready neckwear.' },
+      { id: 'itm_party_hat', name: 'Party Hat', rarity: 'UNCOMMON', type: 'COSMETIC', description: 'For level-up celebrations.' },
+      { id: 'itm_star_cape', name: 'Star Cape', rarity: 'RARE', type: 'COSMETIC', description: 'A night sky that follows you.' },
+      { id: 'itm_mythic_aura', name: 'Mythic Aura', rarity: 'MYTHIC', type: 'COSMETIC', description: 'You shimmer. Everyone notices.' },
+    ],
+
+    // Default quest catalog. reward overrides start from REWARD_DEFAULTS.
+    QUESTS: [
+      { id: 'qst_water_glass', title: 'Drink a glass of water', category: 'HYDRATION', icon: '💧', maxPerDay: 4 },
+      { id: 'qst_water_refill', title: 'Refill your water bottle', category: 'HYDRATION', icon: '🚰', maxPerDay: 2 },
+      { id: 'qst_water_goal', title: 'Finish your daily water goal', category: 'HYDRATION', icon: '🌊', maxPerDay: 1, reward: { coins: 15, energy: 12, xp: 25 } },
+      { id: 'qst_brush_teeth', title: 'Brush your teeth', category: 'HEALTH', icon: '🪥', maxPerDay: 2 },
+      { id: 'qst_bath', title: 'Take a bath or shower', category: 'HEALTH', icon: '🛁', maxPerDay: 1 },
+      { id: 'qst_sleep_time', title: 'Get to bed on time', category: 'HEALTH', icon: '🌙', maxPerDay: 1, reward: { coins: 15, energy: 10, xp: 20 } },
+      { id: 'qst_read_15', title: 'Read for 15 minutes', category: 'LEARNING', icon: '📚', maxPerDay: 3 },
+      { id: 'qst_homework', title: 'Finish your homework', category: 'LEARNING', icon: '✏️', maxPerDay: 1, reward: { coins: 20, energy: 12, xp: 35 } },
+      { id: 'qst_practice', title: 'Practice math or language', category: 'LEARNING', icon: '🧠', maxPerDay: 2 },
+      { id: 'qst_make_bed', title: 'Make your bed', category: 'RESPONSIBILITY', icon: '🛏️', maxPerDay: 1 },
+      { id: 'qst_clean_room', title: 'Tidy your room', category: 'RESPONSIBILITY', icon: '🧹', maxPerDay: 1 },
+      { id: 'qst_feed_pets', title: 'Feed the pets / help with laundry', category: 'RESPONSIBILITY', icon: '🧺', maxPerDay: 2 },
+      { id: 'qst_help_sibling', title: 'Help a sibling', category: 'KINDNESS', icon: '🤝', maxPerDay: 3 },
+      { id: 'qst_help_parent', title: 'Help a parent', category: 'KINDNESS', icon: '💛', maxPerDay: 3 },
+      { id: 'qst_gratitude', title: 'Share one thing you are grateful for', category: 'KINDNESS', icon: '🙏', maxPerDay: 2 },
+      { id: 'qst_exercise', title: 'Exercise for 15 minutes', category: 'FITNESS', icon: '💪', maxPerDay: 2 },
+      { id: 'qst_walk', title: 'Take an outdoor walk', category: 'FITNESS', icon: '🚶', maxPerDay: 2 },
+      { id: 'qst_stretch', title: 'Morning stretch', category: 'FITNESS', icon: '🤸', maxPerDay: 1 },
+    ],
+
+    // Dungeon DEFINITIONS only in Phase 2 (the resolver ships in Phase 4).
+    // Balance note: first dungeon unlocks at L1 (Phase 1 doc said L3) so new
+    // guardians get an early win; remaining gates unchanged.
+    DUNGEONS: [
+      { id: 'dgn_glade', name: 'Whispering Glade', tier: 'SHORT', unlockLevel: 1, durationMin: 10, gold: [5, 15], xp: [8, 16], lootRolls: 1 },
+      { id: 'dgn_tide', name: 'Tide Caverns', tier: 'SHORT', unlockLevel: 8, durationMin: 20, gold: [12, 30], xp: [15, 30], lootRolls: 2 },
+      { id: 'dgn_ember', name: 'Ember Hollow', tier: 'MEDIUM', unlockLevel: 15, durationMin: 45, gold: [25, 60], xp: [30, 60], lootRolls: 2 },
+      { id: 'dgn_sky', name: 'Sky Bastion', tier: 'MEDIUM', unlockLevel: 25, durationMin: 90, gold: [50, 120], xp: [60, 120], lootRolls: 3 },
+      { id: 'dgn_void', name: 'Voidwalk Ruins', tier: 'LONG', unlockLevel: 40, durationMin: 180, gold: [120, 300], xp: [150, 300], lootRolls: 4 },
+    ],
+
+    // Achievements read named counters; adding one is pure data.
+    ACHIEVEMENTS: [
+      { id: 'ach_first_approval', name: 'First Spark', description: 'Earn your first approved reward.', condition: { counterKey: 'global.approvals', target: 1 } },
+      { id: 'ach_approvals_100', name: 'Keeper of the Flame', description: '100 approved quests.', condition: { counterKey: 'global.approvals', target: 100 } },
+      { id: 'ach_water_100', name: '100 Waters', description: 'Complete 100 hydration quests.', condition: { counterKey: 'cat.HYDRATION', target: 100 } },
+      { id: 'ach_water_500', name: 'River Heart', description: 'Complete 500 hydration quests.', condition: { counterKey: 'cat.HYDRATION', target: 500 } },
+      { id: 'ach_read_30', name: '30 Days of Pages', description: 'Complete 30 learning quests.', condition: { counterKey: 'cat.LEARNING', target: 30 } },
+      { id: 'ach_kind_50', name: '50 Kindness Acts', description: 'Complete 50 kindness quests.', condition: { counterKey: 'cat.KINDNESS', target: 50 } },
+      { id: 'ach_chores_100', name: '100 Chores', description: 'Complete 100 responsibility quests.', condition: { counterKey: 'cat.RESPONSIBILITY', target: 100 } },
+      { id: 'ach_fit_50', name: 'Strong Guardian', description: 'Complete 50 fitness quests.', condition: { counterKey: 'cat.FITNESS', target: 50 } },
+      { id: 'ach_streak_30', name: 'Moon Cycle', description: 'Reach a 30-day best streak.', condition: { counterKey: 'streak.global.best', target: 30 } },
+      { id: 'ach_streak_365', name: '365 Day Streak', description: 'Reach a 365-day best streak.', condition: { counterKey: 'streak.global.best', target: 365 } },
+    ],
+
+    BUILDINGS: {
+      HOME: { name: 'Home', baseCost: 100, maxLevel: 10 },
+      GARDEN: { name: 'Garden', baseCost: 80, maxLevel: 10 },
+      WORKSHOP: { name: 'Workshop', baseCost: 120, maxLevel: 10 },
+      HARBOR: { name: 'Harbor', baseCost: 200, maxLevel: 8 },
+      RUINS: { name: 'Ancient Ruins', baseCost: 300, maxLevel: 5 },
+      SANCTUARY: { name: 'Pet Sanctuary', baseCost: 150, maxLevel: 10 },
+    },
+  };
+
+  function deepFreeze(obj) {
+    Object.getOwnPropertyNames(obj).forEach(function (k) {
+      const v = obj[k];
+      if (v && typeof v === 'object') deepFreeze(v);
+    });
+    return Object.freeze(obj);
+  }
+  deepFreeze(CONFIG);
+
+  /* ==========================================================================
+     02_DOMAIN — pure functions only. No I/O, no DB, no UI.
+     ========================================================================== */
+  const ENUMS = {
+    ROLE: ['CHILD', 'PARENT'],
+    SUBMISSION_STATUS: ['PENDING', 'APPROVED', 'REJECTED'],
+    RARITY: ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'],
+    QUEST_CATEGORY: ['HYDRATION', 'HEALTH', 'LEARNING', 'RESPONSIBILITY', 'KINDNESS', 'FITNESS'],
+    SPECIES: Object.keys(CONFIG.SPECIES),
+    BUILDING_TYPE: Object.keys(CONFIG.BUILDINGS),
+    ITEM_TYPE: ['EQUIPMENT', 'MATERIAL', 'COSMETIC', 'FOOD'],
+    DUNGEON_TIER: ['SHORT', 'MEDIUM', 'LONG'],
+  };
+
+  const Ids = {
+    uuid: function () {
+      const c = root.crypto || (typeof globalThis !== 'undefined' ? globalThis.crypto : null);
+      if (c && c.randomUUID) return c.randomUUID();
+      // RFC4122 v4 fallback built on getRandomValues.
+      const b = new Uint8Array(16);
+      c.getRandomValues(b);
+      b[6] = (b[6] & 0x0f) | 0x40;
+      b[8] = (b[8] & 0x3f) | 0x80;
+      const h = Array.from(b, function (x) { return x.toString(16).padStart(2, '0'); }).join('');
+      return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+    },
+  };
+
+  // Deterministic RNG: xmur3 string hash -> mulberry32 stream.
+  const RNG = {
+    seedFromString: function (str) {
+      let h = 1779033703 ^ str.length;
+      for (let i = 0; i < str.length; i++) {
+        h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+        h = (h << 13) | (h >>> 19);
+      }
+      h = Math.imul(h ^ (h >>> 16), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      return (h ^= h >>> 16) >>> 0;
+    },
+    mulberry32: function (seed) {
+      let a = seed >>> 0;
+      return function () {
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    },
+  };
+
+  const Leveling = {
+    xpToNext: function (level) {
+      if (!Number.isInteger(level) || level < 1) throw new ValidationError('BAD_LEVEL', 'level must be int >= 1');
+      for (const band of CONFIG.XP_BANDS) {
+        if (level <= band.upTo) return band.base + band.per * (level - band.offset);
+      }
+      throw new ValidationError('BAD_LEVEL', 'no band'); // unreachable: last band is Infinity
+    },
+    totalXpForLevel: function (level) {
+      let sum = 0;
+      for (let l = 1; l < level; l++) sum += Leveling.xpToNext(l);
+      return sum;
+    },
+    levelFromTotalXp: function (totalXp) {
+      let level = 1;
+      let remaining = totalXp;
+      while (level < CONFIG.LIMITS.LEVEL_CAP) {
+        const need = Leveling.xpToNext(level);
+        if (remaining < need) break;
+        remaining -= need;
+        level++;
+      }
+      return { level: level, intoLevel: remaining, toNext: Leveling.xpToNext(level) };
+    },
+    // Pure: returns the new guardian fields after gaining XP (xp is lifetime total).
+    applyXp: function (guardian, amount) {
+      const before = Leveling.levelFromTotalXp(guardian.xp);
+      const newTotal = guardian.xp + amount;
+      const after = Leveling.levelFromTotalXp(newTotal);
+      return {
+        xp: newTotal,
+        level: after.level,
+        leveledUp: after.level > before.level,
+        levelsGained: after.level - before.level,
+      };
+    },
+  };
+
+  const Loot = {
+    rollRarity: function (rand, weights) {
+      const w = weights || CONFIG.RARITY_WEIGHTS;
+      let total = 0;
+      for (const r of ENUMS.RARITY) total += (w[r] || 0);
+      let pick = rand() * total;
+      for (const r of ENUMS.RARITY) {
+        pick -= (w[r] || 0);
+        if (pick < 0) return r;
+      }
+      return ENUMS.RARITY[0];
+    },
+    pickItemOfRarity: function (rand, rarity, itemPool) {
+      const pool = itemPool.filter(function (i) { return i.rarity === rarity; });
+      if (pool.length === 0) return null;
+      return pool[Math.floor(rand() * pool.length)];
+    },
+    rollInt: function (rand, min, max) {
+      return min + Math.floor(rand() * (max - min + 1));
+    },
+    // Pure, deterministic dungeon resolver: the same run (same seed) always
+    // produces the same result, on any device, any number of times.
+    resolveDungeon: function (run, def, itemPool) {
+      const rand = RNG.mulberry32(run.seed);
+      const gold = Loot.rollInt(rand, def.gold[0], def.gold[1]);
+      const xp = Loot.rollInt(rand, def.xp[0], def.xp[1]);
+      const byItem = {};
+      for (let i = 0; i < def.lootRolls; i++) {
+        const rarity = Loot.rollRarity(rand);
+        let item = Loot.pickItemOfRarity(rand, rarity, itemPool);
+        if (!item) {
+          // No item of that rarity in the pool: walk down to the nearest one.
+          const idx = ENUMS.RARITY.indexOf(rarity);
+          for (let r = idx - 1; r >= 0 && !item; r--) {
+            item = Loot.pickItemOfRarity(rand, ENUMS.RARITY[r], itemPool);
+          }
+        }
+        if (item) byItem[item.id] = (byItem[item.id] || 0) + 1;
+      }
+      const drops = Object.keys(byItem).map(function (id) { return { itemId: id, qty: byItem[id] }; });
+      return { gold: gold, xp: xp, drops: drops };
+    },
+  };
+
+  const TimeUtil = {
+    todayStr: function (d) {
+      const dt = d || new Date();
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + day;
+    },
+    localMidnightMs: function (d) {
+      const dt = d ? new Date(d) : new Date();
+      dt.setHours(0, 0, 0, 0);
+      return dt.getTime();
+    },
+    dayDiff: function (fromStr, toStr) {
+      const a = fromStr.split('-').map(Number);
+      const b = toStr.split('-').map(Number);
+      const ms = Date.UTC(b[0], b[1] - 1, b[2]) - Date.UTC(a[0], a[1] - 1, a[2]);
+      return Math.round(ms / 86400000);
+    },
+  };
+
+  const Streaks = {
+    // Pure: returns updated streak fields after activity on `dayStr`.
+    // Missed days decay the streak (never hard-reset); `best` never decreases.
+    applyActivity: function (streak, dayStr) {
+      let current = streak.current;
+      if (!streak.lastActiveDay) {
+        current = 1;
+      } else {
+        const diff = TimeUtil.dayDiff(streak.lastActiveDay, dayStr);
+        if (diff < 0) throw new ValidationError('TIME_BACKWARDS', 'activity day precedes last active day');
+        if (diff === 0) {
+          return { current: current, best: streak.best, lastActiveDay: streak.lastActiveDay };
+        }
+        if (diff === 1) {
+          current = current + 1;
+        } else {
+          current = Streaks.decayed(current, diff - 1) + 1;
+        }
+      }
+      return { current: current, best: Math.max(streak.best, current), lastActiveDay: dayStr };
+    },
+    decayed: function (current, missedDays) {
+      let v = current;
+      for (let i = 0; i < missedDays; i++) v = Math.floor(v * CONFIG.STREAK.DECAY_PER_MISSED_DAY);
+      return v;
+    },
+    // Display-only effective streak without recording activity.
+    effectiveCurrent: function (streak, todayStrVal) {
+      if (!streak.lastActiveDay) return 0;
+      const diff = TimeUtil.dayDiff(streak.lastActiveDay, todayStrVal);
+      if (diff <= 1) return streak.current;
+      return Streaks.decayed(streak.current, diff - 1);
+    },
+  };
+
+  const Rewards = {
+    emptyBundle: function () {
+      return { coins: 0, energy: 0, xp: 0, affection: 0, materials: [], lootCrates: 0 };
+    },
+    normalizeBundle: function (partial) {
+      const b = Rewards.emptyBundle();
+      const src = partial || {};
+      ['coins', 'energy', 'xp', 'affection', 'lootCrates'].forEach(function (k) {
+        if (src[k] !== undefined) b[k] = src[k];
+      });
+      if (src.materials !== undefined) b.materials = src.materials;
+      Validation.validateBundle(b);
+      return b;
+    },
+    addBundles: function (a, b) {
+      const out = Rewards.emptyBundle();
+      ['coins', 'energy', 'xp', 'affection', 'lootCrates'].forEach(function (k) { out[k] = a[k] + b[k]; });
+      const byItem = {};
+      (a.materials || []).concat(b.materials || []).forEach(function (m) {
+        byItem[m.itemId] = (byItem[m.itemId] || 0) + m.qty;
+      });
+      out.materials = Object.keys(byItem).map(function (id) { return { itemId: id, qty: byItem[id] }; });
+      return out;
+    },
+  };
+
+  // Resolve a quest's effective reward bundle (defaults + per-quest override).
+  function questRewardBundle(quest) {
+    const base = CONFIG.REWARD_DEFAULTS[quest.category];
+    return Rewards.normalizeBundle(Object.assign({}, base, quest.reward || {}));
+  }
+
+  // Pure submission rule used by QuestService in Phase 4 and tested now.
+  function canSubmitQuest(quest, todaysNonRejectedCount) {
+    if (!quest.active) return { ok: false, reason: 'QUEST_INACTIVE' };
+    if (todaysNonRejectedCount >= quest.maxPerDay) return { ok: false, reason: 'MAX_PER_DAY_REACHED' };
+    return { ok: true };
+  }
+
+  /* ---- Canonical JSON + SHA-256 (used by backup checksum now, audit chain in P3) */
+  const Canon = {
+    stringify: function canon(v) {
+      if (v === null) return 'null';
+      const t = typeof v;
+      if (t === 'number') {
+        if (!isFinite(v)) throw new ValidationError('BAD_JSON', 'non-finite number');
+        return JSON.stringify(v);
+      }
+      if (t === 'boolean' || t === 'string') return JSON.stringify(v);
+      if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']';
+      if (t === 'object') {
+        const keys = Object.keys(v).filter(function (k) { return v[k] !== undefined; }).sort();
+        return '{' + keys.map(function (k) { return JSON.stringify(k) + ':' + canon(v[k]); }).join(',') + '}';
+      }
+      throw new ValidationError('BAD_JSON', 'unsupported type: ' + t);
+    },
+  };
+
+  async function sha256Hex(str) {
+    const c = (root.crypto && root.crypto.subtle) ? root.crypto : globalThis.crypto;
+    const buf = await c.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf), function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
+
+  function bytesToHex(bytes) {
+    return Array.from(bytes, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
+  function hexToBytes(hex) {
+    const out = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+    return out;
+  }
+
+  /* ==========================================================================
+     02b_VALIDATION — every write passes through here. Closed-world: writes to
+     unknown stores or with unknown shapes are rejected.
+     ========================================================================== */
+  class ValidationError extends Error {
+    constructor(code, message) {
+      super(code + ': ' + message);
+      this.name = 'ValidationError';
+      this.code = code;
+    }
+  }
+
+  const V = {
+    str: function (v, field, min, max) {
+      if (typeof v !== 'string') throw new ValidationError('BAD_TYPE', field + ' must be string');
+      if (min !== undefined && v.length < min) throw new ValidationError('TOO_SHORT', field);
+      if (max !== undefined && v.length > max) throw new ValidationError('TOO_LONG', field);
+      return v;
+    },
+    int: function (v, field, min, max) {
+      if (!Number.isInteger(v)) throw new ValidationError('BAD_TYPE', field + ' must be integer');
+      if (min !== undefined && v < min) throw new ValidationError('OUT_OF_RANGE', field + ' < ' + min);
+      if (max !== undefined && v > max) throw new ValidationError('OUT_OF_RANGE', field + ' > ' + max);
+      return v;
+    },
+    bool: function (v, field) {
+      if (typeof v !== 'boolean') throw new ValidationError('BAD_TYPE', field + ' must be boolean');
+      return v;
+    },
+    oneOf: function (v, field, list) {
+      if (list.indexOf(v) === -1) throw new ValidationError('BAD_ENUM', field + ' must be one of ' + list.join('|'));
+      return v;
+    },
+    hex64: function (v, field) {
+      if (typeof v !== 'string' || !/^[0-9a-f]{64}$/.test(v)) {
+        if (v !== CONFIG.SECURITY.AUDIT_GENESIS) throw new ValidationError('BAD_HASH', field + ' must be sha256 hex or GENESIS');
+      }
+      return v;
+    },
+  };
+
+  const Validation = {
+    Error: ValidationError,
+
+    validateBundle: function (b) {
+      if (!b || typeof b !== 'object') throw new ValidationError('BAD_TYPE', 'bundle must be object');
+      const MAX = CONFIG.LIMITS.MAX_BUNDLE_FIELD;
+      ['coins', 'energy', 'xp', 'affection', 'lootCrates'].forEach(function (k) {
+        V.int(b[k], 'bundle.' + k, 0, MAX);
+      });
+      if (!Array.isArray(b.materials)) throw new ValidationError('BAD_TYPE', 'bundle.materials must be array');
+      b.materials.forEach(function (m, i) {
+        V.str(m.itemId, 'bundle.materials[' + i + '].itemId', 1, 64);
+        V.int(m.qty, 'bundle.materials[' + i + '].qty', 1, CONFIG.LIMITS.MAX_QTY);
+      });
+      return b;
+    },
+
+    assertSubmissionTransition: function (fromStatus, toStatus) {
+      if (fromStatus !== 'PENDING') {
+        throw new ValidationError('IMMUTABLE_DECISION', 'submission already ' + fromStatus + '; decisions are final');
+      }
+      if (toStatus !== 'APPROVED' && toStatus !== 'REJECTED') {
+        throw new ValidationError('BAD_TRANSITION', 'PENDING may only become APPROVED or REJECTED');
+      }
+    },
+
+    validators: {
+      users: function (o) {
+        V.str(o.id, 'id', 1); V.oneOf(o.role, 'role', ENUMS.ROLE);
+        V.str(o.name, 'name', CONFIG.LIMITS.NAME_MIN, CONFIG.LIMITS.NAME_MAX);
+        V.str(o.avatar, 'avatar', 0, 16); V.int(o.createdAt, 'createdAt', 0);
+      },
+      credentials: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.userId, 'userId', 1);
+        V.str(o.pinHash, 'pinHash', 16); V.str(o.salt, 'salt', 8);
+        V.int(o.iterations, 'iterations', 100000);
+        V.oneOf(o.algo, 'algo', [CONFIG.SECURITY.ALGO]);
+        if (o.failedAttempts !== undefined) V.int(o.failedAttempts, 'failedAttempts', 0);
+        if (o.lockoutUntil !== undefined) V.int(o.lockoutUntil, 'lockoutUntil', 0);
+        if (o.lockoutCount !== undefined) V.int(o.lockoutCount, 'lockoutCount', 0);
+      },
+      guardians: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.userId, 'userId', 1);
+        V.str(o.name, 'name', CONFIG.LIMITS.NAME_MIN, CONFIG.LIMITS.NAME_MAX);
+        V.oneOf(o.species, 'species', ENUMS.SPECIES);
+        V.int(o.level, 'level', 1, CONFIG.LIMITS.LEVEL_CAP);
+        V.int(o.xp, 'xp', 0); V.int(o.energy, 'energy', 0);
+        V.int(o.maxEnergy, 'maxEnergy', 1);
+        if (o.energy > o.maxEnergy) throw new ValidationError('OUT_OF_RANGE', 'energy > maxEnergy');
+        V.int(o.gold, 'gold', 0, CONFIG.LIMITS.MAX_GOLD);
+        V.int(o.affection, 'affection', 0, CONFIG.ECONOMY.AFFECTION_MAX);
+      },
+      items: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.name, 'name', 1, 48);
+        V.oneOf(o.rarity, 'rarity', ENUMS.RARITY);
+        V.oneOf(o.type, 'type', ENUMS.ITEM_TYPE);
+        V.str(o.description, 'description', 0, 160);
+      },
+      inventory: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.userId, 'userId', 1); V.str(o.itemId, 'itemId', 1);
+        V.int(o.qty, 'qty', 1, CONFIG.LIMITS.MAX_QTY);
+      },
+      quests: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.title, 'title', 1, 80);
+        V.oneOf(o.category, 'category', ENUMS.QUEST_CATEGORY);
+        Validation.validateBundle(o.reward);
+        V.int(o.maxPerDay, 'maxPerDay', 1, 50);
+        V.bool(o.active, 'active'); V.str(o.icon, 'icon', 0, 8);
+      },
+      submissions: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.userId, 'userId', 1); V.str(o.questId, 'questId', 1);
+        V.oneOf(o.status, 'status', ENUMS.SUBMISSION_STATUS);
+        V.int(o.submittedAt, 'submittedAt', 0);
+        if (o.status === 'PENDING') {
+          if (o.decidedAt !== undefined || o.decidedBy !== undefined) {
+            throw new ValidationError('BAD_SHAPE', 'pending submission cannot carry decision fields');
+          }
+        } else {
+          V.int(o.decidedAt, 'decidedAt', 0); V.str(o.decidedBy, 'decidedBy', 1);
+        }
+        if (o.note !== undefined) V.str(o.note, 'note', 0, CONFIG.LIMITS.NOTE_MAX);
+      },
+      rewardTransactions: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.submissionId, 'submissionId', 1); V.str(o.userId, 'userId', 1);
+        Validation.validateBundle(o.bundle); V.int(o.createdAt, 'createdAt', 0);
+        if (o.applied !== undefined) V.bool(o.applied, 'applied');
+      },
+      achievements: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.name, 'name', 1, 64); V.str(o.description, 'description', 0, 160);
+        if (!o.condition || typeof o.condition !== 'object') throw new ValidationError('BAD_TYPE', 'condition');
+        V.str(o.condition.counterKey, 'condition.counterKey', 1, 64);
+        V.int(o.condition.target, 'condition.target', 1);
+        if (o.rewardBundle !== undefined) Validation.validateBundle(o.rewardBundle);
+      },
+      achievementProgress: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.userId, 'userId', 1); V.str(o.achievementId, 'achievementId', 1);
+        V.int(o.progress, 'progress', 0);
+        if (o.unlockedAt !== undefined) V.int(o.unlockedAt, 'unlockedAt', 0);
+      },
+      buildings: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.userId, 'userId', 1);
+        V.oneOf(o.type, 'type', ENUMS.BUILDING_TYPE);
+        const def = CONFIG.BUILDINGS[o.type];
+        V.int(o.level, 'level', 0, def.maxLevel);
+      },
+      dungeonRuns: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.guardianId, 'guardianId', 1); V.str(o.dungeonId, 'dungeonId', 1);
+        V.int(o.seed, 'seed', 0); V.int(o.startedAt, 'startedAt', 0); V.int(o.endsAt, 'endsAt', 0);
+        if (o.endsAt < o.startedAt) throw new ValidationError('OUT_OF_RANGE', 'endsAt before startedAt');
+        V.bool(o.claimed, 'claimed');
+        if (o.claimed === true && o.result === undefined) {
+          throw new ValidationError('BAD_SHAPE', 'a claimed run must persist its result');
+        }
+        if (o.result !== undefined) {
+          V.int(o.result.gold, 'result.gold', 0); V.int(o.result.xp, 'result.xp', 0);
+          if (!Array.isArray(o.result.drops)) throw new ValidationError('BAD_TYPE', 'result.drops');
+          o.result.drops.forEach(function (d, i) {
+            V.str(d.itemId, 'result.drops[' + i + '].itemId', 1);
+            V.int(d.qty, 'result.drops[' + i + '].qty', 1, CONFIG.LIMITS.MAX_QTY);
+          });
+        }
+      },
+      streaks: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.userId, 'userId', 1);
+        V.oneOf(o.scope, 'scope', ['GLOBAL'].concat(ENUMS.QUEST_CATEGORY));
+        V.int(o.current, 'current', 0); V.int(o.best, 'best', 0);
+        if (o.best < o.current) throw new ValidationError('OUT_OF_RANGE', 'best < current');
+        if (o.lastActiveDay !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(o.lastActiveDay)) {
+          throw new ValidationError('BAD_DATE', 'lastActiveDay must be YYYY-MM-DD');
+        }
+      },
+      counters: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.userId, 'userId', 1);
+        V.str(o.key, 'key', 1, 64); V.int(o.value, 'value', 0);
+      },
+      auditLogs: function (o) {
+        V.str(o.id, 'id', 1); V.str(o.parentId, 'parentId', 1);
+        V.str(o.action, 'action', 1, 64); V.str(o.entity, 'entity', 1, 32); V.str(o.entityId, 'entityId', 1);
+        V.int(o.timestamp, 'timestamp', 0);
+        if (o.reason !== undefined) V.str(o.reason, 'reason', 0, CONFIG.LIMITS.NOTE_MAX);
+        V.hex64(o.prevHash, 'prevHash'); V.hex64(o.hash, 'hash');
+        if (o.hash === CONFIG.SECURITY.AUDIT_GENESIS) throw new ValidationError('BAD_HASH', 'hash cannot be GENESIS');
+      },
+      meta: function (o) {
+        V.str(o.key, 'key', 1, 64);
+        if (o.value === undefined) throw new ValidationError('BAD_SHAPE', 'meta.value required');
+      },
+    },
+
+    validateForStore: function (store, obj) {
+      const fn = Validation.validators[store];
+      if (!fn) throw new ValidationError('UNKNOWN_STORE', 'no validator for store ' + store);
+      if (!obj || typeof obj !== 'object') throw new ValidationError('BAD_TYPE', 'record must be object');
+      fn(obj);
+      return obj;
+    },
+  };
+
+  /* ==========================================================================
+     03_DB — schema definition + migrations + IndexedDB backend + wrapper.
+     The wrapper is backend-agnostic so tests can run against a memory backend
+     and the app runs against IndexedDB. (Flutter port later: this is the seam.)
+     ========================================================================== */
+  const SCHEMA = {
+    version: CONFIG.DB.version,
+    stores: {
+      users: { keyPath: 'id', indexes: { role: 'role' } },
+      credentials: { keyPath: 'id', indexes: { userId: 'userId' } },
+      guardians: { keyPath: 'id', indexes: { userId: 'userId' } },
+      items: { keyPath: 'id', indexes: { rarity: 'rarity', type: 'type' } },
+      inventory: { keyPath: 'id', indexes: { userId: 'userId', user_item: ['userId', 'itemId'] } },
+      quests: { keyPath: 'id', indexes: { category: 'category' } },
+      submissions: { keyPath: 'id', indexes: { userId: 'userId', status: 'status', user_status: ['userId', 'status'], submittedAt: 'submittedAt' } },
+      rewardTransactions: { keyPath: 'id', indexes: { userId: 'userId', submissionId: 'submissionId' } },
+      achievements: { keyPath: 'id', indexes: {} },
+      achievementProgress: { keyPath: 'id', indexes: { userId: 'userId', user_achievement: ['userId', 'achievementId'] } },
+      buildings: { keyPath: 'id', indexes: { userId: 'userId', user_type: ['userId', 'type'] } },
+      dungeonRuns: { keyPath: 'id', indexes: { guardianId: 'guardianId' } },
+      streaks: { keyPath: 'id', indexes: { userId: 'userId', user_scope: ['userId', 'scope'] } },
+      counters: { keyPath: 'id', indexes: { userId: 'userId', user_key: ['userId', 'key'] } },
+      auditLogs: { keyPath: 'id', indexes: { parentId: 'parentId', timestamp: 'timestamp' } },
+      meta: { keyPath: 'key', indexes: {} },
+    },
+  };
+  const STORE_NAMES = Object.keys(SCHEMA.stores);
+
+  // Structural migrations keyed by oldVersion. v0 -> v1 creates everything.
+  // Future versions append functions here; they run in order inside the
+  // upgrade transaction. Data seeding happens post-open via SeedService.
+  const MIGRATIONS = {
+    0: function createInitialSchema(idb) {
+      STORE_NAMES.forEach(function (name) {
+        if (idb.objectStoreNames.contains(name)) return;
+        const def = SCHEMA.stores[name];
+        const store = idb.createObjectStore(name, { keyPath: def.keyPath });
+        Object.keys(def.indexes).forEach(function (idxName) {
+          store.createIndex(idxName, def.indexes[idxName], { unique: false });
+        });
+      });
+    },
+  };
+
+  function createIdbBackend(dbName) {
+    let dbRef = null;
+    function promisify(req) {
+      return new Promise(function (resolve, reject) {
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { reject(req.error); };
+      });
+    }
+    return {
+      name: dbName,
+      open: function () {
+        return new Promise(function (resolve, reject) {
+          const req = indexedDB.open(dbName, SCHEMA.version);
+          req.onupgradeneeded = function (ev) {
+            const idb = req.result;
+            for (let v = ev.oldVersion; v < SCHEMA.version; v++) {
+              if (MIGRATIONS[v]) MIGRATIONS[v](idb);
+            }
+          };
+          req.onsuccess = function () {
+            dbRef = req.result;
+            dbRef.onversionchange = function () { dbRef.close(); };
+            resolve();
+          };
+          req.onerror = function () { reject(req.error); };
+          req.onblocked = function () { reject(new Error('DB open blocked by another tab')); };
+        });
+      },
+      close: function () { if (dbRef) { dbRef.close(); dbRef = null; } },
+      // Runs fn(ctx) inside ONE IndexedDB transaction. Rule: inside fn, only
+      // await ctx.* operations — any foreign await lets the tx auto-commit.
+      run: function (storeNames, mode, fn) {
+        return new Promise(function (resolve, reject) {
+          let out;
+          let fnErr = null;
+          const tx = dbRef.transaction(storeNames, mode);
+          tx.oncomplete = function () { fnErr ? reject(fnErr) : resolve(out); };
+          tx.onerror = function () { reject(fnErr || tx.error); };
+          tx.onabort = function () { reject(fnErr || tx.error || new Error('TX_ABORTED')); };
+          const ctx = {
+            get: function (s, k) { return promisify(tx.objectStore(s).get(k)); },
+            getAll: function (s) { return promisify(tx.objectStore(s).getAll()); },
+            byIndex: function (s, idx, val) { return promisify(tx.objectStore(s).index(idx).getAll(val)); },
+            put: function (s, v) { return promisify(tx.objectStore(s).put(v)); },
+            del: function (s, k) { return promisify(tx.objectStore(s).delete(k)); },
+            clear: function (s) { return promisify(tx.objectStore(s).clear()); },
+            count: function (s) { return promisify(tx.objectStore(s).count()); },
+          };
+          Promise.resolve()
+            .then(function () { return fn(ctx); })
+            .then(function (v) { out = v; })
+            .catch(function (e) {
+              fnErr = e;
+              try { tx.abort(); } catch (_) { /* already finished */ }
+            });
+        });
+      },
+      destroy: function () {
+        this.close();
+        return promisify(indexedDB.deleteDatabase(dbName));
+      },
+    };
+  }
+
+  // Backend-agnostic wrapper used by repositories.
+  function makeDB(backend) {
+    return {
+      backend: backend,
+      open: function () { return backend.open(); },
+      close: function () { return backend.close && backend.close(); },
+      destroy: function () { return backend.destroy && backend.destroy(); },
+      atomic: function (stores, fn) { return backend.run(stores, 'readwrite', fn); },
+      read: function (stores, fn) { return backend.run(stores, 'readonly', fn); },
+      get: function (s, k) { return backend.run([s], 'readonly', function (c) { return c.get(s, k); }); },
+      getAll: function (s) { return backend.run([s], 'readonly', function (c) { return c.getAll(s); }); },
+      byIndex: function (s, idx, val) { return backend.run([s], 'readonly', function (c) { return c.byIndex(s, idx, val); }); },
+      count: function (s) { return backend.run([s], 'readonly', function (c) { return c.count(s); }); },
+      clearAllStores: function () {
+        return backend.run(STORE_NAMES, 'readwrite', function (c) {
+          return STORE_NAMES.reduce(function (p, s) { return p.then(function () { return c.clear(s); }); }, Promise.resolve());
+        });
+      },
+    };
+  }
+
+  /* ==========================================================================
+     04_REPOSITORIES — the only layer allowed to touch the DB. Every write is
+     validated. Invariants live here as defense-in-depth even though services
+     (Phase 3/4) enforce role rules too.
+     ========================================================================== */
+  function makeRepositories(db) {
+    function vput(ctx, store, obj) {
+      Validation.validateForStore(store, obj);
+      return ctx.put(store, obj);
+    }
+
+    // Shared bundle application — runs INSIDE an existing transaction context.
+    // The single place where coins/energy/XP/affection/materials hit a guardian.
+    async function applyBundleInCtx(c, userId, bundle) {
+      const rows = await c.byIndex('guardians', 'userId', userId);
+      const g = rows[0];
+      if (!g) throw new ValidationError('NOT_FOUND', 'guardian for user ' + userId);
+      const lv = Leveling.applyXp(g, bundle.xp);
+      g.xp = lv.xp; g.level = lv.level;
+      g.gold = Math.min(CONFIG.LIMITS.MAX_GOLD, g.gold + bundle.coins);
+      g.energy = Math.min(g.maxEnergy, g.energy + bundle.energy);
+      g.affection = Math.min(CONFIG.ECONOMY.AFFECTION_MAX, g.affection + bundle.affection);
+      await vput(c, 'guardians', g);
+
+      const grants = bundle.materials.slice();
+      if (bundle.lootCrates > 0) grants.push({ itemId: 'itm_loot_crate', qty: bundle.lootCrates });
+      for (const m of grants) {
+        const existing = await c.byIndex('inventory', 'user_item', [userId, m.itemId]);
+        if (existing.length) {
+          existing[0].qty = Math.min(CONFIG.LIMITS.MAX_QTY, existing[0].qty + m.qty);
+          await vput(c, 'inventory', existing[0]);
+        } else {
+          await vput(c, 'inventory', { id: Ids.uuid(), userId: userId, itemId: m.itemId, qty: m.qty });
+        }
+      }
+      return { guardian: g, leveledUp: lv.leveledUp, levelsGained: lv.levelsGained };
+    }
+
+    const UserRepo = {
+      create: function (fields) {
+        const user = {
+          id: Ids.uuid(), role: fields.role, name: fields.name,
+          avatar: fields.avatar || '🙂', createdAt: Date.now(),
+        };
+        return db.atomic(['users'], function (c) { return vput(c, 'users', user); }).then(function () { return user; });
+      },
+      get: function (id) { return db.get('users', id); },
+      list: function () { return db.getAll('users'); },
+      listByRole: function (role) { return db.byIndex('users', 'role', role); },
+      updateProfile: function (id, fields) {
+        return db.atomic(['users'], async function (c) {
+          const u = await c.get('users', id);
+          if (!u) throw new ValidationError('NOT_FOUND', 'user ' + id);
+          if (fields.name !== undefined) u.name = fields.name;
+          if (fields.avatar !== undefined) u.avatar = fields.avatar;
+          await vput(c, 'users', u);
+          return u;
+        });
+      },
+      // Removes a user and all owned records. Audit logs are intentionally
+      // retained: history is immutable.
+      removeCascade: function (userId) {
+        const stores = ['users', 'credentials', 'guardians', 'inventory', 'submissions',
+          'rewardTransactions', 'achievementProgress', 'buildings', 'streaks', 'counters', 'dungeonRuns'];
+        return db.atomic(stores, async function (c) {
+          const guardians = await c.byIndex('guardians', 'userId', userId);
+          for (const g of guardians) {
+            const runs = await c.byIndex('dungeonRuns', 'guardianId', g.id);
+            for (const r of runs) await c.del('dungeonRuns', r.id);
+            await c.del('guardians', g.id);
+          }
+          const byUser = ['credentials', 'inventory', 'submissions', 'rewardTransactions',
+            'achievementProgress', 'buildings', 'streaks', 'counters'];
+          for (const s of byUser) {
+            const rows = await c.byIndex(s, 'userId', userId);
+            for (const r of rows) await c.del(s, r.id);
+          }
+          await c.del('users', userId);
+        });
+      },
+    };
+
+    const CredentialRepo = {
+      setForUser: function (userId, cred) {
+        return db.atomic(['credentials', 'users'], async function (c) {
+          const u = await c.get('users', userId);
+          if (!u) throw new ValidationError('NOT_FOUND', 'user ' + userId);
+          const existing = await c.byIndex('credentials', 'userId', userId);
+          const row = {
+            id: existing.length ? existing[0].id : Ids.uuid(),
+            userId: userId, pinHash: cred.pinHash, salt: cred.salt,
+            iterations: cred.iterations, algo: cred.algo,
+          };
+          await vput(c, 'credentials', row);
+          return row;
+        });
+      },
+      getByUser: function (userId) {
+        return db.byIndex('credentials', 'userId', userId).then(function (rows) { return rows[0] || null; });
+      },
+      // Persists PIN attempt/lockout state so a page reload cannot reset it.
+      recordAuthState: function (userId, fields) {
+        return db.atomic(['credentials'], async function (c) {
+          const rows = await c.byIndex('credentials', 'userId', userId);
+          const cred = rows[0];
+          if (!cred) throw new ValidationError('NOT_FOUND', 'credentials for user ' + userId);
+          ['failedAttempts', 'lockoutUntil', 'lockoutCount'].forEach(function (k) {
+            if (fields[k] !== undefined) cred[k] = fields[k];
+          });
+          await vput(c, 'credentials', cred);
+          return cred;
+        });
+      },
+    };
+
+    const GuardianRepo = {
+      createForUser: function (userId, fields) {
+        const g = {
+          id: Ids.uuid(), userId: userId, name: fields.name, species: fields.species,
+          level: 1, xp: 0, energy: 0, maxEnergy: CONFIG.ECONOMY.BASE_MAX_ENERGY,
+          gold: 0, affection: 0,
+        };
+        return db.atomic(['guardians', 'users'], async function (c) {
+          const u = await c.get('users', userId);
+          if (!u) throw new ValidationError('NOT_FOUND', 'user ' + userId);
+          const existing = await c.byIndex('guardians', 'userId', userId);
+          if (existing.length) throw new ValidationError('ALREADY_EXISTS', 'user already has a guardian');
+          await vput(c, 'guardians', g);
+          return g;
+        });
+      },
+      getByUser: function (userId) {
+        return db.byIndex('guardians', 'userId', userId).then(function (rows) { return rows[0] || null; });
+      },
+      get: function (id) { return db.get('guardians', id); },
+      // Applies a reward bundle atomically: gold/xp/energy/affection on the
+      // guardian, materials + crates into inventory. Energy clamps at max.
+      applyBundle: function (userId, bundle) {
+        Validation.validateBundle(bundle);
+        return db.atomic(['guardians', 'inventory'], function (c) {
+          return applyBundleInCtx(c, userId, bundle);
+        });
+      },
+      spendEnergy: function (guardianId, amount) {
+        V.int(amount, 'amount', 1);
+        return db.atomic(['guardians'], async function (c) {
+          const g = await c.get('guardians', guardianId);
+          if (!g) throw new ValidationError('NOT_FOUND', 'guardian ' + guardianId);
+          if (g.energy < amount) throw new ValidationError('INSUFFICIENT_ENERGY', 'have ' + g.energy + ', need ' + amount);
+          g.energy -= amount;
+          await vput(c, 'guardians', g);
+          return g;
+        });
+      },
+      spendGold: function (guardianId, amount) {
+        V.int(amount, 'amount', 1);
+        return db.atomic(['guardians'], async function (c) {
+          const g = await c.get('guardians', guardianId);
+          if (!g) throw new ValidationError('NOT_FOUND', 'guardian ' + guardianId);
+          if (g.gold < amount) throw new ValidationError('INSUFFICIENT_GOLD', 'have ' + g.gold + ', need ' + amount);
+          g.gold -= amount;
+          await vput(c, 'guardians', g);
+          return g;
+        });
+      },
+    };
+
+    const ItemRepo = {
+      bulkSeed: function (items) {
+        return db.atomic(['items'], async function (c) {
+          for (const it of items) await vput(c, 'items', it);
+        });
+      },
+      get: function (id) { return db.get('items', id); },
+      list: function () { return db.getAll('items'); },
+      listByRarity: function (r) { return db.byIndex('items', 'rarity', r); },
+      listByType: function (t) { return db.byIndex('items', 'type', t); },
+    };
+
+    const InventoryRepo = {
+      listByUser: function (userId) { return db.byIndex('inventory', 'userId', userId); },
+      addItem: function (userId, itemId, qty) {
+        V.int(qty, 'qty', 1);
+        return db.atomic(['inventory', 'items'], async function (c) {
+          const item = await c.get('items', itemId);
+          if (!item) throw new ValidationError('NOT_FOUND', 'item ' + itemId);
+          const existing = await c.byIndex('inventory', 'user_item', [userId, itemId]);
+          if (existing.length) {
+            existing[0].qty = Math.min(CONFIG.LIMITS.MAX_QTY, existing[0].qty + qty);
+            await vput(c, 'inventory', existing[0]);
+            return existing[0];
+          }
+          const row = { id: Ids.uuid(), userId: userId, itemId: itemId, qty: qty };
+          await vput(c, 'inventory', row);
+          return row;
+        });
+      },
+      removeItem: function (userId, itemId, qty) {
+        V.int(qty, 'qty', 1);
+        return db.atomic(['inventory'], async function (c) {
+          const existing = await c.byIndex('inventory', 'user_item', [userId, itemId]);
+          const row = existing[0];
+          if (!row || row.qty < qty) throw new ValidationError('INSUFFICIENT_ITEMS', itemId);
+          row.qty -= qty;
+          if (row.qty === 0) { await c.del('inventory', row.id); return null; }
+          await vput(c, 'inventory', row);
+          return row;
+        });
+      },
+      // ONE atomic transaction: consume one item, grant another. Used by
+      // crate opening so a crash can never eat the crate without the prize.
+      consumeAndGrant: function (userId, consumeItemId, grantItemId, grantQty) {
+        V.int(grantQty, 'grantQty', 1);
+        return db.atomic(['inventory', 'items'], async function (c) {
+          const grantItem = await c.get('items', grantItemId);
+          if (!grantItem) throw new ValidationError('NOT_FOUND', 'item ' + grantItemId);
+          const have = await c.byIndex('inventory', 'user_item', [userId, consumeItemId]);
+          const row = have[0];
+          if (!row || row.qty < 1) throw new ValidationError('INSUFFICIENT_ITEMS', consumeItemId);
+          row.qty -= 1;
+          if (row.qty === 0) await c.del('inventory', row.id);
+          else await vput(c, 'inventory', row);
+          const target = await c.byIndex('inventory', 'user_item', [userId, grantItemId]);
+          if (target.length) {
+            target[0].qty = Math.min(CONFIG.LIMITS.MAX_QTY, target[0].qty + grantQty);
+            await vput(c, 'inventory', target[0]);
+            return target[0];
+          }
+          const fresh = { id: Ids.uuid(), userId: userId, itemId: grantItemId, qty: grantQty };
+          await vput(c, 'inventory', fresh);
+          return fresh;
+        });
+      },
+    };
+
+    const QuestRepo = {
+      bulkSeed: function (quests) {
+        return db.atomic(['quests'], async function (c) {
+          for (const q of quests) await vput(c, 'quests', q);
+        });
+      },
+      get: function (id) { return db.get('quests', id); },
+      list: function () { return db.getAll('quests'); },
+      listActive: function () {
+        return db.getAll('quests').then(function (all) { return all.filter(function (q) { return q.active; }); });
+      },
+      create: function (fields) {
+        const q = {
+          id: Ids.uuid(), title: fields.title, category: fields.category,
+          reward: Rewards.normalizeBundle(fields.reward),
+          maxPerDay: fields.maxPerDay || CONFIG.MAX_PER_DAY_DEFAULTS[fields.category] || 1,
+          active: true, icon: fields.icon || '⭐',
+        };
+        return db.atomic(['quests'], function (c) { return vput(c, 'quests', q); }).then(function () { return q; });
+      },
+      setActive: function (id, active) {
+        return db.atomic(['quests'], async function (c) {
+          const q = await c.get('quests', id);
+          if (!q) throw new ValidationError('NOT_FOUND', 'quest ' + id);
+          q.active = active;
+          await vput(c, 'quests', q);
+          return q;
+        });
+      },
+    };
+
+    const SubmissionRepo = {
+      // Invariant: rows are ALWAYS born PENDING with no decision fields.
+      // There is no code path that creates an APPROVED submission directly.
+      createPending: function (userId, questId) {
+        return db.atomic(['submissions', 'users', 'quests'], async function (c) {
+          const u = await c.get('users', userId);
+          if (!u) throw new ValidationError('NOT_FOUND', 'user ' + userId);
+          const q = await c.get('quests', questId);
+          if (!q) throw new ValidationError('NOT_FOUND', 'quest ' + questId);
+          if (!q.active) throw new ValidationError('QUEST_INACTIVE', questId);
+          const sub = { id: Ids.uuid(), userId: userId, questId: questId, status: 'PENDING', submittedAt: Date.now() };
+          await vput(c, 'submissions', sub);
+          return sub;
+        });
+      },
+      get: function (id) { return db.get('submissions', id); },
+      listByStatus: function (status) { return db.byIndex('submissions', 'status', status); },
+      listByUser: function (userId) { return db.byIndex('submissions', 'userId', userId); },
+      listByUserAndStatus: function (userId, status) { return db.byIndex('submissions', 'user_status', [userId, status]); },
+      countTodayNonRejected: function (userId, questId, now) {
+        const midnight = TimeUtil.localMidnightMs(now);
+        return db.byIndex('submissions', 'userId', userId).then(function (rows) {
+          return rows.filter(function (s) {
+            return s.questId === questId && s.submittedAt >= midnight && s.status !== 'REJECTED';
+          }).length;
+        });
+      },
+      // Invariant: only PENDING -> APPROVED|REJECTED, decided exactly once,
+      // and the decider must be an existing PARENT user.
+      decide: function (submissionId, decision) {
+        return db.atomic(['submissions', 'users'], async function (c) {
+          const sub = await c.get('submissions', submissionId);
+          if (!sub) throw new ValidationError('NOT_FOUND', 'submission ' + submissionId);
+          Validation.assertSubmissionTransition(sub.status, decision.status);
+          const decider = await c.get('users', decision.decidedBy);
+          if (!decider || decider.role !== 'PARENT') {
+            throw new ValidationError('FORBIDDEN', 'decisions require a PARENT user');
+          }
+          sub.status = decision.status;
+          sub.decidedAt = Date.now();
+          sub.decidedBy = decision.decidedBy;
+          if (decision.note !== undefined) sub.note = decision.note;
+          await vput(c, 'submissions', sub);
+          return sub;
+        });
+      },
+    };
+
+    const RewardTransactionRepo = {
+      // Invariant: a reward transaction can only exist for an APPROVED
+      // submission, and only one per submission. Born with applied:false;
+      // the applyTransaction step below releases it exactly once.
+      createForSubmission: function (submission, bundle) {
+        Validation.validateBundle(bundle);
+        return db.atomic(['rewardTransactions', 'submissions'], async function (c) {
+          const sub = await c.get('submissions', submission.id);
+          if (!sub) throw new ValidationError('NOT_FOUND', 'submission ' + submission.id);
+          if (sub.status !== 'APPROVED') throw new ValidationError('FORBIDDEN', 'rewards require an APPROVED submission');
+          const existing = await c.byIndex('rewardTransactions', 'submissionId', sub.id);
+          if (existing.length) throw new ValidationError('ALREADY_EXISTS', 'reward already released for submission');
+          const row = { id: Ids.uuid(), submissionId: sub.id, userId: sub.userId, bundle: bundle, createdAt: Date.now(), applied: false };
+          await vput(c, 'rewardTransactions', row);
+          return row;
+        });
+      },
+      // ONE atomic transaction that releases a reward: guardian stats,
+      // inventory grants, GLOBAL streak, and counters all move together, and
+      // the applied flag flips in the same commit. Idempotent: a transaction
+      // already applied (or a legacy row without the flag) is a no-op, which
+      // makes crash recovery safe to run any number of times.
+      applyTransaction: function (txnId, info) {
+        V.oneOf(info.category, 'category', ENUMS.QUEST_CATEGORY);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(info.dayStr)) throw new ValidationError('BAD_DATE', 'dayStr must be YYYY-MM-DD');
+        return db.atomic(['rewardTransactions', 'guardians', 'inventory', 'streaks', 'counters'], async function (c) {
+          const txn = await c.get('rewardTransactions', txnId);
+          if (!txn) throw new ValidationError('NOT_FOUND', 'rewardTransaction ' + txnId);
+          if (txn.applied !== false) return { alreadyApplied: true, transaction: txn };
+
+          const applied = await applyBundleInCtx(c, txn.userId, txn.bundle);
+
+          const srows = await c.byIndex('streaks', 'user_scope', [txn.userId, 'GLOBAL']);
+          const streak = srows[0] || { id: Ids.uuid(), userId: txn.userId, scope: 'GLOBAL', current: 0, best: 0 };
+          Object.assign(streak, Streaks.applyActivity(streak, info.dayStr));
+          await vput(c, 'streaks', streak);
+
+          const catRows = await c.byIndex('streaks', 'user_scope', [txn.userId, info.category]);
+          const catStreak = catRows[0] || { id: Ids.uuid(), userId: txn.userId, scope: info.category, current: 0, best: 0 };
+          Object.assign(catStreak, Streaks.applyActivity(catStreak, info.dayStr));
+          await vput(c, 'streaks', catStreak);
+
+          async function bump(key, by) {
+            const rows = await c.byIndex('counters', 'user_key', [txn.userId, key]);
+            const row = rows[0] || { id: Ids.uuid(), userId: txn.userId, key: key, value: 0 };
+            row.value += by;
+            await vput(c, 'counters', row);
+          }
+          async function maxify(key, candidate) {
+            const rows = await c.byIndex('counters', 'user_key', [txn.userId, key]);
+            const row = rows[0] || { id: Ids.uuid(), userId: txn.userId, key: key, value: 0 };
+            row.value = Math.max(row.value, candidate);
+            await vput(c, 'counters', row);
+          }
+          await bump('global.approvals', 1);
+          await bump('cat.' + info.category, 1);
+          await maxify('streak.global.best', streak.best);
+
+          txn.applied = true;
+          await vput(c, 'rewardTransactions', txn);
+          return {
+            alreadyApplied: false, transaction: txn, guardian: applied.guardian,
+            leveledUp: applied.leveledUp, levelsGained: applied.levelsGained, streak: streak,
+          };
+        });
+      },
+      listUnapplied: function () {
+        return db.getAll('rewardTransactions').then(function (rows) {
+          return rows.filter(function (t) { return t.applied === false; });
+        });
+      },
+      listByUser: function (userId) { return db.byIndex('rewardTransactions', 'userId', userId); },
+      getBySubmission: function (submissionId) {
+        return db.byIndex('rewardTransactions', 'submissionId', submissionId).then(function (r) { return r[0] || null; });
+      },
+    };
+
+    const AchievementRepo = {
+      bulkSeed: function (defs) {
+        return db.atomic(['achievements'], async function (c) {
+          for (const a of defs) await vput(c, 'achievements', a);
+        });
+      },
+      list: function () { return db.getAll('achievements'); },
+    };
+
+    const AchievementProgressRepo = {
+      listByUser: function (userId) { return db.byIndex('achievementProgress', 'userId', userId); },
+      upsert: function (userId, achievementId, progress, unlockedAt) {
+        return db.atomic(['achievementProgress'], async function (c) {
+          const existing = await c.byIndex('achievementProgress', 'user_achievement', [userId, achievementId]);
+          const row = existing[0] || { id: Ids.uuid(), userId: userId, achievementId: achievementId, progress: 0 };
+          row.progress = progress;
+          if (unlockedAt !== undefined && row.unlockedAt === undefined) row.unlockedAt = unlockedAt;
+          await vput(c, 'achievementProgress', row);
+          return row;
+        });
+      },
+    };
+
+    const BuildingRepo = {
+      listByUser: function (userId) { return db.byIndex('buildings', 'userId', userId); },
+      ensureDefaults: function (userId) {
+        return db.atomic(['buildings'], async function (c) {
+          const existing = await c.byIndex('buildings', 'user_type', [userId, 'HOME']);
+          if (existing.length) return existing[0];
+          const row = { id: Ids.uuid(), userId: userId, type: 'HOME', level: 1 };
+          await vput(c, 'buildings', row);
+          return row;
+        });
+      },
+      setLevel: function (userId, type, level) {
+        return db.atomic(['buildings'], async function (c) {
+          const existing = await c.byIndex('buildings', 'user_type', [userId, type]);
+          const row = existing[0] || { id: Ids.uuid(), userId: userId, type: type, level: 0 };
+          row.level = level;
+          await vput(c, 'buildings', row);
+          return row;
+        });
+      },
+      // ONE atomic transaction: gold spend + building level + (for SANCTUARY)
+      // the guardian's max-energy bump commit together or not at all.
+      upgrade: function (userId, type) {
+        V.oneOf(type, 'type', ENUMS.BUILDING_TYPE);
+        return db.atomic(['buildings', 'guardians'], async function (c) {
+          const def = CONFIG.BUILDINGS[type];
+          const existing = await c.byIndex('buildings', 'user_type', [userId, type]);
+          const b = existing[0] || { id: Ids.uuid(), userId: userId, type: type, level: 0 };
+          if (b.level >= def.maxLevel) throw new ValidationError('MAX_LEVEL', def.name + ' is already at max level');
+          const cost = Math.round(def.baseCost * Math.pow(CONFIG.ECONOMY.BUILDING_COST_GROWTH, b.level));
+          const grows = await c.byIndex('guardians', 'userId', userId);
+          const g = grows[0];
+          if (!g) throw new ValidationError('NOT_FOUND', 'guardian for user ' + userId);
+          if (g.gold < cost) {
+            const e = new ValidationError('INSUFFICIENT_GOLD', 'needs ' + cost + ' gold, have ' + g.gold);
+            e.cost = cost;
+            throw e;
+          }
+          g.gold -= cost;
+          b.level += 1;
+          if (type === 'SANCTUARY') {
+            g.maxEnergy = CONFIG.ECONOMY.BASE_MAX_ENERGY + b.level * CONFIG.ECONOMY.SANCTUARY_ENERGY_PER_LEVEL;
+          }
+          await vput(c, 'guardians', g);
+          await vput(c, 'buildings', b);
+          return { building: b, guardian: g, cost: cost };
+        });
+      },
+    };
+
+    const DungeonRepo = {
+      createRun: function (fields) {
+        const run = {
+          id: Ids.uuid(), guardianId: fields.guardianId, dungeonId: fields.dungeonId,
+          seed: fields.seed, startedAt: fields.startedAt, endsAt: fields.endsAt, claimed: false,
+        };
+        return db.atomic(['dungeonRuns'], function (c) { return vput(c, 'dungeonRuns', run); }).then(function () { return run; });
+      },
+      // ONE atomic transaction: guardian gold/xp, inventory drops, the dungeon
+      // counter, and the claimed flag flip together. Idempotent — claiming an
+      // already-claimed run is a no-op, so retries and crashes are safe.
+      claimRun: function (runId, result) {
+        return db.atomic(['dungeonRuns', 'guardians', 'inventory', 'counters'], async function (c) {
+          const run = await c.get('dungeonRuns', runId);
+          if (!run) throw new ValidationError('NOT_FOUND', 'dungeonRun ' + runId);
+          if (run.claimed) return { alreadyClaimed: true, run: run };
+          const g = await c.get('guardians', run.guardianId);
+          if (!g) throw new ValidationError('NOT_FOUND', 'guardian ' + run.guardianId);
+          const lv = Leveling.applyXp(g, result.xp);
+          g.xp = lv.xp; g.level = lv.level;
+          g.gold = Math.min(CONFIG.LIMITS.MAX_GOLD, g.gold + result.gold);
+          await vput(c, 'guardians', g);
+          for (const d of result.drops) {
+            const existing = await c.byIndex('inventory', 'user_item', [g.userId, d.itemId]);
+            if (existing.length) {
+              existing[0].qty = Math.min(CONFIG.LIMITS.MAX_QTY, existing[0].qty + d.qty);
+              await vput(c, 'inventory', existing[0]);
+            } else {
+              await vput(c, 'inventory', { id: Ids.uuid(), userId: g.userId, itemId: d.itemId, qty: d.qty });
+            }
+          }
+          const crows = await c.byIndex('counters', 'user_key', [g.userId, 'global.dungeons']);
+          const counter = crows[0] || { id: Ids.uuid(), userId: g.userId, key: 'global.dungeons', value: 0 };
+          counter.value += 1;
+          await vput(c, 'counters', counter);
+          run.claimed = true;
+          run.result = { gold: result.gold, xp: result.xp, drops: result.drops };
+          await vput(c, 'dungeonRuns', run);
+          return { alreadyClaimed: false, run: run, guardian: g, leveledUp: lv.leveledUp, levelsGained: lv.levelsGained };
+        });
+      },
+      listByGuardian: function (gid) { return db.byIndex('dungeonRuns', 'guardianId', gid); },
+      get: function (id) { return db.get('dungeonRuns', id); },
+    };
+
+    const StreakRepo = {
+      getOrCreate: function (userId, scope) {
+        return db.atomic(['streaks'], async function (c) {
+          const existing = await c.byIndex('streaks', 'user_scope', [userId, scope]);
+          if (existing.length) return existing[0];
+          const row = { id: Ids.uuid(), userId: userId, scope: scope, current: 0, best: 0 };
+          await vput(c, 'streaks', row);
+          return row;
+        });
+      },
+      save: function (row) {
+        return db.atomic(['streaks'], function (c) { return vput(c, 'streaks', row); }).then(function () { return row; });
+      },
+      listByUser: function (userId) { return db.byIndex('streaks', 'userId', userId); },
+    };
+
+    const CounterRepo = {
+      increment: function (userId, key, by) {
+        V.int(by, 'by', 1);
+        return db.atomic(['counters'], async function (c) {
+          const existing = await c.byIndex('counters', 'user_key', [userId, key]);
+          const row = existing[0] || { id: Ids.uuid(), userId: userId, key: key, value: 0 };
+          row.value += by;
+          await vput(c, 'counters', row);
+          return row;
+        });
+      },
+      get: function (userId, key) {
+        return db.byIndex('counters', 'user_key', [userId, key]).then(function (r) { return r[0] || null; });
+      },
+      setMax: function (userId, key, candidate) {
+        return db.atomic(['counters'], async function (c) {
+          const existing = await c.byIndex('counters', 'user_key', [userId, key]);
+          const row = existing[0] || { id: Ids.uuid(), userId: userId, key: key, value: 0 };
+          row.value = Math.max(row.value, candidate);
+          await vput(c, 'counters', row);
+          return row;
+        });
+      },
+      listByUser: function (userId) { return db.byIndex('counters', 'userId', userId); },
+    };
+
+    const AuditRepo = {
+      // Append-only by construction: no update or delete methods exist.
+      // The entry's prevHash must equal the live chain head — checked inside
+      // the same transaction that advances the head, so forks cannot form.
+      append: function (entry) {
+        // Shape validation first (precise errors for malformed entries), then
+        // the head check inside the transaction guards against forks.
+        Validation.validateForStore('auditLogs', entry);
+        return db.atomic(['auditLogs', 'meta'], async function (c) {
+          const headRow = await c.get('meta', 'auditHead');
+          const head = headRow ? headRow.value : CONFIG.SECURITY.AUDIT_GENESIS;
+          if (entry.prevHash !== head) {
+            throw new ValidationError('CHAIN_CONFLICT', 'prevHash does not match the current audit head');
+          }
+          await vput(c, 'auditLogs', entry);
+          await vput(c, 'meta', { key: 'auditHead', value: entry.hash });
+          return entry;
+        });
+      },
+      list: function () { return db.getAll('auditLogs'); },
+    };
+
+    const MetaRepo = {
+      get: function (key) { return db.get('meta', key).then(function (r) { return r ? r.value : undefined; }); },
+      set: function (key, value) {
+        return db.atomic(['meta'], function (c) { return vput(c, 'meta', { key: key, value: value }); });
+      },
+    };
+
+    return {
+      users: UserRepo, credentials: CredentialRepo, guardians: GuardianRepo,
+      items: ItemRepo, inventory: InventoryRepo, quests: QuestRepo,
+      submissions: SubmissionRepo, rewardTransactions: RewardTransactionRepo,
+      achievements: AchievementRepo, achievementProgress: AchievementProgressRepo,
+      buildings: BuildingRepo, dungeons: DungeonRepo, streaks: StreakRepo,
+      counters: CounterRepo, audit: AuditRepo, meta: MetaRepo,
+    };
+  }
+
+  /* ==========================================================================
+     05_SERVICES (Phase 2 scope) — SeedService + BackupService.
+     Auth / Approval / Quest / Dungeon services arrive in Phases 3–4.
+     ========================================================================== */
+  function makeSeedService(db, repos) {
+    return {
+      seedIfEmpty: async function () {
+        const seeded = await repos.meta.get('seeded');
+        if (seeded) return { seeded: false };
+        const quests = CONFIG.QUESTS.map(function (q) {
+          return {
+            id: q.id, title: q.title, category: q.category,
+            reward: questRewardBundle(q),
+            maxPerDay: q.maxPerDay !== undefined ? q.maxPerDay : CONFIG.MAX_PER_DAY_DEFAULTS[q.category],
+            active: true, icon: q.icon,
+          };
+        });
+        await repos.items.bulkSeed(CONFIG.ITEMS);
+        await repos.quests.bulkSeed(quests);
+        await repos.achievements.bulkSeed(CONFIG.ACHIEVEMENTS);
+        await repos.meta.set('schemaVersion', SCHEMA.version);
+        await repos.meta.set('installId', Ids.uuid());
+        await repos.meta.set('auditHead', CONFIG.SECURITY.AUDIT_GENESIS);
+        await repos.meta.set('seeded', true);
+        return { seeded: true, items: CONFIG.ITEMS.length, quests: quests.length, achievements: CONFIG.ACHIEVEMENTS.length };
+      },
+    };
+  }
+
+  function makeBackupService(db) {
+    const FORMAT = 'goth-backup';
+    return {
+      export: async function () {
+        const data = {};
+        for (const s of STORE_NAMES) data[s] = await db.getAll(s);
+        const checksum = await sha256Hex(Canon.stringify(data));
+        return { format: FORMAT, version: 1, exportedAt: Date.now(), checksum: checksum, data: data };
+      },
+      // Full-replace import. Validates format, checksum, and EVERY record
+      // through the validation layer before any write happens.
+      importReplace: async function (backup) {
+        if (!backup || backup.format !== FORMAT) throw new ValidationError('BAD_BACKUP', 'unrecognized backup format');
+        if (backup.version !== 1) throw new ValidationError('BAD_BACKUP', 'unsupported backup version');
+        if (!backup.data || typeof backup.data !== 'object') throw new ValidationError('BAD_BACKUP', 'missing data');
+        const checksum = await sha256Hex(Canon.stringify(backup.data));
+        if (checksum !== backup.checksum) throw new ValidationError('CHECKSUM_MISMATCH', 'backup is corrupted or was modified');
+        const counts = {};
+        for (const s of STORE_NAMES) {
+          const rows = backup.data[s] || [];
+          rows.forEach(function (r) { Validation.validateForStore(s, r); });
+          counts[s] = rows.length;
+        }
+        await db.atomic(STORE_NAMES, async function (c) {
+          for (const s of STORE_NAMES) {
+            await c.clear(s);
+            const rows = backup.data[s] || [];
+            for (const r of rows) await c.put(s, r);
+          }
+        });
+        return counts;
+      },
+    };
+  }
+
+  /* --------------------------------------------------------------------------
+     AuthService — parent PIN security.
+     PBKDF2-SHA256, 310k iterations, 16-byte random salt. The PIN itself is
+     never stored or logged. Lockout state persists in the credentials row so
+     a page reload cannot reset it. Parent sessions live in memory only with a
+     sliding 5-minute inactivity timeout — closing the app kills them.
+     -------------------------------------------------------------------------- */
+  function makeAuthService(repos, opts) {
+    const now = (opts && opts.now) || function () { return Date.now(); };
+    const sessions = new Map(); // token -> { token, parentId, expiresAt }
+    const PIN_RE = /^\d{4,12}$/;
+
+    function cryptoObj() { return (root.crypto && root.crypto.subtle) ? root.crypto : globalThis.crypto; }
+
+    async function derive(pin, saltHex, iterations) {
+      const key = await cryptoObj().subtle.importKey(
+        'raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+      const bits = await cryptoObj().subtle.deriveBits(
+        { name: 'PBKDF2', salt: hexToBytes(saltHex), iterations: iterations, hash: 'SHA-256' }, key, 256);
+      return bytesToHex(new Uint8Array(bits));
+    }
+
+    function constantTimeEqual(a, b) {
+      if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+      return diff === 0;
+    }
+
+    function assertPinPolicy(pin) {
+      if (typeof pin !== 'string' || !PIN_RE.test(pin)) {
+        throw new ValidationError('BAD_PIN', 'PIN must be 4-12 digits');
+      }
+    }
+
+    // Core check: throws LOCKED_OUT / WRONG_PIN / NO_CREDENTIALS; returns the
+    // user id on success. Used by both verifyPin (opens session) and changePin.
+    async function checkPin(userId, pin) {
+      assertPinPolicy(pin);
+      const cred = await repos.credentials.getByUser(userId);
+      if (!cred) throw new ValidationError('NO_CREDENTIALS', 'no PIN configured for this user');
+      const t = now();
+      if (cred.lockoutUntil !== undefined && t < cred.lockoutUntil) {
+        const e = new ValidationError('LOCKED_OUT', 'too many attempts — try again later');
+        e.retryInMs = cred.lockoutUntil - t;
+        throw e;
+      }
+      const hash = await derive(pin, cred.salt, cred.iterations);
+      if (constantTimeEqual(hash, cred.pinHash)) {
+        await repos.credentials.recordAuthState(userId, { failedAttempts: 0, lockoutUntil: 0, lockoutCount: 0 });
+        return userId;
+      }
+      const failed = (cred.failedAttempts || 0) + 1;
+      if (failed >= CONFIG.SECURITY.MAX_PIN_ATTEMPTS) {
+        const lockoutCount = (cred.lockoutCount || 0) + 1;
+        const lockoutMs = CONFIG.SECURITY.LOCKOUT_BASE_MS * Math.pow(2, lockoutCount - 1);
+        await repos.credentials.recordAuthState(userId, { failedAttempts: 0, lockoutCount: lockoutCount, lockoutUntil: t + lockoutMs });
+        const e = new ValidationError('LOCKED_OUT', 'too many attempts — locked for ' + Math.round(lockoutMs / 1000) + 's');
+        e.retryInMs = lockoutMs;
+        throw e;
+      }
+      await repos.credentials.recordAuthState(userId, { failedAttempts: failed });
+      const e = new ValidationError('WRONG_PIN', 'incorrect PIN');
+      e.attemptsLeft = CONFIG.SECURITY.MAX_PIN_ATTEMPTS - failed;
+      throw e;
+    }
+
+    return {
+      setupPin: async function (parentUserId, pin) {
+        assertPinPolicy(pin);
+        const user = await repos.users.get(parentUserId);
+        if (!user) throw new ValidationError('NOT_FOUND', 'user ' + parentUserId);
+        if (user.role !== 'PARENT') throw new ValidationError('FORBIDDEN', 'only PARENT users can hold a PIN');
+        const saltBytes = new Uint8Array(CONFIG.SECURITY.SALT_BYTES);
+        cryptoObj().getRandomValues(saltBytes);
+        const salt = bytesToHex(saltBytes);
+        const pinHash = await derive(pin, salt, CONFIG.SECURITY.PBKDF2_ITERATIONS);
+        return repos.credentials.setForUser(parentUserId, {
+          pinHash: pinHash, salt: salt,
+          iterations: CONFIG.SECURITY.PBKDF2_ITERATIONS, algo: CONFIG.SECURITY.ALGO,
+          failedAttempts: 0, lockoutUntil: 0, lockoutCount: 0,
+        });
+      },
+      // Verifies the PIN and opens a parent session on success.
+      verifyPin: async function (userId, pin) {
+        await checkPin(userId, pin);
+        const session = { token: Ids.uuid(), parentId: userId, expiresAt: now() + CONFIG.SECURITY.PARENT_SESSION_MS };
+        sessions.set(session.token, session);
+        return Object.assign({}, session);
+      },
+      // Asserts a live parent session; sliding expiry — each use extends it.
+      requireSession: function (token) {
+        const s = sessions.get(token);
+        if (!s) throw new ValidationError('SESSION_INVALID', 'no parent session — unlock with your PIN');
+        if (now() > s.expiresAt) {
+          sessions.delete(token);
+          throw new ValidationError('SESSION_EXPIRED', 'parent session timed out — unlock again');
+        }
+        s.expiresAt = now() + CONFIG.SECURITY.PARENT_SESSION_MS;
+        return Object.assign({}, s);
+      },
+      getSession: function (token) {
+        const s = sessions.get(token);
+        if (!s || now() > s.expiresAt) return null;
+        return Object.assign({}, s);
+      },
+      endSession: function (token) { sessions.delete(token); },
+      endAllSessions: function () { sessions.clear(); },
+      changePin: async function (userId, oldPin, newPin) {
+        await checkPin(userId, oldPin);
+        return this.setupPin(userId, newPin);
+      },
+    };
+  }
+
+  /* --------------------------------------------------------------------------
+     AuditService — writes the tamper-evident chain.
+     hash = SHA-256(prevHash + canonicalJSON(entry-without-hash)), head tracked
+     in meta.auditHead. Appends are serialized through a queue so two writes
+     can never race the head; AuditRepo re-checks the head transactionally.
+     -------------------------------------------------------------------------- */
+  function makeAuditService(repos) {
+    let queue = Promise.resolve();
+    return {
+      append: function (fields) {
+        const job = queue.then(async function () {
+          const head = (await repos.meta.get('auditHead')) || CONFIG.SECURITY.AUDIT_GENESIS;
+          const body = {
+            id: Ids.uuid(), parentId: fields.parentId, action: fields.action,
+            entity: fields.entity, entityId: fields.entityId,
+            timestamp: Date.now(), prevHash: head,
+          };
+          if (fields.reason !== undefined) body.reason = fields.reason;
+          const hash = await sha256Hex(head + Canon.stringify(body));
+          return repos.audit.append(Object.assign({}, body, { hash: hash }));
+        });
+        queue = job.catch(function () { /* keep the queue alive after a failure */ });
+        return job;
+      },
+    };
+  }
+
+  /* --------------------------------------------------------------------------
+     IntegrityService — walks the audit chain from GENESIS, recomputing every
+     hash and following the links. Any edited, removed, reordered, or forked
+     entry breaks verification. Runs at boot and on parent-dashboard open.
+     -------------------------------------------------------------------------- */
+  function makeIntegrityService(repos) {
+    return {
+      verifyChain: async function () {
+        const entries = await repos.audit.list();
+        const head = (await repos.meta.get('auditHead')) || CONFIG.SECURITY.AUDIT_GENESIS;
+        const byPrev = new Map();
+        for (const e of entries) {
+          if (byPrev.has(e.prevHash)) {
+            return { valid: false, reason: 'FORKED_CHAIN', length: entries.length, verified: 0, head: head };
+          }
+          byPrev.set(e.prevHash, e);
+        }
+        let cursor = CONFIG.SECURITY.AUDIT_GENESIS;
+        let verified = 0;
+        while (byPrev.has(cursor)) {
+          const e = byPrev.get(cursor);
+          const body = {};
+          Object.keys(e).forEach(function (k) { if (k !== 'hash') body[k] = e[k]; });
+          const expected = await sha256Hex(e.prevHash + Canon.stringify(body));
+          if (expected !== e.hash) {
+            return { valid: false, reason: 'TAMPERED_ENTRY', length: entries.length, verified: verified, head: head };
+          }
+          cursor = e.hash;
+          verified++;
+        }
+        if (verified !== entries.length) {
+          return { valid: false, reason: 'ORPHANED_ENTRIES', length: entries.length, verified: verified, head: head };
+        }
+        if (cursor !== head) {
+          return { valid: false, reason: 'HEAD_MISMATCH', length: entries.length, verified: verified, head: head };
+        }
+        return { valid: true, length: entries.length, verified: verified, head: head };
+      },
+    };
+  }
+
+  /* --------------------------------------------------------------------------
+     RewardApprovalService — THE single gate. The only code path in the entire
+     application through which quest rewards reach a child. Every call asserts
+     a live parent session; every decision is audit-chained; reward release is
+     idempotent and crash-recoverable via the applied flag.
+     -------------------------------------------------------------------------- */
+  function makeApprovalService(repos, auth, audit) {
+    async function loadDecisionContext(submissionId) {
+      const sub = await repos.submissions.get(submissionId);
+      if (!sub) throw new ValidationError('NOT_FOUND', 'submission ' + submissionId);
+      const quest = await repos.quests.get(sub.questId);
+      if (!quest) throw new ValidationError('NOT_FOUND', 'quest ' + sub.questId);
+      return { sub: sub, quest: quest };
+    }
+    return {
+      approve: async function (token, submissionId, note) {
+        const session = auth.requireSession(token);
+        const ctx = await loadDecisionContext(submissionId);
+        const guardian = await repos.guardians.getByUser(ctx.sub.userId);
+        if (!guardian) throw new ValidationError('NOT_FOUND', 'guardian for user ' + ctx.sub.userId);
+        const decided = await repos.submissions.decide(submissionId, {
+          status: 'APPROVED', decidedBy: session.parentId, note: note,
+        });
+        const txn = await repos.rewardTransactions.createForSubmission(decided, ctx.quest.reward);
+        const released = await repos.rewardTransactions.applyTransaction(txn.id, {
+          category: ctx.quest.category, dayStr: TimeUtil.todayStr(),
+        });
+        await audit.append({
+          parentId: session.parentId, action: 'SUBMISSION_APPROVED',
+          entity: 'submissions', entityId: submissionId, reason: note,
+        });
+        return {
+          submission: decided, transaction: released.transaction,
+          guardian: released.guardian, leveledUp: released.leveledUp,
+          levelsGained: released.levelsGained, streak: released.streak,
+        };
+      },
+      reject: async function (token, submissionId, note) {
+        const session = auth.requireSession(token);
+        await loadDecisionContext(submissionId);
+        const decided = await repos.submissions.decide(submissionId, {
+          status: 'REJECTED', decidedBy: session.parentId, note: note,
+        });
+        await audit.append({
+          parentId: session.parentId, action: 'SUBMISSION_REJECTED',
+          entity: 'submissions', entityId: submissionId, reason: note,
+        });
+        return { submission: decided };
+      },
+      // Crash recovery: completes any approval interrupted between its steps.
+      // Safe to run at every boot — fully idempotent.
+      recoverUnfinished: async function () {
+        let recovered = 0;
+        const approved = await repos.submissions.listByStatus('APPROVED');
+        for (const sub of approved) {
+          const existing = await repos.rewardTransactions.getBySubmission(sub.id);
+          if (!existing) {
+            const quest = await repos.quests.get(sub.questId);
+            if (!quest) continue;
+            await repos.rewardTransactions.createForSubmission(sub, quest.reward);
+          }
+        }
+        const unapplied = await repos.rewardTransactions.listUnapplied();
+        for (const txn of unapplied) {
+          const sub = await repos.submissions.get(txn.submissionId);
+          if (!sub) continue;
+          const quest = await repos.quests.get(sub.questId);
+          if (!quest) continue;
+          const res = await repos.rewardTransactions.applyTransaction(txn.id, {
+            category: quest.category, dayStr: TimeUtil.todayStr(),
+          });
+          if (!res.alreadyApplied) {
+            recovered++;
+            await audit.append({
+              parentId: sub.decidedBy, action: 'REWARD_RECOVERED',
+              entity: 'rewardTransactions', entityId: txn.id,
+            });
+          }
+        }
+        return { recovered: recovered };
+      },
+    };
+  }
+
+  /* --------------------------------------------------------------------------
+     Phase 4 — Game services. All game rules live here against the repos;
+     no UI, no direct DB access. Dungeon timing takes an injectable clock.
+     -------------------------------------------------------------------------- */
+  function makeQuestService(repos) {
+    return {
+      // Quest board for a child: each active quest with today's usage.
+      listForChild: async function (userId, now) {
+        const quests = await repos.quests.listActive();
+        const out = [];
+        for (const q of quests) {
+          const used = await repos.submissions.countTodayNonRejected(userId, q.id, now);
+          out.push({ quest: q, usedToday: used, remainingToday: Math.max(0, q.maxPerDay - used) });
+        }
+        return out;
+      },
+      // The ONLY kid-facing entry point for quest completion. Creates a
+      // PENDING submission; rewards exist only after a parent approves.
+      submit: async function (userId, questId, now) {
+        const quest = await repos.quests.get(questId);
+        if (!quest) throw new ValidationError('NOT_FOUND', 'quest ' + questId);
+        const used = await repos.submissions.countTodayNonRejected(userId, questId, now);
+        const check = canSubmitQuest(quest, used);
+        if (!check.ok) {
+          const msg = check.reason === 'MAX_PER_DAY_REACHED'
+            ? quest.title + ' — daily limit reached (' + quest.maxPerDay + '/day)'
+            : quest.title + ' is not active right now';
+          throw new ValidationError(check.reason, msg);
+        }
+        return repos.submissions.createPending(userId, questId);
+      },
+    };
+  }
+
+  function makeDungeonService(repos, opts) {
+    const now = (opts && opts.now) || function () { return Date.now(); };
+    function defOf(dungeonId) {
+      const def = CONFIG.DUNGEONS.find(function (d) { return d.id === dungeonId; });
+      if (!def) throw new ValidationError('NOT_FOUND', 'dungeon ' + dungeonId);
+      return def;
+    }
+    return {
+      listForGuardian: async function (guardianId) {
+        const g = await repos.guardians.get(guardianId);
+        if (!g) throw new ValidationError('NOT_FOUND', 'guardian ' + guardianId);
+        const runs = await repos.dungeons.listByGuardian(guardianId);
+        const activeRun = runs.find(function (r) { return !r.claimed; }) || null;
+        return {
+          now: now(),
+          activeRun: activeRun,
+          dungeons: CONFIG.DUNGEONS.map(function (d) {
+            return {
+              def: d,
+              unlocked: g.level >= d.unlockLevel,
+              energyCost: CONFIG.ECONOMY.DUNGEON_ENERGY[d.tier],
+            };
+          }),
+        };
+      },
+      // Starts an expedition: level gate, one-at-a-time, energy paid up front.
+      // (If the app dies between the energy spend and run creation, the energy
+      // is lost rather than a free run granted — the safer failure for a game
+      // whose currency is parent-approved effort.)
+      start: async function (guardianId, dungeonId) {
+        const g = await repos.guardians.get(guardianId);
+        if (!g) throw new ValidationError('NOT_FOUND', 'guardian ' + guardianId);
+        const def = defOf(dungeonId);
+        if (g.level < def.unlockLevel) {
+          throw new ValidationError('DUNGEON_LOCKED', def.name + ' unlocks at level ' + def.unlockLevel);
+        }
+        const runs = await repos.dungeons.listByGuardian(guardianId);
+        if (runs.some(function (r) { return !r.claimed; })) {
+          throw new ValidationError('RUN_IN_PROGRESS', 'finish and claim the current expedition first');
+        }
+        const energyCost = CONFIG.ECONOMY.DUNGEON_ENERGY[def.tier];
+        await repos.guardians.spendEnergy(guardianId, energyCost);
+        const startedAt = now();
+        const run = await repos.dungeons.createRun({
+          guardianId: guardianId, dungeonId: dungeonId,
+          seed: RNG.seedFromString(guardianId + '|' + dungeonId + '|' + startedAt),
+          startedAt: startedAt, endsAt: startedAt + def.durationMin * 60000,
+        });
+        return { run: run, energyCost: energyCost };
+      },
+      claim: async function (runId) {
+        const run = await repos.dungeons.get(runId);
+        if (!run) throw new ValidationError('NOT_FOUND', 'dungeonRun ' + runId);
+        if (run.claimed) throw new ValidationError('ALREADY_CLAIMED', 'rewards already collected for this expedition');
+        if (now() < run.endsAt) {
+          const e = new ValidationError('RUN_NOT_FINISHED', 'the expedition is still underway');
+          e.remainingMs = run.endsAt - now();
+          throw e;
+        }
+        const def = defOf(run.dungeonId);
+        const result = Loot.resolveDungeon(run, def, CONFIG.ITEMS);
+        return repos.dungeons.claimRun(runId, result);
+      },
+    };
+  }
+
+  function makeLootService(repos) {
+    return {
+      crateCount: async function (userId) {
+        const inv = await repos.inventory.listByUser(userId);
+        const row = inv.find(function (i) { return i.itemId === 'itm_loot_crate'; });
+        return row ? row.qty : 0;
+      },
+      // Deterministic when given a seed string (used by tests); random otherwise.
+      openCrate: async function (userId, seedStr) {
+        const rand = RNG.mulberry32(RNG.seedFromString(seedStr || Ids.uuid()));
+        const pool = CONFIG.ITEMS.filter(function (i) { return i.id !== 'itm_loot_crate'; });
+        let rarity = Loot.rollRarity(rand);
+        let item = Loot.pickItemOfRarity(rand, rarity, pool);
+        if (!item) { item = pool[0]; rarity = item.rarity; }
+        await repos.inventory.consumeAndGrant(userId, 'itm_loot_crate', item.id, 1);
+        return { item: item, rarity: rarity };
+      },
+    };
+  }
+
+  function makeBuildingService(repos) {
+    function costFor(type, currentLevel) {
+      const def = CONFIG.BUILDINGS[type];
+      return Math.round(def.baseCost * Math.pow(CONFIG.ECONOMY.BUILDING_COST_GROWTH, currentLevel));
+    }
+    return {
+      costFor: costFor,
+      overview: async function (userId) {
+        const rows = await repos.buildings.listByUser(userId);
+        const byType = {};
+        rows.forEach(function (r) { byType[r.type] = r; });
+        return ENUMS.BUILDING_TYPE.map(function (t) {
+          const def = CONFIG.BUILDINGS[t];
+          const level = byType[t] ? byType[t].level : 0;
+          return {
+            type: t, name: def.name, level: level, maxLevel: def.maxLevel,
+            nextCost: level >= def.maxLevel ? null : costFor(t, level),
+          };
+        });
+      },
+      upgrade: function (userId, type) { return repos.buildings.upgrade(userId, type); },
+    };
+  }
+
+  function makeAchievementService(repos) {
+    return {
+      // Reads counters, updates progress rows, unlocks exactly once.
+      evaluate: async function (userId) {
+        const defs = await repos.achievements.list();
+        const counters = await repos.counters.listByUser(userId);
+        const cmap = {};
+        counters.forEach(function (c) { cmap[c.key] = c.value; });
+        const progress = await repos.achievementProgress.listByUser(userId);
+        const pmap = {};
+        progress.forEach(function (p) { pmap[p.achievementId] = p; });
+        const newlyUnlocked = [];
+        for (const def of defs) {
+          const value = cmap[def.condition.counterKey] || 0;
+          const capped = Math.min(value, def.condition.target);
+          const prev = pmap[def.id];
+          const unlocked = value >= def.condition.target;
+          const alreadyUnlocked = prev && prev.unlockedAt !== undefined;
+          if (prev && prev.progress === capped && (!unlocked || alreadyUnlocked)) continue;
+          await repos.achievementProgress.upsert(userId, def.id, capped, unlocked ? Date.now() : undefined);
+          if (unlocked && !alreadyUnlocked) newlyUnlocked.push(def);
+        }
+        return { newlyUnlocked: newlyUnlocked };
+      },
+      listForUser: async function (userId) {
+        const defs = await repos.achievements.list();
+        const progress = await repos.achievementProgress.listByUser(userId);
+        const pmap = {};
+        progress.forEach(function (p) { pmap[p.achievementId] = p; });
+        return defs.map(function (d) {
+          const p = pmap[d.id];
+          return {
+            def: d, target: d.condition.target,
+            progress: p ? p.progress : 0,
+            unlockedAt: p ? p.unlockedAt : undefined,
+          };
+        });
+      },
+    };
+  }
+
+  function makeServices(db, repos, opts) {
+    const auth = makeAuthService(repos, opts);
+    const audit = makeAuditService(repos);
+    return {
+      seed: makeSeedService(db, repos),
+      backup: makeBackupService(db),
+      auth: auth,
+      audit: audit,
+      integrity: makeIntegrityService(repos),
+      approval: makeApprovalService(repos, auth, audit),
+      quest: makeQuestService(repos),
+      dungeon: makeDungeonService(repos, opts),
+      loot: makeLootService(repos),
+      building: makeBuildingService(repos),
+      achievement: makeAchievementService(repos),
+    };
+  }
+
+  /* ==========================================================================
+     09_TESTSUITE — one suite, two homes: runs under node (memory backend)
+     during development and on-device (real IndexedDB) via the harness UI.
+     ========================================================================== */
+  function approxEqual(a, b, tol) { return Math.abs(a - b) <= tol; }
+
+  function fakeClock(startMs) {
+    return {
+      t: startMs,
+      now: function () { return this.t; },
+      tick: function (ms) { this.t += ms; },
+    };
+  }
+
+  function makeAssert(failures) {
+    return {
+      ok: function (cond, msg) { if (!cond) throw new Error('ASSERT: ' + msg); },
+      equal: function (a, b, msg) {
+        if (a !== b) throw new Error('ASSERT ' + msg + ' — expected ' + JSON.stringify(b) + ', got ' + JSON.stringify(a));
+      },
+      deepEqual: function (a, b, msg) {
+        const ca = Canon.stringify(a); const cb = Canon.stringify(b);
+        if (ca !== cb) throw new Error('ASSERT ' + msg + ' — values differ');
+      },
+      throwsCode: async function (fn, code, msg) {
+        try { await fn(); } catch (e) {
+          if (e && e.code === code) return e;
+          throw new Error('ASSERT ' + msg + ' — threw ' + (e && (e.code || e.message)) + ' instead of ' + code);
+        }
+        throw new Error('ASSERT ' + msg + ' — expected ' + code + ' but nothing was thrown');
+      },
+    };
+  }
+
+  const TESTS = [
+    /* ---- CONFIG integrity ---- */
+    { name: 'config: rarity weights sum to 100', db: false, fn: function (t) {
+      let sum = 0; ENUMS.RARITY.forEach(function (r) { sum += CONFIG.RARITY_WEIGHTS[r]; });
+      t.equal(sum, 100, 'weight sum');
+    } },
+    { name: 'config: CONFIG is deep-frozen', db: false, fn: function (t) {
+      let threw = false;
+      try { CONFIG.RARITY_WEIGHTS.COMMON = 999; } catch (e) { threw = true; }
+      t.ok(threw && CONFIG.RARITY_WEIGHTS.COMMON === 50, 'mutation rejected');
+    } },
+    { name: 'config: every default quest validates against schema', db: false, fn: function (t) {
+      CONFIG.QUESTS.forEach(function (q) {
+        const full = {
+          id: q.id, title: q.title, category: q.category, reward: questRewardBundle(q),
+          maxPerDay: q.maxPerDay !== undefined ? q.maxPerDay : CONFIG.MAX_PER_DAY_DEFAULTS[q.category],
+          active: true, icon: q.icon,
+        };
+        Validation.validateForStore('quests', full);
+      });
+      t.equal(CONFIG.QUESTS.length, 18, 'quest count');
+    } },
+    { name: 'config: items, dungeons, achievements validate; crate item exists', db: false, fn: function (t) {
+      CONFIG.ITEMS.forEach(function (i) { Validation.validateForStore('items', i); });
+      CONFIG.ACHIEVEMENTS.forEach(function (a) { Validation.validateForStore('achievements', a); });
+      CONFIG.DUNGEONS.forEach(function (d) {
+        t.ok(ENUMS.DUNGEON_TIER.indexOf(d.tier) !== -1, 'tier ' + d.id);
+        t.ok(d.gold[0] <= d.gold[1] && d.xp[0] <= d.xp[1], 'ranges ' + d.id);
+      });
+      t.ok(CONFIG.ITEMS.some(function (i) { return i.id === 'itm_loot_crate'; }), 'crate item present');
+    } },
+
+    /* ---- Domain: leveling ---- */
+    { name: 'leveling: band boundaries match spec', db: false, fn: function (t) {
+      t.equal(Leveling.xpToNext(1), 80, 'L1');
+      t.equal(Leveling.xpToNext(10), 260, 'L10');
+      t.equal(Leveling.xpToNext(11), 295, 'L11');
+      t.equal(Leveling.xpToNext(25), 785, 'L25');
+      t.equal(Leveling.xpToNext(26), 860, 'L26');
+      t.equal(Leveling.xpToNext(50), 2300, 'L50');
+      t.equal(Leveling.xpToNext(51), 2400, 'L51');
+    } },
+    { name: 'leveling: levelFromTotalXp inverts totalXpForLevel', db: false, fn: function (t) {
+      [1, 2, 5, 10, 11, 25, 26, 49, 50, 51, 80].forEach(function (L) {
+        const total = Leveling.totalXpForLevel(L);
+        t.equal(Leveling.levelFromTotalXp(total).level, L, 'exact L' + L);
+        if (total > 0) t.equal(Leveling.levelFromTotalXp(total - 1).level, L - 1, 'one-below L' + L);
+      });
+    } },
+    { name: 'leveling: applyXp reports level-ups', db: false, fn: function (t) {
+      const g = { xp: 0, level: 1 };
+      const r = Leveling.applyXp(g, 80);
+      t.equal(r.level, 2, 'level'); t.ok(r.leveledUp, 'leveledUp'); t.equal(r.levelsGained, 1, 'gained');
+      const r2 = Leveling.applyXp({ xp: r.xp, level: r.level }, 10);
+      t.ok(!r2.leveledUp, 'no level-up on small gain');
+    } },
+
+    /* ---- Domain: RNG + loot ---- */
+    { name: 'rng: same seed yields identical stream', db: false, fn: function (t) {
+      const seed = RNG.seedFromString('guardian-123|dgn_glade|1718000000000');
+      const a = RNG.mulberry32(seed); const b = RNG.mulberry32(seed);
+      for (let i = 0; i < 50; i++) t.equal(a(), b(), 'draw ' + i);
+    } },
+    { name: 'loot: rarity rolls are deterministic and respect weights', db: false, fn: function (t) {
+      const r1 = RNG.mulberry32(42); const r2 = RNG.mulberry32(42);
+      for (let i = 0; i < 20; i++) t.equal(Loot.rollRarity(r1), Loot.rollRarity(r2), 'deterministic ' + i);
+      const rand = RNG.mulberry32(7);
+      const counts = {};
+      const N = 20000;
+      for (let i = 0; i < N; i++) {
+        const r = Loot.rollRarity(rand);
+        counts[r] = (counts[r] || 0) + 1;
+      }
+      ENUMS.RARITY.forEach(function (r) {
+        const expected = CONFIG.RARITY_WEIGHTS[r] / 100;
+        const got = (counts[r] || 0) / N;
+        t.ok(approxEqual(got, expected, 0.02), r + ' within tolerance (got ' + got.toFixed(3) + ')');
+      });
+    } },
+    { name: 'loot: pickItemOfRarity only returns matching rarity', db: false, fn: function (t) {
+      const rand = RNG.mulberry32(9);
+      for (let i = 0; i < 30; i++) {
+        const item = Loot.pickItemOfRarity(rand, 'RARE', CONFIG.ITEMS);
+        t.equal(item.rarity, 'RARE', 'rarity match');
+      }
+      t.equal(Loot.pickItemOfRarity(rand, 'MYTHIC', []), null, 'empty pool -> null');
+    } },
+
+    /* ---- Domain: streaks ---- */
+    { name: 'streaks: consecutive days increment, same day idempotent', db: false, fn: function (t) {
+      let s = { current: 0, best: 0 };
+      s = Object.assign({}, s, Streaks.applyActivity(s, '2026-06-01'));
+      t.equal(s.current, 1, 'day1');
+      s = Object.assign({}, s, Streaks.applyActivity(s, '2026-06-02'));
+      t.equal(s.current, 2, 'day2');
+      s = Object.assign({}, s, Streaks.applyActivity(s, '2026-06-02'));
+      t.equal(s.current, 2, 'same day no change');
+      t.equal(s.best, 2, 'best tracks');
+    } },
+    { name: 'streaks: missed days decay 20% per day, never hard-reset, best preserved', db: false, fn: function (t) {
+      let s = { current: 10, best: 10, lastActiveDay: '2026-06-01' };
+      const after = Streaks.applyActivity(s, '2026-06-04'); // 2 missed days
+      t.equal(after.current, Math.floor(Math.floor(10 * 0.8) * 0.8) + 1, 'decayed then +1'); // floor(8*0.8)=6 -> 7
+      t.equal(after.current, 7, 'expected 7');
+      t.equal(after.best, 10, 'best never decreases');
+      t.equal(Streaks.effectiveCurrent({ current: 10, best: 10, lastActiveDay: '2026-06-01' }, '2026-06-04'), 6, 'display decay');
+    } },
+
+    /* ---- Domain: bundles + canonical hashing ---- */
+    { name: 'bundles: normalize fills defaults; invalid bundles rejected', db: false, fn: async function (t) {
+      const b = Rewards.normalizeBundle({ coins: 5 });
+      t.equal(b.energy, 0, 'default energy');
+      t.deepEqual(b.materials, [], 'default materials');
+      await t.throwsCode(function () { Rewards.normalizeBundle({ coins: -1 }); }, 'OUT_OF_RANGE', 'negative coins');
+      await t.throwsCode(function () { Rewards.normalizeBundle({ coins: 1.5 }); }, 'BAD_TYPE', 'float coins');
+      await t.throwsCode(function () { Rewards.normalizeBundle({ materials: [{ itemId: 'x', qty: 0 }] }); }, 'OUT_OF_RANGE', 'zero qty material');
+      const sum = Rewards.addBundles(Rewards.normalizeBundle({ coins: 2, materials: [{ itemId: 'itm_wood', qty: 1 }] }),
+        Rewards.normalizeBundle({ coins: 3, materials: [{ itemId: 'itm_wood', qty: 2 }] }));
+      t.equal(sum.coins, 5, 'coins add');
+      t.deepEqual(sum.materials, [{ itemId: 'itm_wood', qty: 3 }], 'materials merge');
+    } },
+    { name: 'canon/sha256: key order does not change checksum', db: false, fn: async function (t) {
+      const a = await sha256Hex(Canon.stringify({ b: 1, a: [1, 2, { z: 1, y: 2 }] }));
+      const b = await sha256Hex(Canon.stringify({ a: [1, 2, { y: 2, z: 1 }], b: 1 }));
+      t.equal(a, b, 'stable checksum');
+      t.ok(/^[0-9a-f]{64}$/.test(a), 'hex64');
+    } },
+    { name: 'validation: submission transition rules are final', db: false, fn: async function (t) {
+      Validation.assertSubmissionTransition('PENDING', 'APPROVED');
+      Validation.assertSubmissionTransition('PENDING', 'REJECTED');
+      await t.throwsCode(function () { Validation.assertSubmissionTransition('APPROVED', 'REJECTED'); }, 'IMMUTABLE_DECISION', 'no re-decide');
+      await t.throwsCode(function () { Validation.assertSubmissionTransition('PENDING', 'PENDING'); }, 'BAD_TRANSITION', 'no pending->pending');
+    } },
+    { name: 'validation: quest submit rule enforces maxPerDay + active', db: false, fn: function (t) {
+      const q = { active: true, maxPerDay: 2 };
+      t.ok(canSubmitQuest(q, 0).ok, 'fresh ok');
+      t.ok(canSubmitQuest(q, 1).ok, 'second ok');
+      t.equal(canSubmitQuest(q, 2).reason, 'MAX_PER_DAY_REACHED', 'third blocked');
+      t.equal(canSubmitQuest({ active: false, maxPerDay: 2 }, 0).reason, 'QUEST_INACTIVE', 'inactive blocked');
+    } },
+
+    /* ---- DB + repositories ---- */
+    { name: 'db: seed populates catalog exactly once', db: true, fn: async function (t, env) {
+      const r1 = await env.services.seed.seedIfEmpty();
+      t.ok(r1.seeded, 'first seed runs');
+      t.equal(r1.quests, 18, 'quests seeded');
+      const r2 = await env.services.seed.seedIfEmpty();
+      t.ok(!r2.seeded, 'second seed is a no-op');
+      t.equal(await env.db.count('items'), CONFIG.ITEMS.length, 'item count');
+      t.equal(await env.db.count('achievements'), CONFIG.ACHIEVEMENTS.length, 'achievement count');
+      t.equal(await env.repos.meta.get('auditHead'), CONFIG.SECURITY.AUDIT_GENESIS, 'audit head at genesis');
+    } },
+    { name: 'repos: user create/list/update; invalid role and long name rejected', db: true, fn: async function (t, env) {
+      const u = await env.repos.users.create({ role: 'CHILD', name: 'Mila', avatar: '🦊' });
+      t.ok(u.id, 'id assigned');
+      const listed = await env.repos.users.listByRole('CHILD');
+      t.equal(listed.length, 1, 'listByRole');
+      await env.repos.users.updateProfile(u.id, { name: 'Mila Rose' });
+      t.equal((await env.repos.users.get(u.id)).name, 'Mila Rose', 'updated');
+      await t.throwsCode(function () { return env.repos.users.create({ role: 'ADMIN', name: 'X' }); }, 'BAD_ENUM', 'bad role');
+      await t.throwsCode(function () { return env.repos.users.create({ role: 'CHILD', name: 'x'.repeat(40) }); }, 'TOO_LONG', 'long name');
+    } },
+    { name: 'repos: guardian creation is one-per-user and starts at L1', db: true, fn: async function (t, env) {
+      const u = await env.repos.users.create({ role: 'CHILD', name: 'Theo' });
+      const g = await env.repos.guardians.createForUser(u.id, { name: 'Ember', species: 'DRAGON' });
+      t.equal(g.level, 1, 'L1'); t.equal(g.energy, 0, 'no free energy');
+      await t.throwsCode(function () { return env.repos.guardians.createForUser(u.id, { name: 'Two', species: 'WOLF' }); }, 'ALREADY_EXISTS', 'single guardian');
+      await t.throwsCode(function () { return env.repos.guardians.createForUser('ghost', { name: 'X', species: 'WOLF' }); }, 'NOT_FOUND', 'user must exist');
+    } },
+    { name: 'repos: applyBundle clamps energy, levels up, grants materials + crates', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const u = await env.repos.users.create({ role: 'CHILD', name: 'Ava' });
+      await env.repos.guardians.createForUser(u.id, { name: 'Pip', species: 'FOX' });
+      const bundle = Rewards.normalizeBundle({ coins: 30, energy: 150, xp: 85, affection: 3, lootCrates: 2, materials: [{ itemId: 'itm_wood', qty: 5 }] });
+      const res = await env.repos.guardians.applyBundle(u.id, bundle);
+      t.equal(res.guardian.energy, CONFIG.ECONOMY.BASE_MAX_ENERGY, 'energy clamped at max');
+      t.equal(res.guardian.gold, 30, 'gold credited');
+      t.equal(res.guardian.level, 2, 'leveled to 2 (85 >= 80)');
+      t.ok(res.leveledUp, 'leveledUp flag');
+      const inv = await env.repos.inventory.listByUser(u.id);
+      const wood = inv.find(function (i) { return i.itemId === 'itm_wood'; });
+      const crates = inv.find(function (i) { return i.itemId === 'itm_loot_crate'; });
+      t.equal(wood.qty, 5, 'wood granted'); t.equal(crates.qty, 2, 'crates granted');
+    } },
+    { name: 'repos: spendEnergy/spendGold refuse overdrafts atomically', db: true, fn: async function (t, env) {
+      const u = await env.repos.users.create({ role: 'CHILD', name: 'Noa' });
+      const g = await env.repos.guardians.createForUser(u.id, { name: 'Tide', species: 'TURTLE' });
+      await env.repos.guardians.applyBundle(u.id, Rewards.normalizeBundle({ energy: 20, coins: 10 }));
+      await t.throwsCode(function () { return env.repos.guardians.spendEnergy(g.id, 25); }, 'INSUFFICIENT_ENERGY', 'energy overdraft');
+      await t.throwsCode(function () { return env.repos.guardians.spendGold(g.id, 11); }, 'INSUFFICIENT_GOLD', 'gold overdraft');
+      const after = await env.repos.guardians.get(g.id);
+      t.equal(after.energy, 20, 'energy unchanged after failed spend');
+      t.equal(after.gold, 10, 'gold unchanged after failed spend');
+      await env.repos.guardians.spendEnergy(g.id, 15);
+      t.equal((await env.repos.guardians.get(g.id)).energy, 5, 'valid spend works');
+    } },
+    { name: 'repos: inventory merges via compound index and blocks negatives', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const u = await env.repos.users.create({ role: 'CHILD', name: 'Iri' });
+      await env.repos.inventory.addItem(u.id, 'itm_berry', 2);
+      await env.repos.inventory.addItem(u.id, 'itm_berry', 3);
+      const inv = await env.repos.inventory.listByUser(u.id);
+      t.equal(inv.length, 1, 'merged row'); t.equal(inv[0].qty, 5, 'qty 5');
+      await t.throwsCode(function () { return env.repos.inventory.removeItem(u.id, 'itm_berry', 9); }, 'INSUFFICIENT_ITEMS', 'no negatives');
+      const left = await env.repos.inventory.removeItem(u.id, 'itm_berry', 5);
+      t.equal(left, null, 'row removed at zero');
+      await t.throwsCode(function () { return env.repos.inventory.addItem(u.id, 'itm_fake', 1); }, 'NOT_FOUND', 'unknown item');
+    } },
+    { name: 'repos: submissions are born PENDING; quest must exist and be active', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const u = await env.repos.users.create({ role: 'CHILD', name: 'Eli' });
+      const sub = await env.repos.submissions.createPending(u.id, 'qst_water_glass');
+      t.equal(sub.status, 'PENDING', 'pending');
+      t.equal(sub.decidedAt, undefined, 'no decision fields');
+      await env.repos.quests.setActive('qst_bath', false);
+      await t.throwsCode(function () { return env.repos.submissions.createPending(u.id, 'qst_bath'); }, 'QUEST_INACTIVE', 'inactive quest');
+      await t.throwsCode(function () { return env.repos.submissions.createPending(u.id, 'qst_nope'); }, 'NOT_FOUND', 'unknown quest');
+      t.equal(await env.repos.submissions.countTodayNonRejected(u.id, 'qst_water_glass'), 1, 'today count');
+    } },
+    { name: 'security invariant: only a PARENT can decide; decisions are final', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Kai' });
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Cristian' });
+      const sub = await env.repos.submissions.createPending(child.id, 'qst_make_bed');
+      await t.throwsCode(function () {
+        return env.repos.submissions.decide(sub.id, { status: 'APPROVED', decidedBy: child.id });
+      }, 'FORBIDDEN', 'child cannot approve');
+      const decided = await env.repos.submissions.decide(sub.id, { status: 'APPROVED', decidedBy: parent.id });
+      t.equal(decided.status, 'APPROVED', 'approved');
+      await t.throwsCode(function () {
+        return env.repos.submissions.decide(sub.id, { status: 'REJECTED', decidedBy: parent.id });
+      }, 'IMMUTABLE_DECISION', 'cannot re-decide');
+    } },
+    { name: 'security invariant: rewards require APPROVED submission, exactly once', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Lia' });
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Michel' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Luno', species: 'OWL' });
+      const sub = await env.repos.submissions.createPending(child.id, 'qst_read_15');
+      const bundle = Rewards.normalizeBundle({ coins: 15, energy: 10, xp: 25 });
+      await t.throwsCode(function () {
+        return env.repos.rewardTransactions.createForSubmission(sub, bundle);
+      }, 'FORBIDDEN', 'no reward while pending');
+      await env.repos.submissions.decide(sub.id, { status: 'APPROVED', decidedBy: parent.id });
+      const txn = await env.repos.rewardTransactions.createForSubmission(sub, bundle);
+      t.ok(txn.id, 'reward released');
+      await t.throwsCode(function () {
+        return env.repos.rewardTransactions.createForSubmission(sub, bundle);
+      }, 'ALREADY_EXISTS', 'no double release');
+    } },
+    { name: 'repos: streaks + counters persist through their repos', db: true, fn: async function (t, env) {
+      const u = await env.repos.users.create({ role: 'CHILD', name: 'Rio' });
+      let s = await env.repos.streaks.getOrCreate(u.id, 'GLOBAL');
+      Object.assign(s, Streaks.applyActivity(s, '2026-06-09'));
+      await env.repos.streaks.save(s);
+      Object.assign(s, Streaks.applyActivity(s, '2026-06-10'));
+      await env.repos.streaks.save(s);
+      const again = await env.repos.streaks.getOrCreate(u.id, 'GLOBAL');
+      t.equal(again.current, 2, 'streak persisted');
+      await env.repos.counters.increment(u.id, 'cat.HYDRATION', 1);
+      await env.repos.counters.increment(u.id, 'cat.HYDRATION', 1);
+      await env.repos.counters.setMax(u.id, 'streak.global.best', again.best);
+      t.equal((await env.repos.counters.get(u.id, 'cat.HYDRATION')).value, 2, 'counter sums');
+      t.equal((await env.repos.counters.get(u.id, 'streak.global.best')).value, 2, 'best mirrored');
+    } },
+    { name: 'repos: audit log accepts only well-formed chain entries; append-only API', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Cristian' });
+      const prev = await env.repos.meta.get('auditHead');
+      const body = { id: Ids.uuid(), parentId: parent.id, action: 'TEST', entity: 'submissions', entityId: 'x', timestamp: Date.now(), prevHash: prev };
+      const hash = await sha256Hex(prev + Canon.stringify(body));
+      await env.repos.audit.append(Object.assign({}, body, { hash: hash }));
+      t.equal(await env.repos.meta.get('auditHead'), hash, 'head advanced');
+      await t.throwsCode(function () {
+        return env.repos.audit.append({ id: Ids.uuid(), parentId: parent.id, action: 'BAD', entity: 'x', entityId: 'y', timestamp: Date.now(), prevHash: 'nothex', hash: hash });
+      }, 'BAD_HASH', 'malformed prevHash rejected');
+      t.equal(typeof env.repos.audit.update, 'undefined', 'no update method exists');
+      t.equal(typeof env.repos.audit.remove, 'undefined', 'no delete method exists');
+    } },
+    { name: 'repos: cascade delete removes child data, keeps audit history', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const u = await env.repos.users.create({ role: 'CHILD', name: 'Zee' });
+      const g = await env.repos.guardians.createForUser(u.id, { name: 'Boop', species: 'BEAR' });
+      await env.repos.inventory.addItem(u.id, 'itm_apple', 1);
+      await env.repos.submissions.createPending(u.id, 'qst_walk');
+      await env.repos.dungeons.createRun({ guardianId: g.id, dungeonId: 'dgn_glade', seed: 1, startedAt: 1, endsAt: 2 });
+      await env.repos.users.removeCascade(u.id);
+      t.equal(await env.repos.users.get(u.id), undefined, 'user gone');
+      t.equal((await env.repos.inventory.listByUser(u.id)).length, 0, 'inventory gone');
+      t.equal((await env.repos.submissions.listByUser(u.id)).length, 0, 'submissions gone');
+      t.equal((await env.repos.dungeons.listByGuardian(g.id)).length, 0, 'runs gone');
+    } },
+    { name: 'db: validation layer blocks writes that bypass shape rules', db: true, fn: async function (t, env) {
+      await t.throwsCode(function () {
+        return env.db.atomic(['guardians'], function (c) {
+          return c.put('guardians', { id: 'hack' }); // raw put used here ONLY to prove repos won't accept it
+        }).then(function () {
+          return env.repos.guardians.applyBundle('nobody', Rewards.normalizeBundle({ coins: 1 }));
+        });
+      }, 'NOT_FOUND', 'raw row has no userId index value; repos cannot reach it');
+      await t.throwsCode(function () {
+        return env.repos.streaks.save({ id: 'x', userId: 'u', scope: 'GLOBAL', current: 5, best: 3 });
+      }, 'OUT_OF_RANGE', 'best < current rejected');
+    } },
+    { name: 'backup: export -> wipe -> import restores identical data', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Mira' });
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Cristian' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Sol', species: 'PHOENIX' });
+      const sub = await env.repos.submissions.createPending(child.id, 'qst_gratitude');
+      await env.repos.submissions.decide(sub.id, { status: 'APPROVED', decidedBy: parent.id });
+      const before = await env.services.backup.export();
+      await env.db.clearAllStores();
+      t.equal(await env.db.count('users'), 0, 'wiped');
+      const counts = await env.services.backup.importReplace(before);
+      t.equal(counts.users, 2, 'users restored');
+      const after = await env.services.backup.export();
+      t.equal(after.checksum, before.checksum, 'checksum identical after round-trip');
+      const restoredSub = await env.repos.submissions.get(sub.id);
+      t.equal(restoredSub.status, 'APPROVED', 'decision survived');
+    } },
+    { name: 'backup: tampered or corrupted files are refused before any write', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const backup = await env.services.backup.export();
+      const tampered = JSON.parse(JSON.stringify(backup));
+      tampered.data.meta.push({ key: 'evil', value: true });
+      await t.throwsCode(function () { return env.services.backup.importReplace(tampered); }, 'CHECKSUM_MISMATCH', 'tamper detected');
+      await t.throwsCode(function () { return env.services.backup.importReplace({ format: 'zip' }); }, 'BAD_BACKUP', 'wrong format');
+      t.ok((await env.db.count('items')) === CONFIG.ITEMS.length, 'data untouched after refusals');
+    } },
+
+    /* ---- Phase 3: AuthService ---- */
+    { name: 'auth: PIN setup stores PBKDF2 credentials, never the PIN; parent-only', db: true, fn: async function (t, env) {
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Cristian' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Kid' });
+      await env.services.auth.setupPin(parent.id, '482915');
+      const cred = await env.repos.credentials.getByUser(parent.id);
+      t.ok(/^[0-9a-f]{64}$/.test(cred.pinHash), 'hash is 256-bit hex');
+      t.ok(cred.pinHash.indexOf('482915') === -1, 'PIN not embedded in hash');
+      t.equal(cred.salt.length, CONFIG.SECURITY.SALT_BYTES * 2, '16-byte salt');
+      t.equal(cred.iterations, 310000, 'OWASP iteration count');
+      t.equal(cred.algo, 'PBKDF2-SHA256', 'algo recorded');
+      await t.throwsCode(function () { return env.services.auth.setupPin(child.id, '482915'); }, 'FORBIDDEN', 'children cannot hold a PIN');
+      await t.throwsCode(function () { return env.services.auth.setupPin(parent.id, 'abcd'); }, 'BAD_PIN', 'digits only');
+      await t.throwsCode(function () { return env.services.auth.setupPin(parent.id, '12'); }, 'BAD_PIN', 'too short');
+    } },
+    { name: 'auth: correct PIN opens a session; wrong PIN counts attempts and resets on success', db: true, fn: async function (t, env) {
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Michel' });
+      await env.services.auth.setupPin(parent.id, '7341');
+      const err = await t.throwsCode(function () { return env.services.auth.verifyPin(parent.id, '0000'); }, 'WRONG_PIN', 'wrong rejected');
+      t.equal(err.attemptsLeft, 2, 'attempts tracked');
+      const session = await env.services.auth.verifyPin(parent.id, '7341');
+      t.ok(session.token, 'session token issued');
+      t.equal(env.services.auth.requireSession(session.token).parentId, parent.id, 'session resolves to parent');
+      t.equal((await env.repos.credentials.getByUser(parent.id)).failedAttempts, 0, 'counter reset on success');
+    } },
+    { name: 'auth: three failures lock out; lockout escalates and persists in the DB', db: true, fn: async function (t, env) {
+      const clock = fakeClock(1750000000000);
+      const auth = makeAuthService(env.repos, { now: function () { return clock.t; } });
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      await auth.setupPin(parent.id, '991122');
+      await t.throwsCode(function () { return auth.verifyPin(parent.id, '111111'); }, 'WRONG_PIN', 'miss 1');
+      await t.throwsCode(function () { return auth.verifyPin(parent.id, '222222'); }, 'WRONG_PIN', 'miss 2');
+      const lock = await t.throwsCode(function () { return auth.verifyPin(parent.id, '333333'); }, 'LOCKED_OUT', 'miss 3 locks');
+      t.equal(lock.retryInMs, CONFIG.SECURITY.LOCKOUT_BASE_MS, 'first lockout is 60s');
+      await t.throwsCode(function () { return auth.verifyPin(parent.id, '991122'); }, 'LOCKED_OUT', 'even the right PIN waits');
+      const cred = await env.repos.credentials.getByUser(parent.id);
+      t.ok(cred.lockoutUntil > clock.t, 'lockout persisted in DB (reload-proof)');
+      clock.tick(CONFIG.SECURITY.LOCKOUT_BASE_MS + 1000);
+      await t.throwsCode(function () { return auth.verifyPin(parent.id, '111111'); }, 'WRONG_PIN', 'released after wait');
+      await t.throwsCode(function () { return auth.verifyPin(parent.id, '222222'); }, 'WRONG_PIN', 'miss again');
+      const lock2 = await t.throwsCode(function () { return auth.verifyPin(parent.id, '333333'); }, 'LOCKED_OUT', 'second lockout');
+      t.equal(lock2.retryInMs, CONFIG.SECURITY.LOCKOUT_BASE_MS * 2, 'second lockout doubles to 120s');
+      clock.tick(CONFIG.SECURITY.LOCKOUT_BASE_MS * 2 + 1000);
+      const session = await auth.verifyPin(parent.id, '991122');
+      t.ok(session.token, 'recovers fully after lockout');
+    } },
+    { name: 'auth: sessions slide on use and expire after 5 idle minutes', db: true, fn: async function (t, env) {
+      const clock = fakeClock(1750000000000);
+      const auth = makeAuthService(env.repos, { now: function () { return clock.t; } });
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      await auth.setupPin(parent.id, '5566');
+      const s = await auth.verifyPin(parent.id, '5566');
+      clock.tick(4 * 60 * 1000);
+      t.ok(auth.requireSession(s.token), 'alive at 4 min');
+      clock.tick(4 * 60 * 1000);
+      t.ok(auth.requireSession(s.token), 'sliding window extended it');
+      clock.tick(6 * 60 * 1000);
+      await t.throwsCode(function () { return Promise.resolve().then(function () { return auth.requireSession(s.token); }); }, 'SESSION_EXPIRED', 'expires after idle');
+      await t.throwsCode(function () { return Promise.resolve().then(function () { return auth.requireSession('not-a-token'); }); }, 'SESSION_INVALID', 'unknown token rejected');
+      const s2 = await auth.verifyPin(parent.id, '5566');
+      auth.endSession(s2.token);
+      await t.throwsCode(function () { return Promise.resolve().then(function () { return auth.requireSession(s2.token); }); }, 'SESSION_INVALID', 'ended session is gone');
+    } },
+    { name: 'auth: changing the PIN requires the old PIN', db: true, fn: async function (t, env) {
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      await env.services.auth.setupPin(parent.id, '1234');
+      await t.throwsCode(function () { return env.services.auth.changePin(parent.id, '9999', '4321'); }, 'WRONG_PIN', 'old PIN required');
+      await env.services.auth.changePin(parent.id, '1234', '4321');
+      await t.throwsCode(function () { return env.services.auth.verifyPin(parent.id, '1234'); }, 'WRONG_PIN', 'old PIN dead');
+      t.ok((await env.services.auth.verifyPin(parent.id, '4321')).token, 'new PIN works');
+    } },
+
+    /* ---- Phase 3: audit chain ---- */
+    { name: 'audit: service appends a chain that verifies end-to-end', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      const e1 = await env.services.audit.append({ parentId: parent.id, action: 'A', entity: 'meta', entityId: 'x' });
+      t.equal(e1.prevHash, CONFIG.SECURITY.AUDIT_GENESIS, 'first entry links to GENESIS');
+      await env.services.audit.append({ parentId: parent.id, action: 'B', entity: 'meta', entityId: 'y', reason: 'because' });
+      const e3 = await env.services.audit.append({ parentId: parent.id, action: 'C', entity: 'meta', entityId: 'z' });
+      const report = await env.services.integrity.verifyChain();
+      t.ok(report.valid, 'chain valid');
+      t.equal(report.length, 3, 'three entries');
+      t.equal(report.head, e3.hash, 'head is the last hash');
+    } },
+    { name: 'audit: editing any past entry is detected by verifyChain', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      const first = await env.services.audit.append({ parentId: parent.id, action: 'SUBMISSION_APPROVED', entity: 'submissions', entityId: 's1' });
+      await env.services.audit.append({ parentId: parent.id, action: 'SUBMISSION_REJECTED', entity: 'submissions', entityId: 's2' });
+      // Simulate out-of-band tampering: a raw write that bypasses the repos
+      // entirely (only possible with direct DB access — exactly the threat
+      // the chain exists to detect).
+      const hacked = Object.assign({}, first, { action: 'SUBMISSION_REJECTED' });
+      await env.db.atomic(['auditLogs'], function (c) { return c.put('auditLogs', hacked); });
+      const report = await env.services.integrity.verifyChain();
+      t.ok(!report.valid, 'tampering detected');
+      t.equal(report.reason, 'TAMPERED_ENTRY', 'reason reported');
+    } },
+    { name: 'audit: appends with a stale head are rejected (no forks)', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      await env.services.audit.append({ parentId: parent.id, action: 'A', entity: 'meta', entityId: 'x' });
+      const stale = {
+        id: Ids.uuid(), parentId: parent.id, action: 'B', entity: 'meta', entityId: 'y',
+        timestamp: Date.now(), prevHash: CONFIG.SECURITY.AUDIT_GENESIS,
+      };
+      const hash = await sha256Hex(stale.prevHash + Canon.stringify(stale));
+      await t.throwsCode(function () {
+        return env.repos.audit.append(Object.assign({}, stale, { hash: hash }));
+      }, 'CHAIN_CONFLICT', 'stale prevHash refused');
+    } },
+
+    /* ---- Phase 3: the approval gate ---- */
+    { name: 'gate: approval releases rewards exactly once — guardian, streaks, counters, audit', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Cristian' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Mila' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Ember', species: 'DRAGON' });
+      await env.services.auth.setupPin(parent.id, '246810');
+      const session = await env.services.auth.verifyPin(parent.id, '246810');
+      const sub = await env.repos.submissions.createPending(child.id, 'qst_water_glass');
+      const quest = await env.repos.quests.get('qst_water_glass');
+
+      const result = await env.services.approval.approve(session.token, sub.id, 'good job!');
+      t.equal(result.submission.status, 'APPROVED', 'submission approved');
+      t.equal(result.submission.decidedBy, parent.id, 'decided by the parent');
+      t.equal(result.transaction.applied, true, 'reward marked applied');
+      t.equal(result.guardian.gold, quest.reward.coins, 'coins landed');
+      t.equal(result.guardian.energy, quest.reward.energy, 'energy landed');
+      t.equal(result.guardian.xp, quest.reward.xp, 'xp landed');
+      t.equal(result.streak.current, 1, 'streak started');
+      t.equal((await env.repos.counters.get(child.id, 'global.approvals')).value, 1, 'approval counter');
+      t.equal((await env.repos.counters.get(child.id, 'cat.HYDRATION')).value, 1, 'category counter');
+      const chain = await env.services.integrity.verifyChain();
+      t.ok(chain.valid && chain.length === 1, 'decision audit-chained');
+      await t.throwsCode(function () {
+        return env.services.approval.approve(session.token, sub.id);
+      }, 'IMMUTABLE_DECISION', 'cannot approve twice');
+    } },
+    { name: 'gate: rejection grants nothing and is audited', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Michel' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Theo' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Pip', species: 'FOX' });
+      await env.services.auth.setupPin(parent.id, '1357');
+      const session = await env.services.auth.verifyPin(parent.id, '1357');
+      const sub = await env.repos.submissions.createPending(child.id, 'qst_make_bed');
+      const result = await env.services.approval.reject(session.token, sub.id, 'bed still messy');
+      t.equal(result.submission.status, 'REJECTED', 'rejected');
+      const g = await env.repos.guardians.getByUser(child.id);
+      t.equal(g.gold + g.xp + g.energy, 0, 'no rewards moved');
+      t.equal(await env.repos.rewardTransactions.getBySubmission(sub.id), null, 'no transaction exists');
+      t.equal(await env.repos.counters.get(child.id, 'global.approvals'), null, 'no counters moved');
+      const chain = await env.services.integrity.verifyChain();
+      t.ok(chain.valid && chain.length === 1, 'rejection audit-chained');
+    } },
+    { name: 'gate: a live parent session is mandatory — children have no path to one', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const clock = fakeClock(1750000000000);
+      const auth = makeAuthService(env.repos, { now: function () { return clock.t; } });
+      const approval = makeApprovalService(env.repos, auth, env.services.audit);
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Ava' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Sol', species: 'PHOENIX' });
+      const sub = await env.repos.submissions.createPending(child.id, 'qst_read_15');
+      await t.throwsCode(function () { return approval.approve('forged-token', sub.id); }, 'SESSION_INVALID', 'forged token refused');
+      await auth.setupPin(parent.id, '8642');
+      const session = await auth.verifyPin(parent.id, '8642');
+      clock.tick(6 * 60 * 1000);
+      await t.throwsCode(function () { return approval.approve(session.token, sub.id); }, 'SESSION_EXPIRED', 'expired session refused');
+      t.equal((await env.repos.submissions.get(sub.id)).status, 'PENDING', 'submission untouched by failed attempts');
+      // And the repo layer backstops even a hypothetical service bypass:
+      await t.throwsCode(function () {
+        return env.repos.submissions.decide(sub.id, { status: 'APPROVED', decidedBy: child.id });
+      }, 'FORBIDDEN', 'child id can never decide');
+    } },
+    { name: 'gate: crash recovery completes interrupted approvals exactly once', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Noa' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Tide', species: 'TURTLE' });
+      const quest = await env.repos.quests.get('qst_exercise');
+      // Crash scenario A: decided, but the app died before the transaction was created.
+      const subA = await env.repos.submissions.createPending(child.id, 'qst_exercise');
+      await env.repos.submissions.decide(subA.id, { status: 'APPROVED', decidedBy: parent.id });
+      // Crash scenario B: transaction created but never applied.
+      const subB = await env.repos.submissions.createPending(child.id, 'qst_walk');
+      const decidedB = await env.repos.submissions.decide(subB.id, { status: 'APPROVED', decidedBy: parent.id });
+      const questB = await env.repos.quests.get('qst_walk');
+      await env.repos.rewardTransactions.createForSubmission(decidedB, questB.reward);
+
+      const first = await env.services.approval.recoverUnfinished();
+      t.equal(first.recovered, 2, 'both interrupted approvals completed');
+      const g1 = await env.repos.guardians.getByUser(child.id);
+      t.equal(g1.gold, quest.reward.coins + questB.reward.coins, 'rewards from both landed');
+      const again = await env.services.approval.recoverUnfinished();
+      t.equal(again.recovered, 0, 'second run recovers nothing');
+      const g2 = await env.repos.guardians.getByUser(child.id);
+      t.equal(g2.gold, g1.gold, 'no double application — idempotent');
+      t.ok((await env.services.integrity.verifyChain()).valid, 'recovery entries chain cleanly');
+    } },
+
+    /* ---- Phase 4: game services ---- */
+    { name: 'game: quest service enforces daily limits; rejection frees the slot', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Mila' });
+      const sub1 = await env.services.quest.submit(child.id, 'qst_make_bed');
+      t.equal(sub1.status, 'PENDING', 'born pending');
+      await t.throwsCode(function () { return env.services.quest.submit(child.id, 'qst_make_bed'); }, 'MAX_PER_DAY_REACHED', 'limit 1/day');
+      const board = await env.services.quest.listForChild(child.id);
+      const bed = board.find(function (b) { return b.quest.id === 'qst_make_bed'; });
+      t.equal(bed.remainingToday, 0, 'board shows zero remaining');
+      await env.repos.submissions.decide(sub1.id, { status: 'REJECTED', decidedBy: parent.id });
+      const sub2 = await env.services.quest.submit(child.id, 'qst_make_bed');
+      t.equal(sub2.status, 'PENDING', 'rejected slot freed');
+      await t.throwsCode(function () { return env.services.quest.submit(child.id, 'qst_nope'); }, 'NOT_FOUND', 'unknown quest');
+    } },
+    { name: 'game: dungeon start gates on level, energy, and one run at a time', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Theo' });
+      const g = await env.repos.guardians.createForUser(child.id, { name: 'Ember', species: 'DRAGON' });
+      await t.throwsCode(function () { return env.services.dungeon.start(g.id, 'dgn_glade'); }, 'INSUFFICIENT_ENERGY', 'no free raids');
+      await env.repos.guardians.applyBundle(child.id, Rewards.normalizeBundle({ energy: 50 }));
+      await t.throwsCode(function () { return env.services.dungeon.start(g.id, 'dgn_tide'); }, 'DUNGEON_LOCKED', 'level gate (needs 8)');
+      const started = await env.services.dungeon.start(g.id, 'dgn_glade');
+      t.equal(started.energyCost, CONFIG.ECONOMY.DUNGEON_ENERGY.SHORT, 'short tier cost');
+      t.equal((await env.repos.guardians.get(g.id)).energy, 35, 'energy paid up front');
+      await t.throwsCode(function () { return env.services.dungeon.start(g.id, 'dgn_glade'); }, 'RUN_IN_PROGRESS', 'one expedition at a time');
+    } },
+    { name: 'game: dungeon resolver is fully deterministic from the seed', db: false, fn: function (t) {
+      const def = CONFIG.DUNGEONS[0];
+      const run = { seed: RNG.seedFromString('guardian-x|dgn_glade|1750000000000') };
+      const a = Loot.resolveDungeon(run, def, CONFIG.ITEMS);
+      const b = Loot.resolveDungeon(run, def, CONFIG.ITEMS);
+      t.deepEqual(a, b, 'same seed, same result');
+      t.ok(a.gold >= def.gold[0] && a.gold <= def.gold[1], 'gold in range');
+      t.ok(a.xp >= def.xp[0] && a.xp <= def.xp[1], 'xp in range');
+      const totalDrops = a.drops.reduce(function (s, d) { return s + d.qty; }, 0);
+      t.equal(totalDrops, def.lootRolls, 'every roll lands an item');
+    } },
+    { name: 'game: claim waits for the timer and applies rewards exactly once', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const clock = fakeClock(1750000000000);
+      const dungeon = makeDungeonService(env.repos, { now: function () { return clock.t; } });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Ava' });
+      const g = await env.repos.guardians.createForUser(child.id, { name: 'Tide', species: 'TURTLE' });
+      await env.repos.guardians.applyBundle(child.id, Rewards.normalizeBundle({ energy: 30 }));
+      const started = await dungeon.start(g.id, 'dgn_glade');
+      const blocked = await t.throwsCode(function () { return dungeon.claim(started.run.id); }, 'RUN_NOT_FINISHED', 'timer enforced');
+      t.ok(blocked.remainingMs > 0, 'remaining time reported');
+      clock.tick(10 * 60000 + 1000);
+      const claimed = await dungeon.claim(started.run.id);
+      t.ok(!claimed.alreadyClaimed, 'first claim applies');
+      const after = await env.repos.guardians.get(g.id);
+      t.equal(after.gold, claimed.run.result.gold, 'gold landed');
+      t.equal(after.xp, claimed.run.result.xp, 'xp landed');
+      const inv = await env.repos.inventory.listByUser(child.id);
+      const invTotal = inv.reduce(function (s, r) { return s + r.qty; }, 0);
+      const dropTotal = claimed.run.result.drops.reduce(function (s, d) { return s + d.qty; }, 0);
+      t.equal(invTotal, dropTotal, 'all drops in the satchel');
+      t.equal((await env.repos.counters.get(child.id, 'global.dungeons')).value, 1, 'dungeon counter');
+      await t.throwsCode(function () { return dungeon.claim(started.run.id); }, 'ALREADY_CLAIMED', 'service refuses re-claim');
+      const repoRetry = await env.repos.dungeons.claimRun(started.run.id, claimed.run.result);
+      t.ok(repoRetry.alreadyClaimed, 'repo retry is a no-op');
+      t.equal((await env.repos.guardians.get(g.id)).gold, after.gold, 'no double rewards');
+    } },
+    { name: 'game: loot crates open atomically and deterministically', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Iri' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Pip', species: 'FOX' });
+      await env.repos.guardians.applyBundle(child.id, Rewards.normalizeBundle({ lootCrates: 2 }));
+      t.equal(await env.services.loot.crateCount(child.id), 2, 'two crates held');
+      const rand = RNG.mulberry32(RNG.seedFromString('demo-crate-1'));
+      const pool = CONFIG.ITEMS.filter(function (i) { return i.id !== 'itm_loot_crate'; });
+      const expected = Loot.pickItemOfRarity(rand, Loot.rollRarity(rand), pool);
+      const opened = await env.services.loot.openCrate(child.id, 'demo-crate-1');
+      t.equal(opened.item.id, expected.id, 'seeded open is deterministic');
+      t.ok(opened.item.id !== 'itm_loot_crate', 'crates never drop crates');
+      t.equal(await env.services.loot.crateCount(child.id), 1, 'one crate consumed');
+      const inv = await env.repos.inventory.listByUser(child.id);
+      t.ok(inv.some(function (r) { return r.itemId === opened.item.id && r.qty >= 1; }), 'prize granted');
+      await env.services.loot.openCrate(child.id, 'demo-crate-2');
+      await t.throwsCode(function () { return env.services.loot.openCrate(child.id); }, 'INSUFFICIENT_ITEMS', 'no crates, no prize');
+    } },
+    { name: 'game: building upgrades follow the cost curve atomically', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Noa' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Boop', species: 'BEAR' });
+      await env.repos.guardians.applyBundle(child.id, Rewards.normalizeBundle({ coins: 300 }));
+      t.equal(env.services.building.costFor('HOME', 0), 100, 'L0 cost');
+      t.equal(env.services.building.costFor('HOME', 1), 160, 'L1 cost (×1.6)');
+      const u1 = await env.services.building.upgrade(child.id, 'HOME');
+      t.equal(u1.cost, 100, 'charged base'); t.equal(u1.guardian.gold, 200, 'gold spent');
+      const u2 = await env.services.building.upgrade(child.id, 'HOME');
+      t.equal(u2.cost, 160, 'curve applied'); t.equal(u2.building.level, 2, 'level 2');
+      const broke = await t.throwsCode(function () { return env.services.building.upgrade(child.id, 'HOME'); }, 'INSUFFICIENT_GOLD', 'cannot afford 256');
+      t.equal(broke.cost, 256, 'cost reported');
+      const g = await env.repos.guardians.getByUser(child.id);
+      t.equal(g.gold, 40, 'gold untouched by failed upgrade');
+      await env.repos.buildings.setLevel(child.id, 'RUINS', 5);
+      await t.throwsCode(function () { return env.services.building.upgrade(child.id, 'RUINS'); }, 'MAX_LEVEL', 'cap enforced');
+      const overview = await env.services.building.overview(child.id);
+      t.equal(overview.find(function (b) { return b.type === 'RUINS'; }).nextCost, null, 'maxed shows no next cost');
+    } },
+    { name: 'game: sanctuary levels raise the guardian energy cap', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Rio' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Sol', species: 'PHOENIX' });
+      await env.repos.guardians.applyBundle(child.id, Rewards.normalizeBundle({ coins: 1000 }));
+      await env.services.building.upgrade(child.id, 'SANCTUARY');
+      t.equal((await env.repos.guardians.getByUser(child.id)).maxEnergy, 110, '+10 per level');
+      await env.services.building.upgrade(child.id, 'SANCTUARY');
+      const g = await env.repos.guardians.getByUser(child.id);
+      t.equal(g.maxEnergy, 120, 'level 2 cap');
+      const filled = await env.repos.guardians.applyBundle(child.id, Rewards.normalizeBundle({ energy: 999 }));
+      t.equal(filled.guardian.energy, 120, 'energy clamps at the new cap');
+    } },
+    { name: 'game: achievements unlock from counters exactly once', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Zee' });
+      await env.repos.counters.increment(child.id, 'cat.HYDRATION', 1);
+      const first = await env.services.achievement.evaluate(child.id);
+      t.equal(first.newlyUnlocked.length, 0, 'progress without unlock');
+      await env.repos.counters.increment(child.id, 'global.approvals', 1);
+      const second = await env.services.achievement.evaluate(child.id);
+      t.equal(second.newlyUnlocked.length, 1, 'first approval unlocks First Spark');
+      t.equal(second.newlyUnlocked[0].id, 'ach_first_approval', 'correct badge');
+      const rows = await env.services.achievement.listForUser(child.id);
+      const spark = rows.find(function (r) { return r.def.id === 'ach_first_approval'; });
+      t.ok(spark.unlockedAt !== undefined, 'unlock timestamp set');
+      const third = await env.services.achievement.evaluate(child.id);
+      t.equal(third.newlyUnlocked.length, 0, 'no re-unlock');
+      const sparkAgain = (await env.services.achievement.listForUser(child.id)).find(function (r) { return r.def.id === 'ach_first_approval'; });
+      t.equal(sparkAgain.unlockedAt, spark.unlockedAt, 'timestamp stable');
+    } },
+    { name: 'game: approvals advance category streaks alongside the global one', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Michel' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Kai' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Luno', species: 'OWL' });
+      await env.services.auth.setupPin(parent.id, '4321');
+      const session = await env.services.auth.verifyPin(parent.id, '4321');
+      const s1 = await env.services.quest.submit(child.id, 'qst_water_glass');
+      await env.services.approval.approve(session.token, s1.id);
+      const s2 = await env.services.quest.submit(child.id, 'qst_brush_teeth');
+      await env.services.approval.approve(session.token, s2.id);
+      const streaks = await env.repos.streaks.listByUser(child.id);
+      function scope(s) { return streaks.find(function (r) { return r.scope === s; }); }
+      t.equal(scope('GLOBAL').current, 1, 'global streak (same day stays 1)');
+      t.equal(scope('HYDRATION').current, 1, 'hydration streak');
+      t.equal(scope('HEALTH').current, 1, 'health streak');
+    } },
+    { name: 'game: validator demands a result on claimed runs', db: false, fn: async function (t) {
+      const base = { id: 'r1', guardianId: 'g1', dungeonId: 'dgn_glade', seed: 1, startedAt: 1, endsAt: 2 };
+      await t.throwsCode(function () {
+        Validation.validateForStore('dungeonRuns', Object.assign({}, base, { claimed: true }));
+      }, 'BAD_SHAPE', 'claimed without result rejected');
+      Validation.validateForStore('dungeonRuns', Object.assign({}, base, {
+        claimed: true, result: { gold: 5, xp: 8, drops: [{ itemId: 'itm_wood', qty: 1 }] },
+      }));
+      t.ok(true, 'claimed with result validates');
+    } },
+    { name: 'game: full loop — submit, approve, raid, claim, achieve, chain intact', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Cristian' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Demo Kid' });
+      const g = await env.repos.guardians.createForUser(child.id, { name: 'Pip', species: 'FOX' });
+      await env.services.auth.setupPin(parent.id, '2468');
+      const session = await env.services.auth.verifyPin(parent.id, '2468');
+      for (let i = 0; i < 4; i++) {
+        const sub = await env.services.quest.submit(child.id, 'qst_water_glass');
+        await env.services.approval.approve(session.token, sub.id);
+      }
+      await t.throwsCode(function () { return env.services.quest.submit(child.id, 'qst_water_glass'); }, 'MAX_PER_DAY_REACHED', '4/day cap holds');
+      let guardian = await env.repos.guardians.get(g.id);
+      t.equal(guardian.energy, 20, 'four approvals = 20 energy');
+      t.equal(guardian.gold, 20, 'and 20 gold');
+      const clock = fakeClock(Date.now());
+      const dungeon = makeDungeonService(env.repos, { now: function () { return clock.t; } });
+      const started = await dungeon.start(g.id, 'dgn_glade');
+      clock.tick(10 * 60000 + 1000);
+      const claimed = await dungeon.claim(started.run.id);
+      guardian = await env.repos.guardians.get(g.id);
+      t.equal(guardian.gold, 20 + claimed.run.result.gold, 'raid gold stacked on quest gold');
+      const ach = await env.services.achievement.evaluate(child.id);
+      t.ok(ach.newlyUnlocked.some(function (d) { return d.id === 'ach_first_approval'; }), 'First Spark unlocked');
+      t.equal((await env.repos.counters.get(child.id, 'global.approvals')).value, 4, 'approval counter');
+      t.equal((await env.repos.counters.get(child.id, 'global.dungeons')).value, 1, 'dungeon counter');
+      const chain = await env.services.integrity.verifyChain();
+      t.ok(chain.valid && chain.length === 4, 'four decisions, chain intact');
+    } },
+  ];
+
+  const TestSuite = {
+    count: TESTS.length,
+    // makeEnv: async () => { db, repos, services, reset() } — injected by the
+    // host (node: memory backend; browser harness: real IndexedDB test DB).
+    runAll: async function (makeEnv, onResult) {
+      const results = [];
+      const env = await makeEnv();
+      for (const test of TESTS) {
+        const t = makeAssert();
+        const started = Date.now();
+        let ok = true; let error = null;
+        try {
+          if (test.db) await env.reset();
+          await test.fn(t, env);
+        } catch (e) {
+          ok = false; error = (e && e.message) || String(e);
+        }
+        const rec = { name: test.name, ok: ok, ms: Date.now() - started, error: error };
+        results.push(rec);
+        if (onResult) onResult(rec);
+      }
+      if (env.close) await env.close();
+      return results;
+    },
+  };
+
+  /* ==========================================================================
+     Public surface
+     ========================================================================== */
+  GOTH.CONFIG = CONFIG;
+  GOTH.ENUMS = ENUMS;
+  GOTH.SCHEMA = SCHEMA;
+  GOTH.STORE_NAMES = STORE_NAMES;
+  GOTH.Ids = Ids;
+  GOTH.RNG = RNG;
+  GOTH.Leveling = Leveling;
+  GOTH.Loot = Loot;
+  GOTH.TimeUtil = TimeUtil;
+  GOTH.Streaks = Streaks;
+  GOTH.Rewards = Rewards;
+  GOTH.questRewardBundle = questRewardBundle;
+  GOTH.canSubmitQuest = canSubmitQuest;
+  GOTH.Canon = Canon;
+  GOTH.sha256Hex = sha256Hex;
+  GOTH.Validation = Validation;
+  GOTH.ValidationError = ValidationError;
+  GOTH.createIdbBackend = createIdbBackend;
+  GOTH.makeDB = makeDB;
+  GOTH.makeRepositories = makeRepositories;
+  GOTH.makeAuthService = makeAuthService;
+  GOTH.makeAuditService = makeAuditService;
+  GOTH.makeIntegrityService = makeIntegrityService;
+  GOTH.makeApprovalService = makeApprovalService;
+  GOTH.makeQuestService = makeQuestService;
+  GOTH.makeDungeonService = makeDungeonService;
+  GOTH.makeLootService = makeLootService;
+  GOTH.makeBuildingService = makeBuildingService;
+  GOTH.makeAchievementService = makeAchievementService;
+  GOTH.makeServices = makeServices;
+  GOTH.TestSuite = TestSuite;
+
+  root.GOTH = GOTH;
+})(typeof self !== 'undefined' ? self : globalThis);
+</script>
+<script type="text/babel" data-presets="react">
+/* ============================================================================
+   PHASE 4 INSPECTION HARNESS (temporary UI — the real game arrives in Phase 6)
+   New this phase: quest daily limits, dungeon expeditions, loot crates,
+   building upgrades, achievements — all live against the real database.
+   Tests still run in their own database; real data is never touched.
+   ========================================================================== */
+const { useState, useRef, useEffect } = React;
+const G = window.GOTH;
+
+// Dev time control: lets you fast-forward dungeon timers on the harness.
+// It shifts the WHOLE game clock, so it also ages parent sessions.
+const TIME = { offset: 0 };
+function gameNow() { return Date.now() + TIME.offset; }
+
+function deleteDb(name) {
+  return new Promise(function (resolve) {
+    const req = indexedDB.deleteDatabase(name);
+    req.onsuccess = req.onerror = req.onblocked = function () { resolve(); };
+  });
+}
+
+async function bootMainDb() {
+  const backend = G.createIdbBackend(G.CONFIG.DB.name);
+  const db = G.makeDB(backend);
+  await db.open();
+  const repos = G.makeRepositories(db);
+  const services = G.makeServices(db, repos, { now: gameNow });
+  const seed = await services.seed.seedIfEmpty();
+  const recovery = await services.approval.recoverUnfinished();
+  const chain = await services.integrity.verifyChain();
+  const items = await repos.items.list();
+  const itemsById = {};
+  items.forEach(function (i) { itemsById[i.id] = i; });
+  return { db: db, repos: repos, services: services, seed: seed, recovery: recovery, chain: chain, itemsById: itemsById };
+}
+
+async function makeTestEnv() {
+  await deleteDb(G.CONFIG.DB.testName);
+  const backend = G.createIdbBackend(G.CONFIG.DB.testName);
+  const db = G.makeDB(backend);
+  await db.open();
+  const repos = G.makeRepositories(db);
+  const services = G.makeServices(db, repos);
+  return {
+    db: db, repos: repos, services: services,
+    reset: function () { return db.clearAllStores(); },
+    close: function () { return db.close(); },
+  };
+}
+
+function fmtCountdown(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(s / 60);
+  return m + ':' + String(s % 60).padStart(2, '0');
+}
+
+const DEMO_QUESTS = ['qst_water_glass', 'qst_make_bed', 'qst_help_parent'];
+
+function App() {
+  const [boot, setBoot] = useState({ state: 'loading' });
+  const [results, setResults] = useState([]);
+  const [running, setRunning] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [counts, setCounts] = useState(null);
+  // Parent gate
+  const [gateRevealed, setGateRevealed] = useState(false);
+  const [parent, setParent] = useState(null);
+  const [hasPin, setHasPin] = useState(false);
+  const [parentName, setParentName] = useState('Keeper');
+  const [pin, setPin] = useState('');
+  const [session, setSession] = useState(null);
+  const [gateMsg, setGateMsg] = useState(null);
+  const [chain, setChain] = useState(null);
+  // Game state
+  const [demo, setDemo] = useState(null);
+  const [tick, setTick] = useState(0);
+  const appRef = useRef(null);
+  const fileRef = useRef(null);
+  const pressTimer = useRef(null);
+
+  useEffect(function () {
+    if (!window.indexedDB) { setBoot({ state: 'noidb' }); return; }
+    bootMainDb().then(async function (app) {
+      appRef.current = app;
+      setChain(app.chain);
+      const p = (await app.repos.users.listByRole('PARENT'))[0] || null;
+      setParent(p);
+      if (p) setHasPin(!!(await app.repos.credentials.getByUser(p.id)));
+      await refreshDemo(app);
+      setBoot({ state: 'ready', seed: app.seed, recovery: app.recovery });
+    }).catch(function (e) {
+      setBoot({ state: 'error', error: (e && e.message) || String(e) });
+    });
+  }, []);
+
+  // 1s heartbeat drives session + dungeon countdowns.
+  useEffect(function () {
+    if (boot.state !== 'ready') return;
+    const id = setInterval(function () { setTick(function (t) { return t + 1; }); }, 1000);
+    return function () { clearInterval(id); };
+  }, [boot.state]);
+
+  useEffect(function () {
+    if (session && gameNow() > session.expiresAt) {
+      setSession(null);
+      setGateMsg({ kind: 'bad', text: 'Parent session timed out. Unlock again.' });
+    }
+  }, [tick, session]);
+
+  async function refreshDemo(app) {
+    const a = app || appRef.current;
+    const childId = await a.repos.meta.get('demo.childId');
+    if (!childId) { setDemo(null); return; }
+    const child = await a.repos.users.get(childId);
+    if (!child) { setDemo(null); return; }
+    const guardian = await a.repos.guardians.getByUser(childId);
+    const pending = (await a.repos.submissions.listByUserAndStatus(childId, 'PENDING'))
+      .sort(function (x, y) { return x.submittedAt - y.submittedAt; });
+    const quests = await a.repos.quests.list();
+    const questsById = {};
+    quests.forEach(function (q) { questsById[q.id] = q; });
+    const board = await a.services.quest.listForChild(childId);
+    const boardById = {};
+    board.forEach(function (b) { boardById[b.quest.id] = b; });
+    const streaks = await a.repos.streaks.listByUser(childId);
+    const streak = streaks.find(function (s) { return s.scope === 'GLOBAL'; }) || null;
+    let dungeonState = null;
+    if (guardian) dungeonState = await a.services.dungeon.listForGuardian(guardian.id);
+    const crates = await a.services.loot.crateCount(childId);
+    const buildings = await a.services.building.overview(childId);
+    const achievements = await a.services.achievement.listForUser(childId);
+    setDemo({
+      child: child, guardian: guardian, pending: pending, questsById: questsById,
+      boardById: boardById, streak: streak, dungeonState: dungeonState,
+      crates: crates, buildings: buildings, achievements: achievements,
+    });
+  }
+
+  /* ---- hidden gate: long-press the ember 3 seconds ---- */
+  function pressStart() {
+    pressTimer.current = setTimeout(function () {
+      setGateRevealed(true);
+      setGateMsg({ kind: 'ok', text: 'Parent gate revealed.' });
+    }, 3000);
+  }
+  function pressEnd() {
+    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
+  }
+
+  /* ---- tests / backup / inspect ---- */
+  async function runTests() {
+    setRunning(true); setResults([]); setMsg(null);
+    try {
+      const out = [];
+      await G.TestSuite.runAll(makeTestEnv, function (r) { out.push(r); setResults(out.slice()); });
+    } catch (e) {
+      setMsg({ kind: 'bad', text: 'Test runner stopped: ' + ((e && e.message) || e) });
+    }
+    setRunning(false);
+  }
+  async function resetTestDb() {
+    setMsg(null);
+    await deleteDb(G.CONFIG.DB.testName);
+    setResults([]);
+    setMsg({ kind: 'ok', text: 'Test database deleted. Real data untouched.' });
+  }
+  async function exportBackup() {
+    setMsg(null);
+    try {
+      const backup = await appRef.current.services.backup.export();
+      const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'guardian-hearth-backup-' + G.TimeUtil.todayStr() + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      setMsg({ kind: 'ok', text: 'Backup exported. Keep the file somewhere safe.' });
+    } catch (e) {
+      setMsg({ kind: 'bad', text: 'Export failed: ' + ((e && e.message) || e) });
+    }
+  }
+  function pickImportFile() { if (fileRef.current) fileRef.current.click(); }
+  async function onImportFile(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (!file) return;
+    setMsg(null);
+    try {
+      const backup = JSON.parse(await file.text());
+      const restored = await appRef.current.services.backup.importReplace(backup);
+      const total = Object.keys(restored).reduce(function (s, k) { return s + restored[k]; }, 0);
+      setCounts(null);
+      await refreshDemo();
+      setMsg({ kind: 'ok', text: 'Backup verified and restored: ' + total + ' records.' });
+    } catch (e) {
+      setMsg({ kind: 'bad', text: 'Import refused: ' + ((e && e.message) || e) + '\nNothing was changed.' });
+    }
+  }
+  async function inspectSeed() {
+    setMsg(null);
+    const out = [];
+    for (const s of G.STORE_NAMES) out.push({ store: s, count: await appRef.current.db.count(s) });
+    setCounts(out);
+  }
+
+  /* ---- parent gate actions ---- */
+  function gateError(e) {
+    if (e && e.code === 'LOCKED_OUT') {
+      setGateMsg({ kind: 'bad', text: 'Locked out. Try again in ' + Math.ceil((e.retryInMs || 0) / 1000) + 's.' });
+    } else if (e && e.code === 'WRONG_PIN') {
+      setGateMsg({ kind: 'bad', text: 'Incorrect PIN. ' + e.attemptsLeft + ' attempt' + (e.attemptsLeft === 1 ? '' : 's') + ' left before lockout.' });
+    } else {
+      setGateMsg({ kind: 'bad', text: (e && e.message) || String(e) });
+    }
+  }
+  async function createParentWithPin() {
+    setGateMsg(null);
+    try {
+      const a = appRef.current;
+      const p = await a.repos.users.create({ role: 'PARENT', name: parentName || 'Keeper', avatar: '🛡️' });
+      await a.services.auth.setupPin(p.id, pin);
+      setParent(p); setHasPin(true); setPin('');
+      setGateMsg({ kind: 'ok', text: 'Parent created and PIN set (PBKDF2-SHA256, 310k iterations). Now unlock with it.' });
+    } catch (e) { gateError(e); }
+  }
+  async function setPinForParent() {
+    setGateMsg(null);
+    try {
+      await appRef.current.services.auth.setupPin(parent.id, pin);
+      setHasPin(true); setPin('');
+      setGateMsg({ kind: 'ok', text: 'PIN set. Now unlock with it.' });
+    } catch (e) { gateError(e); }
+  }
+  async function unlock() {
+    setGateMsg(null);
+    try {
+      const s = await appRef.current.services.auth.verifyPin(parent.id, pin);
+      setSession(s); setPin('');
+      setGateMsg({ kind: 'ok', text: 'Parent mode unlocked. Session expires after 5 idle minutes.' });
+    } catch (e) { gateError(e); }
+  }
+  function lockNow() {
+    if (session) appRef.current.services.auth.endSession(session.token);
+    setSession(null);
+    setGateMsg({ kind: 'ok', text: 'Locked. The approval gate is closed.' });
+  }
+  async function verifyChainNow() {
+    setGateMsg(null);
+    const report = await appRef.current.services.integrity.verifyChain();
+    setChain(report);
+    setGateMsg(report.valid
+      ? { kind: 'ok', text: 'Audit chain VALID — ' + report.length + ' entries verified back to GENESIS.' }
+      : { kind: 'bad', text: 'Audit chain INVALID (' + report.reason + ') — verified ' + report.verified + ' of ' + report.length + '.' });
+  }
+  async function recoverNow() {
+    setGateMsg(null);
+    const r = await appRef.current.services.approval.recoverUnfinished();
+    await refreshDemo();
+    setGateMsg({ kind: 'ok', text: r.recovered === 0 ? 'Nothing to recover — all approvals fully applied.' : 'Recovered ' + r.recovered + ' interrupted reward release(s).' });
+  }
+  async function removeDemo() {
+    setGateMsg(null);
+    const a = appRef.current;
+    const childId = await a.repos.meta.get('demo.childId');
+    if (childId) {
+      try { await a.repos.users.removeCascade(childId); } catch (e) { /* already gone */ }
+      await a.repos.meta.set('demo.childId', '');
+    }
+    await refreshDemo();
+    setGateMsg({ kind: 'ok', text: 'Demo child removed (audit history retained by design).' });
+  }
+
+  /* ---- game actions ---- */
+  async function evaluateAchievements(childId) {
+    const res = await appRef.current.services.achievement.evaluate(childId);
+    if (res.newlyUnlocked.length) {
+      setMsg({ kind: 'ok', text: '🏅 Achievement unlocked: ' + res.newlyUnlocked.map(function (d) { return d.name; }).join(', ') });
+    }
+    return res;
+  }
+  async function createDemoChild() {
+    setMsg(null);
+    const a = appRef.current;
+    const child = await a.repos.users.create({ role: 'CHILD', name: 'Demo Kid', avatar: '🧒' });
+    await a.repos.guardians.createForUser(child.id, { name: 'Pip', species: 'FOX' });
+    await a.repos.meta.set('demo.childId', child.id);
+    await refreshDemo();
+  }
+  async function submitQuest(questId) {
+    setMsg(null);
+    try {
+      await appRef.current.services.quest.submit(demo.child.id, questId);
+      await refreshDemo();
+    } catch (e) {
+      setMsg({ kind: 'bad', text: (e && e.message) || String(e) });
+    }
+  }
+  async function decide(subId, kind) {
+    setMsg(null);
+    try {
+      const svc = appRef.current.services;
+      if (kind === 'APPROVE') {
+        const r = await svc.approval.approve(session.token, subId);
+        setMsg({ kind: 'ok', text: r.leveledUp ? 'Approved — rewards released. LEVEL UP to ' + r.guardian.level + '! 🎉' : 'Approved — rewards released to ' + r.guardian.name + '.' });
+        await evaluateAchievements(demo.child.id);
+      } else {
+        await svc.approval.reject(session.token, subId, 'not quite yet');
+        setMsg({ kind: 'ok', text: 'Rejected — nothing was granted.' });
+      }
+      const fresh = svc.auth.getSession(session.token);
+      if (fresh) setSession(fresh);
+      await refreshDemo();
+      setChain(await svc.integrity.verifyChain());
+    } catch (e) {
+      if (e && (e.code === 'SESSION_EXPIRED' || e.code === 'SESSION_INVALID')) {
+        setSession(null);
+        setGateMsg({ kind: 'bad', text: 'Parent session ended — unlock again to decide.' });
+      } else {
+        setMsg({ kind: 'bad', text: (e && e.message) || String(e) });
+      }
+    }
+  }
+  async function startDungeon(dungeonId) {
+    setMsg(null);
+    try {
+      const r = await appRef.current.services.dungeon.start(demo.guardian.id, dungeonId);
+      setMsg({ kind: 'ok', text: 'Expedition started! ' + demo.guardian.name + ' paid ' + r.energyCost + ' ⚡ and is on the way.' });
+      await refreshDemo();
+    } catch (e) {
+      setMsg({ kind: 'bad', text: (e && e.message) || String(e) });
+    }
+  }
+  async function claimDungeon(runId) {
+    setMsg(null);
+    try {
+      const a = appRef.current;
+      const r = await a.services.dungeon.claim(runId);
+      const drops = r.run.result.drops.map(function (d) {
+        const item = a.itemsById[d.itemId];
+        return (item ? item.name : d.itemId) + ' ×' + d.qty;
+      }).join(', ');
+      setMsg({ kind: 'ok', text: '🎒 Expedition complete! +' + r.run.result.gold + ' gold · +' + r.run.result.xp + ' xp · ' + (drops || 'no drops') + (r.leveledUp ? ' · LEVEL UP! 🎉' : '') });
+      await evaluateAchievements(demo.child.id);
+      await refreshDemo();
+    } catch (e) {
+      if (e && e.code === 'RUN_NOT_FINISHED') {
+        setMsg({ kind: 'bad', text: 'Still underway — ' + fmtCountdown(e.remainingMs) + ' to go. (Use fast-forward below to test.)' });
+      } else {
+        setMsg({ kind: 'bad', text: (e && e.message) || String(e) });
+      }
+    }
+  }
+  async function openCrate() {
+    setMsg(null);
+    try {
+      const r = await appRef.current.services.loot.openCrate(demo.child.id);
+      setMsg({ kind: 'ok', text: '📦 Crate opened: ' + r.item.name + ' (' + r.rarity + ')!' });
+      await refreshDemo();
+    } catch (e) {
+      setMsg({ kind: 'bad', text: (e && e.message) || String(e) });
+    }
+  }
+  async function upgradeBuilding(type) {
+    setMsg(null);
+    try {
+      const r = await appRef.current.services.building.upgrade(demo.child.id, type);
+      setMsg({ kind: 'ok', text: '🔨 ' + r.building.type + ' upgraded to level ' + r.building.level + ' for ' + r.cost + ' gold.' + (type === 'SANCTUARY' ? ' Max energy is now ' + r.guardian.maxEnergy + ' ⚡.' : '') });
+      await refreshDemo();
+    } catch (e) {
+      setMsg({ kind: 'bad', text: (e && e.message) || String(e) });
+    }
+  }
+  async function skipTime(ms) {
+    TIME.offset += ms;
+    await refreshDemo();
+    setTick(function (t) { return t + 1; });
+  }
+
+  const passed = results.filter(function (r) { return r.ok; }).length;
+  const failed = results.length - passed;
+  const done = !running && results.length > 0;
+  const sessionLeft = session ? session.expiresAt - gameNow() : 0;
+  const dz = demo && demo.dungeonState;
+  const activeRun = dz ? dz.activeRun : null;
+
+  return (
+    <div className="wrap">
+      <div className="eyebrow">Phase 4 · Keeper's Inspection</div>
+      <h1
+        onPointerDown={pressStart}
+        onPointerUp={pressEnd}
+        onPointerLeave={pressEnd}
+        onPointerCancel={pressEnd}
+        onContextMenu={function (e) { e.preventDefault(); }}
+        style={{ userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', cursor: 'pointer' }}
+      >
+        <span className="ember" aria-hidden="true"></span>Guardian of the Hearth
+      </h1>
+      <p className="sub">Game engine: quests · dungeons · loot · buildings · achievements</p>
+
+      {boot.state === 'loading' && (
+        <div className="card"><h2>Lighting the hearth…</h2><p className="note">Opening the database, recovering, verifying the chain.</p></div>
+      )}
+
+      {boot.state === 'noidb' && (
+        <div className="card">
+          <h2>This preview can't store data</h2>
+          <p className="note">IndexedDB isn't available in this sandbox. Deploy to Netlify and open the live link — everything runs on-device there.</p>
+        </div>
+      )}
+
+      {boot.state === 'error' && (
+        <div className="card"><h2>The hearth didn't light</h2><div className="msg bad">{boot.error}</div></div>
+      )}
+
+      {boot.state === 'ready' && (
+        <React.Fragment>
+          <div className="card">
+            <h2>Inspection ledger</h2>
+            <div className="summary">
+              <span className="chip">{G.TestSuite.count} checks</span>
+              {results.length > 0 && <span className="chip pass">{passed} passed</span>}
+              {failed > 0 && <span className="chip fail">{failed} failed</span>}
+              {running && <span className="chip">running…</span>}
+              {done && failed === 0 && <span className="chip pass">all clear ✓</span>}
+              {chain && <span className={'chip ' + (chain.valid ? 'pass' : 'fail')}>{chain.valid ? 'chain VALID · ' + chain.length : 'chain BROKEN'}</span>}
+            </div>
+            <div className="btnrow">
+              <button className="primary" onClick={runTests} disabled={running}>
+                {running ? 'Inspecting… (PIN tests take a moment)' : 'Run all tests'}
+              </button>
+              <button onClick={resetTestDb} disabled={running}>Reset test data</button>
+              <button onClick={inspectSeed} disabled={running}>Inspect seed data</button>
+            </div>
+            {results.length > 0 && (
+              <ul className="ledger" style={{ marginTop: 12 }}>
+                {results.map(function (r, i) {
+                  return (
+                    <li key={i} className={r.ok ? '' : 'fail'}>
+                      <span className="row">{(r.ok ? '✓ ' : '✕ ') + r.name}{!r.ok && <span className="err">{r.error}</span>}</span>
+                      <span className="ms">{r.ms}ms</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="card">
+            <h2>Quest board</h2>
+            {!demo && (
+              <React.Fragment>
+                <p className="note" style={{ marginTop: 0 }}>Create a demo child to play the full loop: submit → parent approves → rewards → raid → loot.</p>
+                <div className="btnrow"><button className="primary" onClick={createDemoChild}>Create demo child + guardian</button></div>
+              </React.Fragment>
+            )}
+            {demo && demo.guardian && (
+              <React.Fragment>
+                <p className="note" style={{ marginTop: 0 }}>
+                  🦊 <b style={{ color: 'var(--ink)' }}>{demo.guardian.name}</b> · Lv {demo.guardian.level} · ✦ {demo.guardian.gold} ·
+                  ⚡ {demo.guardian.energy}/{demo.guardian.maxEnergy} · ♥ {demo.guardian.affection} ·
+                  XP {demo.guardian.xp} · 🔥 {demo.streak ? demo.streak.current : 0}
+                </p>
+                <div className="btnrow">
+                  {DEMO_QUESTS.map(function (qid) {
+                    const q = demo.questsById[qid];
+                    const b = demo.boardById[qid];
+                    const left = b ? b.remainingToday : 0;
+                    return (
+                      <button key={qid} onClick={function () { submitQuest(qid); }} disabled={left === 0}>
+                        {q.icon} {q.title} ({left} left)
+                      </button>
+                    );
+                  })}
+                </div>
+                {demo.pending.length === 0 && <p className="note">No pending submissions. Submitting grants nothing by itself — rewards wait for the parent.</p>}
+                {demo.pending.length > 0 && (
+                  <ul className="ledger" style={{ marginTop: 12 }}>
+                    {demo.pending.map(function (s) {
+                      const q = demo.questsById[s.questId] || { title: s.questId, icon: '⭐' };
+                      return (
+                        <li key={s.id}>
+                          <span className="row">
+                            {q.icon} {q.title} — PENDING
+                            {session ? (
+                              <span style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                <button className="mini" onClick={function () { decide(s.id, 'APPROVE'); }}>Approve</button>
+                                <button className="mini" onClick={function () { decide(s.id, 'REJECT'); }}>Reject</button>
+                              </span>
+                            ) : (
+                              <span className="err" style={{ color: 'var(--dim)' }}>Awaiting a parent. Deciding requires parent mode.</span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </React.Fragment>
+            )}
+          </div>
+
+          {demo && demo.guardian && dz && (
+            <div className="card">
+              <h2>Dungeons</h2>
+              {dz.dungeons.map(function (d) {
+                const isActive = activeRun && activeRun.dungeonId === d.def.id;
+                const remaining = isActive ? activeRun.endsAt - gameNow() : 0;
+                return (
+                  <div className="rowline" key={d.def.id}>
+                    <span className="grow">
+                      {d.def.name} <span className="dim">· {d.def.tier} · {d.def.durationMin}m · {d.energyCost}⚡</span>
+                      {!d.unlocked && <span className="dim"> · 🔒 Lv {d.def.unlockLevel}</span>}
+                    </span>
+                    {isActive && remaining > 0 && <span className="dim">⏳ {fmtCountdown(remaining)}</span>}
+                    {isActive && remaining <= 0 && <button className="mini" onClick={function () { claimDungeon(activeRun.id); }}>Claim 🎒</button>}
+                    {!isActive && d.unlocked && !activeRun && (
+                      <button className="mini" onClick={function () { startDungeon(d.def.id); }} disabled={demo.guardian.energy < d.energyCost}>Start</button>
+                    )}
+                    {!isActive && activeRun && <span className="dim">expedition out</span>}
+                  </div>
+                );
+              })}
+              <div className="btnrow" style={{ marginTop: 10 }}>
+                <button onClick={function () { skipTime(10 * 60000); }}>⏩ Skip 10 min</button>
+                <button onClick={function () { skipTime(60 * 60000); }}>⏩ Skip 1 hour</button>
+              </div>
+              <p className="note">Fast-forward is a dev control for testing timers — it ages parent sessions too.</p>
+            </div>
+          )}
+
+          {demo && demo.guardian && (
+            <div className="card">
+              <h2>Workshop &amp; island</h2>
+              <div className="rowline">
+                <span className="grow">📦 Mystery Loot Crates <span className="dim">· {demo.crates} held</span></span>
+                <button className="mini" onClick={openCrate} disabled={demo.crates === 0}>Open one</button>
+              </div>
+              {demo.buildings.map(function (b) {
+                return (
+                  <div className="rowline" key={b.type}>
+                    <span className="grow">
+                      🏗️ {b.name} <span className="dim">· Lv {b.level}/{b.maxLevel}{b.type === 'SANCTUARY' ? ' · +10⚡ cap per level' : ''}</span>
+                    </span>
+                    {b.nextCost !== null
+                      ? <button className="mini" onClick={function () { upgradeBuilding(b.type); }} disabled={demo.guardian.gold < b.nextCost}>{b.nextCost} ✦</button>
+                      : <span className="dim">MAX</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {demo && demo.achievements && demo.achievements.length > 0 && (
+            <div className="card">
+              <h2>Achievements</h2>
+              {demo.achievements.map(function (a) {
+                const pct = Math.min(100, Math.round((a.progress / a.target) * 100));
+                return (
+                  <div key={a.def.id} style={{ padding: '7px 2px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <span>{a.unlockedAt !== undefined ? '🏅 ' : ''}{a.def.name}</span>
+                      <span className="dim">{a.progress}/{a.target}</span>
+                    </div>
+                    <div className="bar"><span style={{ width: pct + '%' }}></span></div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {(gateRevealed || session) && (
+            <div className="card" style={{ borderColor: 'rgba(232,133,61,0.55)' }}>
+              <h2>Parent gate 🛡️</h2>
+              {!parent && (
+                <React.Fragment>
+                  <p className="note" style={{ marginTop: 0 }}>No parent account exists yet. Create one and set a PIN (4–12 digits).</p>
+                  <input className="field" value={parentName} onChange={function (e) { setParentName(e.target.value); }} placeholder="Parent name" maxLength={24} />
+                  <input className="field" type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={function (e) { setPin(e.target.value); }} placeholder="Choose a PIN" maxLength={12} />
+                  <div className="btnrow"><button className="primary" onClick={createParentWithPin}>Create parent &amp; set PIN</button></div>
+                </React.Fragment>
+              )}
+              {parent && !hasPin && (
+                <React.Fragment>
+                  <p className="note" style={{ marginTop: 0 }}>{parent.name} has no PIN yet.</p>
+                  <input className="field" type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={function (e) { setPin(e.target.value); }} placeholder="Choose a PIN (4–12 digits)" maxLength={12} />
+                  <div className="btnrow"><button className="primary" onClick={setPinForParent}>Set PIN</button></div>
+                </React.Fragment>
+              )}
+              {parent && hasPin && !session && (
+                <React.Fragment>
+                  <p className="note" style={{ marginTop: 0 }}>Unlock parent mode for {parent.name}. Three wrong attempts lock the gate for 60s, doubling each time.</p>
+                  <input className="field" type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={function (e) { setPin(e.target.value); }} placeholder="Enter PIN" maxLength={12} />
+                  <div className="btnrow"><button className="primary" onClick={unlock}>Unlock</button></div>
+                </React.Fragment>
+              )}
+              {session && (
+                <React.Fragment>
+                  <div className="summary">
+                    <span className="chip pass">unlocked · {fmtCountdown(sessionLeft)} left</span>
+                    {chain && <span className={'chip ' + (chain.valid ? 'pass' : 'fail')}>{chain.valid ? 'chain VALID' : 'chain ' + chain.reason}</span>}
+                  </div>
+                  <div className="btnrow">
+                    <button onClick={lockNow}>Lock now</button>
+                    <button onClick={verifyChainNow}>Verify audit chain</button>
+                    <button onClick={recoverNow}>Recover rewards</button>
+                    <button onClick={removeDemo}>Remove demo data</button>
+                  </div>
+                  <p className="note">Every decision is appended to the hash chain. Each use extends the session; idle 5 minutes and it locks itself.</p>
+                </React.Fragment>
+              )}
+              {gateMsg && <div className={'msg ' + (gateMsg.kind === 'ok' ? 'ok' : 'bad')}>{gateMsg.text}</div>}
+            </div>
+          )}
+
+          <div className="card">
+            <h2>Backup &amp; restore</h2>
+            <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>
+              {boot.seed && boot.seed.seeded ? 'Fresh install: catalog seeded.' : 'Existing install detected.'}
+              {boot.recovery && boot.recovery.recovered > 0 ? ' Recovered ' + boot.recovery.recovered + ' interrupted reward(s) at boot.' : ''}
+              {' '}Backups are checksummed — a modified file is refused before anything is written.
+            </p>
+            <div className="btnrow">
+              <button onClick={exportBackup}>Export backup</button>
+              <button onClick={pickImportFile}>Import backup</button>
+            </div>
+            <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={onImportFile} />
+          </div>
+
+          {counts && (
+            <div className="card">
+              <h2>Seed inspection — {G.CONFIG.DB.name}</h2>
+              <table className="counts"><tbody>
+                {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
+              </tbody></table>
+            </div>
+          )}
+
+          {msg && <div className={'msg ' + (msg.kind === 'ok' ? 'ok' : 'bad')}>{msg.text}</div>}
+        </React.Fragment>
+      )}
+
+      <footer>
+        <b>Build GOTH-P4.1</b> — Phase 4 of 7. Parent gate: long-press the ember for 3 seconds.
+        This inspection screen is temporary; the real game UI (with your painted art) arrives
+        in Phase 6. Next phase: state management — the store that drives the whole interface.
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

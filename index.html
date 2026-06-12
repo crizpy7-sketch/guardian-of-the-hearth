@@ -2730,6 +2730,7 @@
           const parent = users.find(function (u) { return u.role === 'PARENT'; });
           const cred = parent ? await ctx.repos.credentials.getByUser(parent.id) : null;
           dispatch({ type: T.PIN_STATUS, hasPin: !!cred });
+          await healTimeTravel(ctx);
           const savedId = await ctx.repos.meta.get('app.activeChildId');
           let child = savedId ? users.find(function (u) { return u.id === savedId && u.role === 'CHILD'; }) : null;
           if (!child) {
@@ -3065,7 +3066,54 @@
         } catch (e) { return failToast(dispatch, 'gate', e); }
       };
     },
+    repairTime: function () {
+      return async function (dispatch, getState, ctx) {
+        const fixed = await healTimeTravel(ctx);
+        toastOk(dispatch, 'main', fixed > 0
+          ? 'Repaired ' + fixed + ' time-travelled record' + (fixed === 1 ? '' : 's') + '.'
+          : 'No time damage found.');
+        await Actions.refreshChild()(dispatch, getState, ctx);
+        if (getState().mode === 'PARENT_MODE') { await Actions.loadParentOverview()(dispatch, getState, ctx); }
+        return { ok: true, fixed: fixed };
+      };
+    },
   };
+
+  async function healTimeTravel(ctx) {
+    // Repairs records stamped in the future by dev-clock fast-forwarding.
+    // Future streak days make every approval throw TIME_BACKWARDS, which
+    // strands submissions as PENDING and silently exhausts daily limits.
+    const now = Date.now();
+    const grace = 5 * 60000;
+    const today = TimeUtil.todayStr(new Date(now));
+    const subs = await ctx.db.getAll('submissions');
+    const streaks = await ctx.db.getAll('streaks');
+    const runs = await ctx.db.getAll('dungeonRuns');
+    let fixed = 0;
+    await ctx.db.atomic(['submissions', 'streaks', 'dungeonRuns'], async function (c) {
+      for (const s of subs) {
+        const cp = Object.assign({}, s);
+        let ch = false;
+        if (cp.submittedAt > now + grace) { cp.submittedAt = now; ch = true; }
+        if (cp.decidedAt !== undefined && cp.decidedAt > now + grace) { cp.decidedAt = now; ch = true; }
+        if (ch) { await c.put('submissions', cp); fixed++; }
+      }
+      for (const st of streaks) {
+        if (st.lastActiveDay !== undefined && st.lastActiveDay > today) {
+          await c.put('streaks', Object.assign({}, st, { lastActiveDay: today }));
+          fixed++;
+        }
+      }
+      for (const r of runs) {
+        if (r.startedAt > now + grace) {
+          const delta = r.startedAt - now;
+          await c.put('dungeonRuns', Object.assign({}, r, { startedAt: r.startedAt - delta, endsAt: r.endsAt - delta }));
+          fixed++;
+        }
+      }
+    });
+    return fixed;
+  }
 
   function makeStore(ctx) {
     const now = ctx.now || function () { return Date.now(); };
@@ -4308,6 +4356,31 @@
       t.ok(s.guardian && s.guardian.name === 'Pip', 'bundle hydrated for the adopted child');
       t.equal(await env.repos.meta.get('app.activeChildId'), kid.id, 'adoption persisted');
     } },
+    { name: 'recovery: time-travelled records are healed at boot', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      const kid = await env.repos.users.create({ role: 'CHILD', name: 'Tess' });
+      await env.repos.guardians.createForUser(kid.id, { name: 'Pip', species: 'FOX' });
+      await env.services.auth.setupPin(parent.id, '5151');
+      const future = Date.now() + 3 * 86400000;
+      await env.db.atomic(['submissions', 'streaks'], async function (c) {
+        await c.put('submissions', { id: 'sub_tt', userId: kid.id, questId: 'qst_water_glass', status: 'PENDING', submittedAt: future });
+        await c.put('streaks', { id: 'stk_tt', userId: kid.id, scope: 'GLOBAL', current: 4, best: 4, lastActiveDay: '2999-12-31' });
+      });
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      await store.dispatch(Actions.boot());
+      const subs = await env.db.getAll('submissions');
+      const tt = subs.find(function (s) { return s.id === 'sub_tt'; });
+      t.ok(tt.submittedAt <= Date.now() + 1000, 'future submission clamped back to now');
+      const session = await env.services.auth.verifyPin(parent.id, '5151');
+      await env.services.approval.approve(session.token, 'sub_tt');
+      const g = await env.repos.guardians.getByUser(kid.id);
+      t.ok(g.energy > 0, 'approval succeeds after healing — no TIME_BACKWARDS');
+      const streaks = await env.repos.streaks.listByUser(kid.id);
+      const glob = streaks.find(function (x) { return x.scope === 'GLOBAL'; });
+      t.ok(glob.lastActiveDay <= TimeUtil.todayStr(new Date()), 'streak day pulled back to today');
+      t.ok(glob.best >= 4, 'best streak preserved');
+    } },
   ];
 
   const TestSuite = {
@@ -5389,9 +5462,17 @@ function QuestsScreen(props) {
                       {pc > 0 && <span className="sent-chip">✉️ {pc} with the Keeper</span>}
                     </div>
                   </span>
-                  <button className={'mini ' + (J.ok[b.quest.id] ? 'sentok' : 'go')} disabled={spent}
-                    onClick={function (e) { J.submit(b.quest, e); }}>
-                    {J.ok[b.quest.id] ? '✓ Sent!' : 'I did it!'}
+                  <button className={'mini ' + (J.ok[b.quest.id] ? 'sentok' : 'go')}
+                    style={spent ? { opacity: 0.65 } : null}
+                    onClick={function (e) {
+                      if (spent) {
+                        Sfx.tap();
+                        props.store.dispatch({ type: G.ActionTypes.TOAST_SHOW, scope: 'main', kind: 'ok', text: '🌙 All done for today — this quest returns at midnight!' });
+                        return;
+                      }
+                      J.submit(b.quest, e);
+                    }}>
+                    {J.ok[b.quest.id] ? '✓ Sent!' : (spent ? 'Done ✓' : 'I did it!')}
                   </button>
                 </div>
               );
@@ -6063,10 +6144,17 @@ function ParentSettings(props) {
 
       <div className="card">
         <h2>Time controls (testing)</h2>
-        <p className="note" style={{ marginTop: 0 }}>Fast-forward the whole game clock to test expedition timers. It ages this parent session too.</p>
-        <div className="btnrow" style={{ marginTop: 10 }}>
+        <p className="note" style={{ marginTop: 0 }}>Fast-forward to test expedition timers. Careful: jumping past midnight confuses daily limits and streaks. If quests or approvals ever act stuck, run Repair below — it also runs automatically at every launch.</p>
+        <div style={{ margin: '8px 0' }}>
+          <span className="seal num">clock {TIME.offset === 0 ? 'normal' : '+' + Math.round(TIME.offset / 60000) + ' min'}</span>
+        </div>
+        <div className="btnrow">
           <button className="btn" onClick={function () { TIME.offset += 10 * 60000; store.dispatch(A.tick(gameNow())); }}>⏩ 10 min</button>
           <button className="btn" onClick={function () { TIME.offset += 60 * 60000; store.dispatch(A.tick(gameNow())); }}>⏩ 1 hour</button>
+          <button className="btn" onClick={function () { TIME.offset = 0; store.dispatch(A.tick(gameNow())); }}>↩ Reset clock</button>
+        </div>
+        <div className="btnrow" style={{ marginTop: 9 }}>
+          <button className="btn" onClick={function () { store.dispatch(A.repairTime()); }}>🩹 Repair time travel</button>
         </div>
       </div>
 
@@ -6098,7 +6186,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-1.9 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-2.0 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

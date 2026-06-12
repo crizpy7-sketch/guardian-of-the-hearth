@@ -368,10 +368,11 @@
   .flicker { position: fixed; inset: 0; z-index: 0; pointer-events: none;
     background: radial-gradient(540px 400px at 50% 58%, rgba(232,133,61,0.10), transparent 70%);
     animation: flicker 3.4s ease-in-out infinite; }
-  @keyframes flicker { 0%, 100% { opacity: 0.55; } 40% { opacity: 0.95; } 60% { opacity: 0.7; } }
+  @keyframes flicker { 0%, 100% { opacity: 0.4; } 40% { opacity: 1; } 60% { opacity: 0.62; } }
   .sparks { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
   .sparks span { position: absolute; bottom: -12px; border-radius: 50%;
-    background: radial-gradient(circle, #FFD9A8, rgba(232,133,61,0) 70%);
+    background: radial-gradient(circle, #FFE2B8, rgba(232,133,61,0) 72%);
+    box-shadow: 0 0 9px 2px rgba(232,133,61,0.55);
     animation: rise linear infinite; opacity: 0; }
   @keyframes rise {
     0% { transform: translateY(0) scale(1); opacity: 0; }
@@ -380,7 +381,7 @@
     100% { transform: translateY(-105vh) scale(0.4); opacity: 0; }
   }
   .hero-art img { animation: breathe 4.5s ease-in-out infinite; transform-origin: 50% 85%; }
-  @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.022); } }
+  @keyframes breathe { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.045) translateY(-4px); } }
   .hero-art.hop img { animation: petHop 0.6s cubic-bezier(.34,1.56,.64,1); }
   @keyframes petHop {
     0% { transform: scale(1); } 30% { transform: translateY(-14px) scale(1.04); }
@@ -417,10 +418,44 @@
   button.mini:active, .tab:active { transform: scale(0.93); }
   .hdr-kid.snd { min-width: 44px; justify-content: center; padding: 6px 10px; }
 
+  /* ---------- v1.2: living island + reactive quests ---------- */
+  .isl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .isl-card { position: relative; border: 1px solid var(--edge); border-radius: 16px;
+    overflow: hidden; padding: 0; aspect-ratio: 1 / 1.05; background: #1C1510; cursor: pointer; }
+  .isl-card img { width: 100%; height: 100%; object-fit: cover; }
+  .isl-card .fallback { position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; font-size: 42px; }
+  .isl-ov { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; text-align: left;
+    padding: 20px 9px 8px; background: linear-gradient(180deg, transparent, rgba(16,12,9,0.94)); }
+  .isl-name { font-weight: 700; font-size: 13px; }
+  .isl-cost { font-family: var(--mono); font-size: 11.5px; color: var(--gold); margin-top: 2px; }
+  .pips.mini .pip { width: 7px; height: 7px; }
+  .isl-card:active { transform: scale(0.97); }
+  .isl-card.built { animation: builtGlow 0.9s ease; }
+  @keyframes builtGlow {
+    0% { box-shadow: 0 0 0 rgba(224,180,92,0); }
+    35% { box-shadow: 0 0 28px rgba(224,180,92,0.85); transform: scale(1.03); }
+    100% { box-shadow: 0 0 0 rgba(224,180,92,0); }
+  }
+  .isl-hero { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 4 / 3;
+    margin-bottom: 10px; background: #1C1510; }
+  .isl-hero img { width: 100%; height: 100%; object-fit: cover; }
+  .isl-hero .fallback { position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; font-size: 60px; }
+  .sent-chip { display: inline-flex; align-items: center; margin-left: 6px; font-size: 10.5px;
+    color: var(--gold); border: 1px solid #6B5326; border-radius: 999px; padding: 1px 7px; }
+  .q-card.justSent { animation: qPop 0.5s ease; }
+  @keyframes qPop {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.045); box-shadow: 0 0 18px rgba(232,133,61,0.55); }
+    100% { transform: scale(1); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .ember, .shell-main, .veil, .sheet, .modal, .cele-card, .burst, .toast,
     .flicker, .sparks span, .hero-art img, .hero-art.hop img, .chip.flash,
-    .tab.on .ti, .shell-main > *, .chest-wrap img { animation: none !important; }
+    .tab.on .ti, .shell-main > *, .chest-wrap img,
+    .isl-card.built, .q-card.justSent { animation: none !important; }
     .xp-bar > span { transition: none; }
     .xp-bar::after { display: none; }
   }
@@ -4206,8 +4241,8 @@ const Sfx = (function () {
     o.stop(t0 + dur + 0.05);
   }
   return {
-    unlock: function () { ensure(); },
-    setOn: function (v) { on = !!v; },
+    unlock: function () { ensure(); Music.sync(); },
+    setOn: function (v) { on = !!v; Music.sync(); },
     isOn: function () { return on; },
     tap: function () { blip(620, 0.06, 'sine', 0.05); },
     pet: function () { blip(740, 0.1, 'sine', 0.09); blip(980, 0.12, 'sine', 0.07, 0.07); },
@@ -4219,20 +4254,113 @@ const Sfx = (function () {
     achieve: function () { blip(784, 0.12, 'triangle', 0.1); blip(988, 0.12, 'triangle', 0.1, 0.1); blip(1318, 0.24, 'triangle', 0.1, 0.2); },
     levelUp: function () { blip(523, 0.12, 'triangle', 0.12); blip(659, 0.12, 'triangle', 0.12, 0.11); blip(784, 0.12, 'triangle', 0.12, 0.22); blip(1046, 0.3, 'triangle', 0.13, 0.33); },
     error: function () { blip(180, 0.12, 'square', 0.05, 0, 140); },
+    build: function () { blip(196, 0.05, 'square', 0.1); blip(196, 0.05, 'square', 0.1, 0.09); blip(523, 0.2, 'triangle', 0.09, 0.2); },
+    _ctx: function () { return ensure(); },
+  };
+})();
+
+/* ---- Music: a gentle generative hearth lullaby with fire crackle. ---- */
+const Music = (function () {
+  let timer = null;
+  let nextBeat = 0;
+  let step = 0;
+  const TEMPO = 0.86;
+  const CHORDS = [
+    [130.81, 196.00, 329.63],
+    [110.00, 164.81, 261.63],
+    [87.31, 174.61, 261.63],
+    [98.00, 196.00, 293.66],
+  ];
+  const MELODY = [523.25, 587.33, 659.25, 783.99, 659.25, 587.33, 523.25, 392.00,
+    523.25, 659.25, 783.99, 880.00, 783.99, 659.25, 587.33, 523.25];
+  function pad(c, t0, freqs) {
+    freqs.forEach(function (f, i) {
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = 'triangle';
+      o.frequency.value = f * (i === 2 ? 1.002 : 1);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(0.022, t0 + 0.8);
+      g.gain.linearRampToValueAtTime(0.014, t0 + TEMPO * 3.4);
+      g.gain.linearRampToValueAtTime(0.0001, t0 + TEMPO * 4);
+      o.connect(g);
+      g.connect(c.destination);
+      o.start(t0);
+      o.stop(t0 + TEMPO * 4 + 0.1);
+    });
+  }
+  function pluck(c, t0, f) {
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = 'sine';
+    o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.05, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.9);
+    o.connect(g);
+    g.connect(c.destination);
+    o.start(t0);
+    o.stop(t0 + 1);
+  }
+  function crackle(c, t0) {
+    const dur = 0.02 + Math.random() * 0.05;
+    const buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const srcN = c.createBufferSource();
+    srcN.buffer = buf;
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 700 + Math.random() * 1800;
+    bp.Q.value = 1.2;
+    const g = c.createGain();
+    g.gain.value = 0.012 + Math.random() * 0.012;
+    srcN.connect(bp);
+    bp.connect(g);
+    g.connect(c.destination);
+    srcN.start(t0);
+  }
+  function tickScheduler() {
+    if (!Sfx.isOn()) return;
+    const c = Sfx._ctx();
+    if (!c) return;
+    while (nextBeat < c.currentTime + 0.35) {
+      if (step % 4 === 0) pad(c, nextBeat, CHORDS[Math.floor(step / 4) % CHORDS.length]);
+      const m = MELODY[step % MELODY.length];
+      if (m && (step % 2 === 0 || Math.random() < 0.3)) pluck(c, nextBeat + 0.02, m);
+      if (Math.random() < 0.85) crackle(c, nextBeat + Math.random() * TEMPO);
+      nextBeat += TEMPO;
+      step += 1;
+    }
+  }
+  return {
+    sync: function () {
+      const wantOn = Sfx.isOn() && !document.hidden;
+      if (wantOn && !timer) {
+        const c = Sfx._ctx();
+        if (!c) return;
+        nextBeat = Math.max(nextBeat, c.currentTime + 0.1);
+        timer = setInterval(tickScheduler, 120);
+        tickScheduler();
+      } else if (!wantOn && timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    },
   };
 })();
 
 /* Floating hearth sparks (markup built once; pure CSS does the motion). */
 const SPARKS = (function () {
   const arr = [];
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < 13; i++) {
     arr.push(
       <span key={i} style={{
-        left: (6 + i * 10.5) + '%',
-        width: (3 + (i % 3)) + 'px',
-        height: (3 + (i % 3)) + 'px',
-        animationDelay: (i * 0.8) + 's',
-        animationDuration: (5 + (i % 4) * 1.3) + 's',
+        left: ((4 + i * 7.6) % 96) + '%',
+        width: (4 + (i % 4)) + 'px',
+        height: (4 + (i % 4)) + 'px',
+        animationDelay: (i * 0.55) + 's',
+        animationDuration: (4.2 + (i % 5) * 1.1) + 's',
       }} />
     );
   }
@@ -4390,6 +4518,11 @@ function App() {
     const t = state && state.ui.toast;
     if (t && t.kind === 'bad') Sfx.error();
   }, [state && state.ui.toast]);
+  useEffect(function () {
+    function vis() { Music.sync(); }
+    document.addEventListener('visibilitychange', vis);
+    return function () { document.removeEventListener('visibilitychange', vis); };
+  }, []);
 
   const booting = !state || state.boot === 'LOADING' || !splashDone;
   const children = state ? S.selectChildren(state) : [];
@@ -4625,6 +4758,17 @@ function HomeScreen(props) {
       return function () { clearTimeout(id); };
     }
   }, [g && g.gold, g && g.energy]);
+  const [sent, setSent] = useState({});
+  async function submitWithPop(qid) {
+    const r = await props.store.dispatch(A.submitQuest(qid));
+    if (r.ok) {
+      Sfx.submit();
+      setSent(function (s) { const n = Object.assign({}, s); n[qid] = true; return n; });
+      setTimeout(function () {
+        setSent(function (s) { const n = Object.assign({}, s); delete n[qid]; return n; });
+      }, 600);
+    }
+  }
   if (!g) return null;
   const sp = speciesOf(g.species);
   const xpNeeded = G.Leveling.xpToNext(g.level);
@@ -4678,14 +4822,18 @@ function HomeScreen(props) {
         <h2>Today's quests</h2>
         {quick.length === 0 && <p className="note" style={{ marginTop: 0 }}>Every quest is done for today. The hearth is proud of you.</p>}
         {quick.map(function (b) {
+          const pc = state.pending.filter(function (s) { return s.questId === b.quest.id; }).length;
           return (
-            <div className="q-card" key={b.quest.id}>
+            <div className={'q-card' + (sent[b.quest.id] ? ' justSent' : '')} key={b.quest.id}>
               <span className="q-icon">{b.quest.icon}</span>
               <span className="q-main">
                 <span className="q-title">{b.quest.title}</span>
-                <div className="q-sub">{b.remainingToday} left today · +{b.quest.reward.energy}⚡ +{b.quest.reward.coins}✦</div>
+                <div className="q-sub">
+                  {b.remainingToday} left today · +{b.quest.reward.energy}⚡ +{b.quest.reward.coins}✦
+                  {pc > 0 && <span className="sent-chip">✉️ {pc} with the Keeper</span>}
+                </div>
               </span>
-              <button className="mini go" onClick={async function () { const r = await props.store.dispatch(A.submitQuest(b.quest.id)); if (r.ok) Sfx.submit(); }}>I did it!</button>
+              <button className="mini go" onClick={function () { submitWithPop(b.quest.id); }}>I did it!</button>
             </div>
           );
         })}
@@ -4700,6 +4848,17 @@ function HomeScreen(props) {
 /* ---------------- quests ---------------- */
 function QuestsScreen(props) {
   const state = props.state;
+  const [sent, setSent] = useState({});
+  async function submitWithPop(qid) {
+    const r = await props.store.dispatch(A.submitQuest(qid));
+    if (r.ok) {
+      Sfx.submit();
+      setSent(function (s) { const n = Object.assign({}, s); n[qid] = true; return n; });
+      setTimeout(function () {
+        setSent(function (s) { const n = Object.assign({}, s); delete n[qid]; return n; });
+      }, 600);
+    }
+  }
   const groups = {};
   state.questBoard.forEach(function (b) {
     const c = b.quest.category;
@@ -4722,17 +4881,19 @@ function QuestsScreen(props) {
             </div>
             {list.map(function (b) {
               const spent = b.remainingToday === 0;
+              const pc = state.pending.filter(function (s) { return s.questId === b.quest.id; }).length;
               return (
-                <div className="q-card" key={b.quest.id} style={spent ? { opacity: 0.55 } : null}>
+                <div className={'q-card' + (sent[b.quest.id] ? ' justSent' : '')} key={b.quest.id} style={spent ? { opacity: 0.55 } : null}>
                   <span className="q-icon">{b.quest.icon}</span>
                   <span className="q-main">
                     <span className="q-title">{b.quest.title}</span>
                     <div className="q-sub">
                       {spent ? 'done for today ✓' : b.remainingToday + ' left today'} · +{b.quest.reward.energy}⚡ +{b.quest.reward.coins}✦ +{b.quest.reward.xp}xp
+                      {pc > 0 && <span className="sent-chip">✉️ {pc} with the Keeper</span>}
                     </div>
                   </span>
                   <button className="mini go" disabled={spent}
-                    onClick={async function () { const r = await props.store.dispatch(A.submitQuest(b.quest.id)); if (r.ok) Sfx.submit(); }}>
+                    onClick={function () { submitWithPop(b.quest.id); }}>
                     I did it!
                   </button>
                 </div>
@@ -4819,16 +4980,41 @@ function RaidsScreen(props) {
 }
 
 /* ---------------- island ---------------- */
+const BUILDING_LORE = {
+  HOME: 'Where the hearth burns warmest. Every level makes home cozier.',
+  GARDEN: 'Glowing herbs and shy mushrooms. Tend it and it blooms brighter.',
+  WORKSHOP: 'Anvils, tools, and big ideas take shape by the forge.',
+  HARBOR: 'Little boats bring news and treasures from far waters.',
+  RUINS: 'Old stones humming with forgotten rune-magic.',
+  SANCTUARY: "Your guardian's nest among the branches. Each level adds +10⚡ to the energy cap.",
+};
+
 function IslandScreen(props) {
   const state = props.state;
   const g = state.guardian;
+  const [openType, setOpenType] = useState(null);
+  const [built, setBuilt] = useState(null);
+  const open = openType ? state.buildings.find(function (b) { return b.type === openType; }) : null;
+  async function upgrade(type) {
+    const r = await props.store.dispatch(A.upgradeBuilding(type));
+    if (r.ok) {
+      Sfx.build();
+      setBuilt(type);
+      setTimeout(function () { setBuilt(null); }, 950);
+    }
+  }
+  function pipsFor(b, mini) {
+    const arr = [];
+    for (let i = 0; i < b.maxLevel; i++) arr.push(<span key={i} className={'pip' + (i < b.level ? ' on' : '')} />);
+    return <div className={'pips' + (mini ? ' mini' : '')}>{arr}</div>;
+  }
   return (
     <React.Fragment>
       <h1 style={{ fontSize: 24, marginBottom: 4 }}>Hearth Island</h1>
-      <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>Spend gold to grow your island. The Sanctuary raises your energy cap.</p>
+      <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>Tap a building to visit it. Gold from quests and raids makes the island grow.</p>
       <div className="card">
-        <div className="b-row">
-          <div className="b-thumb"><Art srcs={['chest.jpg']} emoji="📦" alt="Loot crate" /></div>
+        <div className="b-row" style={{ borderBottom: 'none', padding: 0 }}>
+          <div className="b-thumb" style={{ width: 70, height: 70 }}><Art srcs={['chest.jpg']} emoji="📦" alt="Loot crate" /></div>
           <div className="b-main">
             <div style={{ fontWeight: 600 }}>Mystery Loot Crates</div>
             <div className="note" style={{ margin: 0 }}>{state.crates} waiting to be opened</div>
@@ -4839,31 +5025,47 @@ function IslandScreen(props) {
           </button>
         </div>
       </div>
-      <div className="card">
-        <h2>Buildings</h2>
+      <div className="isl-grid">
         {state.buildings.map(function (b) {
-          const pips = [];
-          for (let i = 0; i < b.maxLevel; i++) pips.push(<span key={i} className={'pip' + (i < b.level ? ' on' : '')} />);
           return (
-            <div className="b-row" key={b.type}>
-              <div className="b-thumb">
-                <Art srcs={['building-' + b.type.toLowerCase() + '.jpg']} emoji="🏗️" alt={b.name} />
-              </div>
-              <div className="b-main">
-                <div style={{ fontWeight: 600 }}>{b.name}</div>
-                <div className="pips">{pips}</div>
-                {b.type === 'SANCTUARY' && <div className="note" style={{ margin: '3px 0 0' }}>+10⚡ cap per level</div>}
-              </div>
-              {b.nextCost !== null
-                ? <button className="mini go" disabled={!g || g.gold < b.nextCost}
-                    onClick={function () { props.store.dispatch(A.upgradeBuilding(b.type)); }}>
-                    {b.nextCost} ✦
-                  </button>
-                : <span className="seal">MAX</span>}
-            </div>
+            <button key={b.type} className={'isl-card' + (built === b.type ? ' built' : '')}
+              onClick={function () { setOpenType(b.type); }}>
+              <Art srcs={['building-' + b.type.toLowerCase() + '.jpg']} emoji="🏗️" alt={b.name} />
+              <span className="isl-ov">
+                <span className="isl-name">{b.name}</span>
+                {pipsFor(b, true)}
+                <div className="isl-cost">{b.nextCost !== null ? b.nextCost + ' ✦ to grow' : 'MAX'}</div>
+              </span>
+            </button>
           );
         })}
       </div>
+      {open && (
+        <div className="veil" onClick={function () { setOpenType(null); }}>
+          <div className="sheet" onClick={function (e) { e.stopPropagation(); }}>
+            <div className={'isl-hero' + (built === open.type ? ' isl-card built' : '')}>
+              <Art srcs={['building-' + open.type.toLowerCase() + '.jpg']} emoji="🏗️" alt={open.name} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <h2>{open.name}</h2>
+              <span className="lv-pill">Lv {open.level}/{open.maxLevel}</span>
+            </div>
+            {pipsFor(open, false)}
+            <p className="note">{BUILDING_LORE[open.type]}</p>
+            <div className="btnrow" style={{ marginTop: 12 }}>
+              <button className="btn" onClick={function () { setOpenType(null); }}>Close</button>
+              {open.nextCost !== null ? (
+                <button className="btn primary" disabled={!g || g.gold < open.nextCost}
+                  onClick={function () { upgrade(open.type); }}>
+                  {(!g || g.gold < open.nextCost) ? 'Need ' + open.nextCost + ' ✦' : 'Grow it · ' + open.nextCost + ' ✦'}
+                </button>
+              ) : (
+                <span className="seal" style={{ alignSelf: 'center' }}>Fully grown ✨</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </React.Fragment>
   );
 }
@@ -5287,7 +5489,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-1.1 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-1.2 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

@@ -2,146 +2,379 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
 <meta name="theme-color" content="#1A1410" />
-<title>Guardian of the Hearth — Phase 4 Inspection</title>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Guardian" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+<title>Guardian of the Hearth</title>
 <style>
   :root {
-    --bg: #1A1410;
-    --panel: #241B14;
-    --panel-edge: #3A2C1F;
-    --ink: #EDE3D2;
-    --dim: #8A7A66;
+    --bg: #1A1410;            /* Hearthwood */
+    --panel: #241B14;         /* Inglenook */
+    --panel-2: #2C2218;
+    --edge: #3A2C1F;
+    --ink: #EDE3D2;           /* Candlelight */
+    --dim: #8A7A66;           /* Ash */
     --ember: #E8853D;
-    --pass: #7FB069;
-    --fail: #C75146;
+    --ember-deep: #B85F1E;
+    --gold: #E0B45C;
+    --moss: #7FB069;
+    --brick: #C75146;
+    --r-common: #9AA0A6; --r-uncommon: #7FB069; --r-rare: #5B9BD5;
+    --r-epic: #9B6DD7; --r-legendary: #E0B45C; --r-mythic: #E85D75;
+    --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --tabbar-h: 64px;
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; }
   body {
-    background: radial-gradient(1200px 600px at 50% -10%, #261C13 0%, var(--bg) 55%) var(--bg);
+    background: var(--bg);
     color: var(--ink);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-family: var(--body);
     font-size: 15px;
     line-height: 1.5;
-    -webkit-text-size-adjust: 100%;
-    padding: max(16px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
+    overscroll-behavior-y: none;
   }
-  .wrap { max-width: 640px; margin: 0 auto; }
+  button { font: inherit; color: inherit; }
+  img { display: block; }
+
+  /* ---------- type ---------- */
+  .display { font-family: var(--display); font-weight: 600; letter-spacing: 0.01em; }
   .eyebrow {
-    font-size: 11px; letter-spacing: 0.22em; color: var(--dim);
-    text-transform: uppercase; margin: 4px 0 6px;
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--dim); font-weight: 600;
   }
-  h1 {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-weight: 600; font-size: 28px; line-height: 1.15;
-    margin: 0 0 4px; color: var(--ink);
-    display: flex; align-items: center; gap: 12px;
+  h1, h2, h3 { font-family: var(--display); margin: 0; font-weight: 600; }
+  h2 { font-size: 19px; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* ---------- app frame ---------- */
+  #root { min-height: 100dvh; }
+  .screen-bg {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(26,20,16,0.82) 0%, rgba(26,20,16,0.62) 38%, rgba(26,20,16,0.94) 100%),
+      radial-gradient(1100px 520px at 50% -120px, #33241636, transparent 70%),
+      var(--bg);
+    background-size: cover; background-position: center top;
+  }
+  .screen-bg.home { background-image:
+      linear-gradient(180deg, rgba(26,20,16,0.80) 0%, rgba(26,20,16,0.58) 40%, rgba(26,20,16,0.95) 100%),
+      url('./bg-home.jpg'); }
+  .screen-bg.raids { background-image:
+      linear-gradient(180deg, rgba(20,14,22,0.82) 0%, rgba(20,14,22,0.60) 40%, rgba(26,20,16,0.96) 100%),
+      url('./bg-dungeon.jpg'); }
+  .shell {
+    position: relative; z-index: 1;
+    max-width: 560px; margin: 0 auto;
+    min-height: 100dvh;
+    display: flex; flex-direction: column;
+    padding: max(10px, env(safe-area-inset-top)) 14px 0;
+  }
+  .shell-main {
+    flex: 1;
+    padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 18px);
+    animation: screenIn 260ms ease both;
+  }
+  @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- header & the living ember ---------- */
+  .hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 6px 2px 12px;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  }
+  .hdr-title {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--display); font-size: 19px; font-weight: 600;
+    touch-action: none; cursor: pointer;
   }
   .ember {
-    width: 14px; height: 14px; border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #FFC98A, var(--ember) 60%, #8C3D12);
-    box-shadow: 0 0 12px 2px rgba(232,133,61,0.55);
+    width: 13px; height: 13px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #FFD9A8, var(--ember) 55%, var(--ember-deep));
+    box-shadow: 0 0 12px 3px rgba(232,133,61,0.55);
+    animation: emberPulse 2.6s ease-in-out infinite;
     flex: 0 0 auto;
-    animation: emberpulse 2.6s ease-in-out infinite;
   }
-  @keyframes emberpulse {
-    0%, 100% { box-shadow: 0 0 10px 1px rgba(232,133,61,0.45); transform: scale(1); }
-    50% { box-shadow: 0 0 18px 5px rgba(232,133,61,0.75); transform: scale(1.12); }
+  @keyframes emberPulse {
+    0%, 100% { box-shadow: 0 0 10px 2px rgba(232,133,61,0.45); transform: scale(1); }
+    50% { box-shadow: 0 0 16px 5px rgba(232,133,61,0.75); transform: scale(1.12); }
   }
-  @media (prefers-reduced-motion: reduce) {
-    .ember { animation: none; }
+  .ember.holding {
+    animation: none;
+    box-shadow: 0 0 26px 10px rgba(232,133,61,0.95);
+    transform: scale(1.45);
+    transition: box-shadow 2.8s ease-in, transform 2.8s ease-in;
   }
-  .sub { color: var(--dim); font-size: 13px; margin: 0 0 18px; }
+  .hdr-kid {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(36,27,20,0.85); border: 1px solid var(--edge);
+    border-radius: 999px; padding: 6px 12px; font-size: 13px;
+    min-height: 38px;
+  }
+
+  /* ---------- cards ---------- */
   .card {
-    background: var(--panel);
-    border: 1px solid var(--panel-edge);
-    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(44,34,24,0.92), rgba(36,27,20,0.92));
+    border: 1px solid var(--edge);
+    border-radius: 18px;
     padding: 14px;
-    margin: 0 0 14px;
+    margin-bottom: 14px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.35);
   }
-  .card h2 {
-    font-family: Georgia, serif; font-size: 17px; font-weight: 600;
-    margin: 0 0 10px; color: var(--ink);
+  .card h2 { margin-bottom: 10px; }
+  .note { color: var(--dim); font-size: 13px; margin: 6px 0 0; }
+
+  /* ---------- guardian hero ---------- */
+  .hero { padding: 0; overflow: hidden; }
+  .hero-art {
+    position: relative; aspect-ratio: 1 / 1; max-height: 330px;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(420px 420px at 50% 42%, #3A2A1A, #221A12 75%);
   }
-  .btnrow { display: flex; flex-wrap: wrap; gap: 10px; }
-  button {
-    appearance: none; border: 1px solid var(--panel-edge);
-    background: #2E2218; color: var(--ink);
-    font: inherit; font-size: 14px;
-    border-radius: 10px; padding: 12px 14px;
-    min-height: 46px; flex: 1 1 45%;
+  .hero-art img { width: 100%; height: 100%; object-fit: cover; }
+  .hero-art .fallback { font-size: 110px; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.5)); }
+  .hero-art::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 55%, rgba(26,20,16,0.92) 100%);
+  }
+  .hero-name {
+    position: absolute; left: 14px; right: 14px; bottom: 10px; z-index: 2;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  }
+  .hero-name .display { font-size: 26px; text-shadow: 0 2px 10px rgba(0,0,0,0.7); }
+  .lv-pill {
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    background: rgba(26,20,16,0.8); border: 1px solid var(--ember-deep);
+    color: var(--gold); border-radius: 999px; padding: 4px 10px;
+  }
+  .hero-body { padding: 12px 14px 14px; }
+  .xp-bar { height: 10px; border-radius: 999px; background: #14100C; border: 1px solid var(--edge); overflow: hidden; }
+  .xp-bar > span {
+    display: block; height: 100%;
+    background: linear-gradient(90deg, var(--ember-deep), var(--ember) 60%, #FFC97F);
+    transition: width 600ms cubic-bezier(.22,1,.36,1);
+  }
+  .xp-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); margin-top: 5px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(20,16,12,0.7); border: 1px solid var(--edge);
+    border-radius: 999px; padding: 6px 11px; font-size: 13px;
+  }
+  .chip b { font-family: var(--mono); font-weight: 700; }
+  .chip.gold b { color: var(--gold); }
+  .chip.energy b { color: #FFC97F; }
+  .chip.heart b { color: #E89BB5; }
+  .chip.streak b { color: var(--ember); }
+
+  /* ---------- buttons ---------- */
+  button.btn {
+    min-height: 48px; padding: 11px 16px;
+    background: var(--panel-2); border: 1px solid var(--edge);
+    border-radius: 14px; font-size: 14px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
     cursor: pointer;
   }
-  button.primary {
-    background: linear-gradient(180deg, #F09A52, var(--ember));
-    border-color: #B85F1E; color: #241303; font-weight: 700;
-    flex-basis: 100%;
+  button.btn:active { transform: scale(0.97); }
+  button.btn.primary {
+    background: linear-gradient(180deg, var(--ember), var(--ember-deep));
+    border-color: #8F4715; color: #1C0F05;
   }
-  button:disabled { opacity: 0.5; cursor: default; }
-  button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
-  .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-  .chip {
-    border: 1px solid var(--panel-edge); border-radius: 999px;
-    padding: 4px 12px; font-size: 13px; color: var(--dim);
+  button.btn:disabled { opacity: 0.42; }
+  button.mini {
+    min-height: 40px; padding: 8px 13px; font-size: 13px; font-weight: 600;
+    background: var(--panel-2); border: 1px solid var(--edge); border-radius: 11px;
   }
-  .chip.pass { color: var(--pass); border-color: rgba(127,176,105,0.5); }
-  .chip.fail { color: var(--fail); border-color: rgba(199,81,70,0.5); }
-  .ledger { list-style: none; margin: 0; padding: 0; }
-  .ledger li {
-    border-left: 3px solid var(--pass);
-    background: #1F1812;
-    border-radius: 0 8px 8px 0;
-    padding: 8px 10px; margin: 0 0 6px;
-    font-size: 13px;
-    display: flex; justify-content: space-between; gap: 10px;
-  }
-  .ledger li.fail { border-left-color: var(--fail); }
-  .ledger li .ms { color: var(--dim); flex: 0 0 auto; }
-  .ledger li .err {
-    display: block; color: var(--fail); margin-top: 4px;
-    white-space: pre-wrap; word-break: break-word; width: 100%;
-  }
-  .ledger li .row { flex: 1 1 auto; }
-  .note { color: var(--dim); font-size: 13px; margin: 8px 0 0; }
-  .msg {
-    border: 1px solid var(--panel-edge); border-radius: 10px;
-    background: #1F1812; padding: 10px 12px; font-size: 13px;
-    margin-top: 10px; white-space: pre-wrap; word-break: break-word;
-  }
-  .msg.ok { border-color: rgba(127,176,105,0.5); color: var(--pass); }
+  button.mini.go { background: linear-gradient(180deg, var(--ember), var(--ember-deep)); border-color: #8F4715; color: #1C0F05; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 9px; }
+  .btnrow > .btn { flex: 1 1 auto; }
   input.field {
-    display: block; width: 100%;
-    background: #1F1812; border: 1px solid var(--panel-edge);
-    color: var(--ink); font: inherit; font-size: 16px;
-    border-radius: 10px; padding: 12px 14px; margin: 0 0 10px;
+    width: 100%; min-height: 48px; padding: 11px 13px; margin: 7px 0;
+    background: #16100B; border: 1px solid var(--edge); border-radius: 13px;
+    color: var(--ink); font-size: 16px;
   }
-  input.field:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
-  .bar { height: 8px; background: #14100C; border: 1px solid var(--panel-edge);
+  input.field:focus-visible, button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+
+  /* ---------- quests ---------- */
+  .q-card { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 15px;
+    background: rgba(20,16,12,0.55); border: 1px solid var(--edge); margin-bottom: 9px; }
+  .q-icon { font-size: 26px; width: 40px; text-align: center; flex: 0 0 auto; }
+  .q-main { flex: 1; min-width: 0; }
+  .q-title { font-weight: 600; font-size: 14px; }
+  .q-sub { font-size: 12px; color: var(--dim); }
+  .cat-label { display: flex; align-items: center; gap: 8px; margin: 14px 2px 8px; }
+  .cat-label .eyebrow { letter-spacing: 0.18em; }
+  .cat-rule { flex: 1; height: 1px; background: var(--edge); }
+  .pend-row { display: flex; align-items: center; gap: 10px; padding: 10px 4px;
+    border-bottom: 1px solid #2A2018; font-size: 13px; }
+  .pend-row:last-child { border-bottom: none; }
+  .badge-wait { font-size: 11px; color: var(--gold); border: 1px solid #6B5326;
+    border-radius: 999px; padding: 2px 8px; }
+
+  /* ---------- dungeons ---------- */
+  .d-card { position: relative; border-radius: 17px; overflow: hidden;
+    border: 1px solid var(--edge); margin-bottom: 12px; background: var(--panel); }
+  .d-art { position: relative; aspect-ratio: 1264 / 620; background: #20181E; }
+  .d-art img { width: 100%; height: 100%; object-fit: cover; object-position: center 38%; }
+  .d-art .fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 54px; }
+  .d-art::after { content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 35%, rgba(26,20,16,0.93) 100%); }
+  .d-body { position: absolute; left: 12px; right: 12px; bottom: 9px; z-index: 2;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+  .d-name { font-family: var(--display); font-size: 18px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+  .d-meta { font-size: 12px; color: #CBBBA4; }
+  .d-lock { position: absolute; inset: 0; z-index: 3;
+    background: rgba(16,12,9,0.62); backdrop-filter: blur(1px);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-family: var(--display); font-size: 15px; color: #D8C9B2; }
+  .run-banner { display: flex; align-items: center; gap: 12px; }
+  .run-count { font-family: var(--mono); font-size: 22px; font-weight: 700; color: #FFC97F; }
+
+  /* ---------- island ---------- */
+  .b-row { display: flex; align-items: center; gap: 12px; padding: 9px 0;
+    border-bottom: 1px solid #2A2018; }
+  .b-row:last-child { border-bottom: none; }
+  .b-thumb { width: 62px; height: 62px; border-radius: 13px; overflow: hidden; flex: 0 0 auto;
+    border: 1px solid var(--edge); background: #1C1510;
+    display: flex; align-items: center; justify-content: center; font-size: 28px; }
+  .b-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .b-main { flex: 1; min-width: 0; }
+  .pips { display: flex; gap: 3px; margin-top: 4px; }
+  .pip { width: 9px; height: 9px; border-radius: 3px; background: #3A2C1F; }
+  .pip.on { background: var(--gold); box-shadow: 0 0 6px rgba(224,180,92,0.5); }
+
+  /* ---------- bag ---------- */
+  .inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 9px; }
+  .inv-cell { background: rgba(20,16,12,0.6); border: 1px solid var(--edge); border-radius: 13px;
+    padding: 10px 8px; text-align: center; }
+  .inv-gem { font-size: 22px; line-height: 1; }
+  .inv-name { font-size: 11.5px; margin-top: 5px; line-height: 1.25; }
+  .inv-qty { font-family: var(--mono); font-size: 11px; color: var(--dim); margin-top: 3px; }
+  .ach-row { padding: 8px 2px; }
+  .ach-top { display: flex; justify-content: space-between; font-size: 13px; }
+  .bar { height: 8px; background: #14100C; border: 1px solid var(--edge);
     border-radius: 999px; overflow: hidden; margin-top: 6px; }
   .bar > span { display: block; height: 100%;
-    background: linear-gradient(90deg, #B85F1E, var(--ember)); }
-  .rowline { display: flex; justify-content: space-between; align-items: center;
-    gap: 10px; padding: 9px 2px; border-bottom: 1px solid #2A2018; font-size: 13px; }
-  .rowline:last-child { border-bottom: none; }
-  .rowline .grow { flex: 1 1 auto; min-width: 0; }
-  .rowline .dim { color: var(--dim); }
-  button.mini { flex: 0 0 auto; min-height: 38px; padding: 7px 12px; font-size: 13px; }
-  .msg.bad { border-color: rgba(199,81,70,0.5); color: var(--fail); }
-  table.counts { width: 100%; border-collapse: collapse; font-size: 13px; }
-  table.counts td {
-    padding: 6px 4px; border-bottom: 1px solid var(--panel-edge);
+    background: linear-gradient(90deg, var(--ember-deep), var(--ember)); }
+
+  /* ---------- tab bar ---------- */
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: flex; justify-content: space-around;
+    max-width: 560px; margin: 0 auto;
+    background: rgba(24,18,13,0.96);
+    border-top: 1px solid var(--edge);
+    padding: 7px 4px calc(7px + env(safe-area-inset-bottom));
+    backdrop-filter: blur(8px);
   }
-  table.counts td:last-child { text-align: right; color: var(--ember); }
-  footer { color: var(--dim); font-size: 12px; margin-top: 22px; line-height: 1.6; }
-  footer b { color: var(--ink); font-weight: 600; }
+  .tab { flex: 1; min-height: 50px; border: none; background: none; color: var(--dim);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; position: relative; }
+  .tab .ti { font-size: 21px; line-height: 1; }
+  .tab.on { color: var(--ember); }
+  .tab .dot { position: absolute; top: 2px; right: 22%; min-width: 17px; height: 17px;
+    border-radius: 999px; background: var(--brick); color: #fff;
+    font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+
+  /* ---------- splash & onboarding ---------- */
+  .splash { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px;
+    background: radial-gradient(700px 500px at 50% 30%, #2E2114, var(--bg) 75%);
+    animation: none; transition: opacity 500ms ease; }
+  .splash.bye { opacity: 0; pointer-events: none; }
+  .splash img { width: min(64vw, 290px); border-radius: 24px;
+    box-shadow: 0 18px 60px rgba(0,0,0,0.6); }
+  .splash .display { font-size: 30px; text-align: center; }
+  .species-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin: 10px 0; }
+  .sp-cell { border-radius: 15px; overflow: hidden; border: 2px solid var(--edge);
+    background: #1C1510; padding: 0; position: relative; aspect-ratio: 1/1.06; }
+  .sp-cell img { width: 100%; height: 100%; object-fit: cover; }
+  .sp-cell .fallback { position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; font-size: 44px; }
+  .sp-cell .sp-name { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+    font-size: 11.5px; font-weight: 700; padding: 14px 4px 5px; text-align: center;
+    background: linear-gradient(180deg, transparent, rgba(16,12,9,0.92)); }
+  .sp-cell.on { border-color: var(--ember); box-shadow: 0 0 14px rgba(232,133,61,0.45); }
+
+  /* ---------- modals, celebration, toast ---------- */
+  .veil { position: fixed; inset: 0; z-index: 40; background: rgba(12,9,6,0.72);
+    display: flex; align-items: flex-end; justify-content: center;
+    animation: veilIn 200ms ease both; }
+  .veil.center { align-items: center; padding: 22px; }
+  @keyframes veilIn { from { opacity: 0; } to { opacity: 1; } }
+  .sheet { width: 100%; max-width: 560px; background: var(--panel);
+    border: 1px solid var(--edge); border-radius: 22px 22px 0 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    animation: sheetUp 260ms cubic-bezier(.22,1,.36,1) both; }
+  @keyframes sheetUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .modal { width: 100%; max-width: 420px; background: var(--panel);
+    border: 1px solid var(--edge); border-radius: 20px; padding: 18px;
+    animation: sheetUp 240ms cubic-bezier(.22,1,.36,1) both; }
+  .celebrate { position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center; padding: 26px;
+    background: radial-gradient(600px 600px at 50% 45%, rgba(232,133,61,0.18), rgba(12,9,6,0.85) 70%); }
+  .cele-card { text-align: center; max-width: 360px; width: 100%;
+    background: var(--panel); border: 1px solid #6B5326; border-radius: 22px;
+    padding: 20px 18px; animation: pop 420ms cubic-bezier(.2,1.4,.4,1) both;
+    box-shadow: 0 0 60px rgba(224,180,92,0.25); }
+  @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .cele-card img.chest { width: 150px; margin: 0 auto 8px; filter: drop-shadow(0 10px 26px rgba(232,168,61,0.35)); border-radius: 16px; }
+  .burst { font-size: 56px; animation: burst 900ms ease both; }
+  @keyframes burst { 0% { transform: scale(0.3) rotate(-8deg); } 55% { transform: scale(1.25) rotate(3deg); } 100% { transform: scale(1); } }
+  .drop-row { display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 4px; border-bottom: 1px solid #2A2018; font-size: 13.5px; }
+  .drop-row:last-child { border-bottom: none; }
+  .rar { font-size: 10.5px; letter-spacing: 0.1em; font-weight: 700; }
+  .toast { position: fixed; left: 14px; right: 14px;
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 12px);
+    z-index: 45; max-width: 532px; margin: 0 auto;
+    padding: 12px 14px; border-radius: 14px; font-size: 13.5px; font-weight: 500;
+    animation: sheetUp 240ms ease both; box-shadow: 0 8px 28px rgba(0,0,0,0.5); }
+  .toast.ok { background: #20301F; border: 1px solid #3E5C3A; color: #CFE8C4; }
+  .toast.bad { background: #361D1A; border: 1px solid #5C3430; color: #F0C9C2; }
+
+  /* ---------- parent ledger ---------- */
+  .ledger-bg { position: fixed; inset: 0; z-index: 0;
+    background: linear-gradient(180deg, #20180F, #171108 70%); }
+  .seal { display: inline-flex; align-items: center; gap: 6px;
+    background: #2B1F12; border: 1px solid #6B5326; color: var(--gold);
+    border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 700; }
+  .seal.bad { background: #361D1A; border-color: #5C3430; color: #F0C9C2; }
+  .p-tabs { display: flex; gap: 7px; margin: 4px 0 14px; }
+  .p-tab { flex: 1; min-height: 42px; border-radius: 12px; border: 1px solid var(--edge);
+    background: var(--panel); color: var(--dim); font-size: 13px; font-weight: 700; }
+  .p-tab.on { color: var(--gold); border-color: #6B5326; background: #2B1F12; }
+  .ledger-li { display: flex; align-items: center; gap: 10px; padding: 10px 2px;
+    border-bottom: 1px solid #2A2018; font-size: 13px; }
+  .ledger-li:last-child { border-bottom: none; }
+  ul.ledger { list-style: none; margin: 0; padding: 0; }
+  ul.ledger li { display: flex; justify-content: space-between; gap: 10px;
+    padding: 8px 2px; border-bottom: 1px solid #2A2018; font-size: 12.5px; }
+  ul.ledger li.fail { color: #F0C9C2; }
+  ul.ledger .ms { color: var(--dim); font-family: var(--mono); font-size: 11px; flex: 0 0 auto; }
+  ul.ledger .err { display: block; color: var(--brick); font-size: 11.5px; margin-top: 3px; }
+  table.counts { width: 100%; border-collapse: collapse; font-size: 12.5px; font-family: var(--mono); }
+  table.counts td { padding: 5px 4px; border-bottom: 1px solid #2A2018; }
+  table.counts td:last-child { text-align: right; color: var(--gold); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ember, .shell-main, .veil, .sheet, .modal, .cele-card, .burst, .toast { animation: none !important; }
+    .xp-bar > span { transition: none; }
+  }
 </style>
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
 /* ============================================================================
    GUARDIAN OF THE HEARTH — CORE (Phase 2)
@@ -2049,6 +2282,576 @@
   }
 
   /* ==========================================================================
+     06_STATE — Phase 5. One state tree, typed actions, a pure reducer, async
+     thunks that call services, and selectors. The UI (Phase 6) may only
+     dispatch actions and read state through selectors — nothing else.
+     ========================================================================== */
+  const T = Object.freeze({
+    BOOTING: 'app/booting', BOOTED: 'app/booted', BOOT_FAILED: 'app/bootFailed',
+    TICK: 'app/tick',
+    USERS_LOADED: 'users/loaded', ITEMS_LOADED: 'items/loaded',
+    PIN_STATUS: 'session/pinStatus',
+    PARENT_LOADED: 'parent/overviewLoaded',
+    CHILD_SELECTED: 'child/selected', CHILD_HYDRATED: 'child/hydrated',
+    SESSION_OPENED: 'session/opened', SESSION_REFRESHED: 'session/refreshed',
+    SESSION_CLOSED: 'session/closed',
+    CHAIN_VERIFIED: 'chain/verified',
+    GATE_REVEALED: 'ui/gateRevealed', GATE_HIDDEN: 'ui/gateHidden',
+    TOAST_SHOW: 'ui/toastShow', TOAST_CLEAR: 'ui/toastClear',
+    CELEBRATION_SHOW: 'ui/celebrationShow', CELEBRATION_CLEAR: 'ui/celebrationClear',
+  });
+
+  function initialState(now) {
+    return {
+      boot: 'LOADING', bootInfo: null, now: now || Date.now(),
+      mode: 'CHILD_MODE', session: null, parentHasPin: false,
+      parentQueue: [], family: [],
+      users: [], activeChildId: null, itemsById: {},
+      guardian: null, questBoard: [], pending: [],
+      inventory: [], crates: 0,
+      dungeon: { list: [], activeRun: null },
+      buildings: [], achievements: [], streaks: [],
+      chain: null,
+      ui: { gateRevealed: false, toast: null, gateToast: null, celebration: null },
+    };
+  }
+
+  function emptyBundle() {
+    return {
+      guardian: null, questBoard: [], pending: [], inventory: [], crates: 0,
+      dungeon: { list: [], activeRun: null }, buildings: [], achievements: [], streaks: [],
+    };
+  }
+
+  function reduce(state, action) {
+    switch (action.type) {
+      case T.BOOTING: return Object.assign({}, state, { boot: 'LOADING' });
+      case T.BOOTED: return Object.assign({}, state, { boot: 'READY', bootInfo: action.info });
+      case T.BOOT_FAILED: return Object.assign({}, state, { boot: 'ERROR', bootInfo: { error: action.error } });
+      case T.TICK: {
+        const next = Object.assign({}, state, { now: action.now });
+        if (state.session && action.now > state.session.expiresAt) {
+          next.session = null;
+          next.mode = 'CHILD_MODE';
+          next.ui = Object.assign({}, state.ui, { gateToast: { kind: 'bad', text: 'Parent session timed out. Unlock again.' } });
+        }
+        return next;
+      }
+      case T.USERS_LOADED: return Object.assign({}, state, { users: action.users });
+      case T.ITEMS_LOADED: return Object.assign({}, state, { itemsById: action.itemsById });
+      case T.PIN_STATUS: return Object.assign({}, state, { parentHasPin: !!action.hasPin });
+      case T.PARENT_LOADED: return Object.assign({}, state, { parentQueue: action.queue, family: action.family });
+      case T.CHILD_SELECTED: return Object.assign({}, state, { activeChildId: action.childId });
+      case T.CHILD_HYDRATED: {
+        const b = action.bundle || emptyBundle();
+        return Object.assign({}, state, {
+          guardian: b.guardian, questBoard: b.questBoard, pending: b.pending,
+          inventory: b.inventory, crates: b.crates, dungeon: b.dungeon,
+          buildings: b.buildings, achievements: b.achievements, streaks: b.streaks,
+        });
+      }
+      case T.SESSION_OPENED: return Object.assign({}, state, { session: action.session, mode: 'PARENT_MODE' });
+      case T.SESSION_REFRESHED: return Object.assign({}, state, { session: action.session });
+      case T.SESSION_CLOSED: {
+        const ui = action.reason === 'EXPIRED'
+          ? Object.assign({}, state.ui, { gateToast: { kind: 'bad', text: 'Parent session ended — unlock again.' } })
+          : state.ui;
+        return Object.assign({}, state, { session: null, mode: 'CHILD_MODE', ui: ui });
+      }
+      case T.CHAIN_VERIFIED: return Object.assign({}, state, { chain: action.chain });
+      case T.GATE_REVEALED: return Object.assign({}, state, { ui: Object.assign({}, state.ui, { gateRevealed: true }) });
+      case T.GATE_HIDDEN: return Object.assign({}, state, { ui: Object.assign({}, state.ui, { gateRevealed: false }) });
+      case T.TOAST_SHOW: {
+        const patch = action.scope === 'gate'
+          ? { gateToast: { kind: action.kind, text: action.text } }
+          : { toast: { kind: action.kind, text: action.text } };
+        return Object.assign({}, state, { ui: Object.assign({}, state.ui, patch) });
+      }
+      case T.TOAST_CLEAR: {
+        const patch = action.scope === 'gate' ? { gateToast: null } : { toast: null };
+        return Object.assign({}, state, { ui: Object.assign({}, state.ui, patch) });
+      }
+      case T.CELEBRATION_SHOW: return Object.assign({}, state, { ui: Object.assign({}, state.ui, { celebration: action.celebration }) });
+      case T.CELEBRATION_CLEAR: return Object.assign({}, state, { ui: Object.assign({}, state.ui, { celebration: null }) });
+      default: return state;
+    }
+  }
+
+  /* ---- thunk helpers ---- */
+  function toastOk(dispatch, scope, text) {
+    dispatch({ type: T.TOAST_SHOW, scope: scope, kind: 'ok', text: text });
+  }
+  function failToast(dispatch, scope, e) {
+    const code = (e && e.code) || 'ERROR';
+    let text = (e && e.message) || String(e);
+    if (code === 'WRONG_PIN' && e.attemptsLeft !== undefined) {
+      text = 'Incorrect PIN. ' + e.attemptsLeft + ' attempt' + (e.attemptsLeft === 1 ? '' : 's') + ' left before lockout.';
+    }
+    if (code === 'LOCKED_OUT') {
+      text = 'Locked out. Try again in ' + Math.ceil((e.retryInMs || 0) / 1000) + 's.';
+    }
+    dispatch({ type: T.TOAST_SHOW, scope: scope, kind: 'bad', text: text });
+    return { ok: false, code: code, message: text };
+  }
+  function requireStoreSession(dispatch, getState) {
+    const s = getState().session;
+    if (!s) {
+      failToast(dispatch, 'gate', { code: 'SESSION_REQUIRED', message: 'Unlock parent mode first.' });
+      return null;
+    }
+    return s;
+  }
+  function touchSession(dispatch, ctx, token) {
+    const fresh = ctx.services.auth.getSession(token);
+    if (fresh) dispatch({ type: T.SESSION_REFRESHED, session: fresh });
+    else dispatch({ type: T.SESSION_CLOSED, reason: 'EXPIRED' });
+  }
+  async function loadUsers(ctx) {
+    const kids = await ctx.repos.users.listByRole('CHILD');
+    const parents = await ctx.repos.users.listByRole('PARENT');
+    return kids.concat(parents);
+  }
+  async function loadBundle(ctx, childId) {
+    const bundle = emptyBundle();
+    const guardian = await ctx.repos.guardians.getByUser(childId);
+    bundle.guardian = guardian || null;
+    bundle.questBoard = await ctx.services.quest.listForChild(childId);
+    bundle.pending = (await ctx.repos.submissions.listByUserAndStatus(childId, 'PENDING'))
+      .sort(function (a, b) { return a.submittedAt - b.submittedAt; });
+    bundle.inventory = await ctx.repos.inventory.listByUser(childId);
+    bundle.crates = await ctx.services.loot.crateCount(childId);
+    bundle.buildings = await ctx.services.building.overview(childId);
+    bundle.achievements = await ctx.services.achievement.listForUser(childId);
+    bundle.streaks = await ctx.repos.streaks.listByUser(childId);
+    if (guardian) {
+      const dz = await ctx.services.dungeon.listForGuardian(guardian.id);
+      bundle.dungeon = { list: dz.dungeons, activeRun: dz.activeRun };
+    }
+    return bundle;
+  }
+
+  const Actions = {
+    /* plain creators */
+    tick: function (now) { return { type: T.TICK, now: now }; },
+    revealGate: function () { return { type: T.GATE_REVEALED }; },
+    hideGate: function () { return { type: T.GATE_HIDDEN }; },
+    clearToast: function (scope) { return { type: T.TOAST_CLEAR, scope: scope }; },
+    clearCelebration: function () { return { type: T.CELEBRATION_CLEAR }; },
+
+    /* boot & hydration */
+    boot: function () {
+      return async function (dispatch, getState, ctx) {
+        dispatch({ type: T.BOOTING });
+        try {
+          const seed = await ctx.services.seed.seedIfEmpty();
+          const recovery = await ctx.services.approval.recoverUnfinished();
+          const chain = await ctx.services.integrity.verifyChain();
+          dispatch({ type: T.CHAIN_VERIFIED, chain: chain });
+          const items = await ctx.repos.items.list();
+          const itemsById = {};
+          items.forEach(function (i) { itemsById[i.id] = i; });
+          dispatch({ type: T.ITEMS_LOADED, itemsById: itemsById });
+          const users = await loadUsers(ctx);
+          dispatch({ type: T.USERS_LOADED, users: users });
+          const parent = users.find(function (u) { return u.role === 'PARENT'; });
+          const cred = parent ? await ctx.repos.credentials.getByUser(parent.id) : null;
+          dispatch({ type: T.PIN_STATUS, hasPin: !!cred });
+          const savedId = await ctx.repos.meta.get('app.activeChildId');
+          const child = savedId ? users.find(function (u) { return u.id === savedId && u.role === 'CHILD'; }) : null;
+          dispatch({ type: T.CHILD_SELECTED, childId: child ? child.id : null });
+          dispatch({ type: T.CHILD_HYDRATED, bundle: child ? await loadBundle(ctx, child.id) : null });
+          dispatch({ type: T.BOOTED, info: { seed: seed, recovery: recovery } });
+          return { ok: true, seed: seed, recovery: recovery, chain: chain };
+        } catch (e) {
+          dispatch({ type: T.BOOT_FAILED, error: (e && e.message) || String(e) });
+          return { ok: false, code: (e && e.code) || 'BOOT_ERROR', message: (e && e.message) || String(e) };
+        }
+      };
+    },
+    refreshChild: function () {
+      return async function (dispatch, getState, ctx) {
+        const id = getState().activeChildId;
+        dispatch({ type: T.CHILD_HYDRATED, bundle: id ? await loadBundle(ctx, id) : null });
+        return { ok: true };
+      };
+    },
+
+    /* children */
+    createChild: function (name, avatar, guardianName, species) {
+      return async function (dispatch, getState, ctx) {
+        try {
+          const child = await ctx.repos.users.create({ role: 'CHILD', name: name, avatar: avatar || '🧒' });
+          await ctx.repos.guardians.createForUser(child.id, { name: guardianName, species: species });
+          await ctx.repos.meta.set('app.activeChildId', child.id);
+          dispatch({ type: T.USERS_LOADED, users: await loadUsers(ctx) });
+          dispatch({ type: T.CHILD_SELECTED, childId: child.id });
+          dispatch({ type: T.CHILD_HYDRATED, bundle: await loadBundle(ctx, child.id) });
+          return { ok: true, child: child };
+        } catch (e) { return failToast(dispatch, 'main', e); }
+      };
+    },
+    selectChild: function (childId) {
+      return async function (dispatch, getState, ctx) {
+        await ctx.repos.meta.set('app.activeChildId', childId);
+        dispatch({ type: T.CHILD_SELECTED, childId: childId });
+        dispatch({ type: T.CHILD_HYDRATED, bundle: await loadBundle(ctx, childId) });
+        return { ok: true };
+      };
+    },
+    removeChild: function (childId) {
+      return async function (dispatch, getState, ctx) {
+        const s = requireStoreSession(dispatch, getState);
+        if (!s) return { ok: false, code: 'SESSION_REQUIRED', message: 'Unlock parent mode first.' };
+        try {
+          await ctx.repos.users.removeCascade(childId);
+          dispatch({ type: T.USERS_LOADED, users: await loadUsers(ctx) });
+          if (getState().activeChildId === childId) {
+            await ctx.repos.meta.set('app.activeChildId', '');
+            dispatch({ type: T.CHILD_SELECTED, childId: null });
+            dispatch({ type: T.CHILD_HYDRATED, bundle: null });
+          }
+          touchSession(dispatch, ctx, s.token);
+          toastOk(dispatch, 'gate', 'Child removed (audit history retained by design).');
+          return { ok: true };
+        } catch (e) { return failToast(dispatch, 'gate', e); }
+      };
+    },
+
+    /* quests */
+    submitQuest: function (questId) {
+      return async function (dispatch, getState, ctx) {
+        try {
+          const sub = await ctx.services.quest.submit(getState().activeChildId, questId);
+          toastOk(dispatch, 'main', 'Sent to the Keeper for approval ✉️');
+          await Actions.refreshChild()(dispatch, getState, ctx);
+          return { ok: true, submission: sub };
+        } catch (e) { return failToast(dispatch, 'main', e); }
+      };
+    },
+
+    /* parent gate */
+    setupParent: function (name, pin) {
+      return async function (dispatch, getState, ctx) {
+        try {
+          const parent = await ctx.repos.users.create({ role: 'PARENT', name: name || 'Keeper', avatar: '🛡️' });
+          await ctx.services.auth.setupPin(parent.id, pin);
+          dispatch({ type: T.USERS_LOADED, users: await loadUsers(ctx) });
+          dispatch({ type: T.PIN_STATUS, hasPin: true });
+          toastOk(dispatch, 'gate', 'Parent created and PIN set (PBKDF2-SHA256, 310k iterations). Now unlock with it.');
+          return { ok: true, parent: parent };
+        } catch (e) { return failToast(dispatch, 'gate', e); }
+      };
+    },
+    setupPin: function (pin) {
+      return async function (dispatch, getState, ctx) {
+        const parent = getState().users.find(function (u) { return u.role === 'PARENT'; });
+        if (!parent) return failToast(dispatch, 'gate', { code: 'NO_PARENT', message: 'No parent account exists yet.' });
+        try {
+          await ctx.services.auth.setupPin(parent.id, pin);
+          dispatch({ type: T.PIN_STATUS, hasPin: true });
+          toastOk(dispatch, 'gate', 'PIN set. Now unlock with it.');
+          return { ok: true };
+        } catch (e) { return failToast(dispatch, 'gate', e); }
+      };
+    },
+    unlock: function (pin) {
+      return async function (dispatch, getState, ctx) {
+        const parent = getState().users.find(function (u) { return u.role === 'PARENT'; });
+        if (!parent) return failToast(dispatch, 'gate', { code: 'NO_PARENT', message: 'No parent account exists yet.' });
+        try {
+          const session = await ctx.services.auth.verifyPin(parent.id, pin);
+          dispatch({ type: T.SESSION_OPENED, session: session });
+          toastOk(dispatch, 'gate', 'Parent mode unlocked. Session expires after 5 idle minutes.');
+          return { ok: true, session: session };
+        } catch (e) { return failToast(dispatch, 'gate', e); }
+      };
+    },
+    lock: function () {
+      return async function (dispatch, getState, ctx) {
+        const s = getState().session;
+        if (s) ctx.services.auth.endSession(s.token);
+        dispatch({ type: T.SESSION_CLOSED });
+        toastOk(dispatch, 'gate', 'Locked. The approval gate is closed.');
+        return { ok: true };
+      };
+    },
+
+    /* decisions */
+    approve: function (submissionId) {
+      return async function (dispatch, getState, ctx) {
+        const s = requireStoreSession(dispatch, getState);
+        if (!s) return { ok: false, code: 'SESSION_REQUIRED', message: 'Unlock parent mode first.' };
+        try {
+          const r = await ctx.services.approval.approve(s.token, submissionId);
+          toastOk(dispatch, 'main', r.leveledUp
+            ? 'Approved — rewards released. LEVEL UP to ' + r.guardian.level + '! 🎉'
+            : 'Approved — rewards released to ' + r.guardian.name + '.');
+          if (r.leveledUp) {
+            dispatch({ type: T.CELEBRATION_SHOW, celebration: { type: 'levelUp', level: r.guardian.level } });
+          }
+          await Actions.evaluateAchievements()(dispatch, getState, ctx);
+          dispatch({ type: T.CHAIN_VERIFIED, chain: await ctx.services.integrity.verifyChain() });
+          touchSession(dispatch, ctx, s.token);
+          await Actions.refreshChild()(dispatch, getState, ctx);
+          if (getState().mode === 'PARENT_MODE') { await Actions.loadParentOverview()(dispatch, getState, ctx); }
+          return { ok: true, result: r };
+        } catch (e) {
+          if (e && (e.code === 'SESSION_EXPIRED' || e.code === 'SESSION_INVALID')) {
+            dispatch({ type: T.SESSION_CLOSED, reason: 'EXPIRED' });
+            return { ok: false, code: e.code, message: e.message };
+          }
+          return failToast(dispatch, 'main', e);
+        }
+      };
+    },
+    reject: function (submissionId, note) {
+      return async function (dispatch, getState, ctx) {
+        const s = requireStoreSession(dispatch, getState);
+        if (!s) return { ok: false, code: 'SESSION_REQUIRED', message: 'Unlock parent mode first.' };
+        try {
+          await ctx.services.approval.reject(s.token, submissionId, note || 'not quite yet');
+          toastOk(dispatch, 'main', 'Rejected — nothing was granted.');
+          dispatch({ type: T.CHAIN_VERIFIED, chain: await ctx.services.integrity.verifyChain() });
+          touchSession(dispatch, ctx, s.token);
+          await Actions.refreshChild()(dispatch, getState, ctx);
+          if (getState().mode === 'PARENT_MODE') { await Actions.loadParentOverview()(dispatch, getState, ctx); }
+          return { ok: true };
+        } catch (e) {
+          if (e && (e.code === 'SESSION_EXPIRED' || e.code === 'SESSION_INVALID')) {
+            dispatch({ type: T.SESSION_CLOSED, reason: 'EXPIRED' });
+            return { ok: false, code: e.code, message: e.message };
+          }
+          return failToast(dispatch, 'main', e);
+        }
+      };
+    },
+
+    /* game */
+    startDungeon: function (dungeonId) {
+      return async function (dispatch, getState, ctx) {
+        const g = getState().guardian;
+        if (!g) return failToast(dispatch, 'main', { code: 'NO_GUARDIAN', message: 'No guardian selected.' });
+        try {
+          const r = await ctx.services.dungeon.start(g.id, dungeonId);
+          toastOk(dispatch, 'main', 'Expedition started! ' + g.name + ' paid ' + r.energyCost + ' ⚡ and is on the way.');
+          await Actions.refreshChild()(dispatch, getState, ctx);
+          return { ok: true, run: r.run };
+        } catch (e) { return failToast(dispatch, 'main', e); }
+      };
+    },
+    claimDungeon: function (runId) {
+      return async function (dispatch, getState, ctx) {
+        try {
+          const r = await ctx.services.dungeon.claim(runId);
+          const itemsById = getState().itemsById;
+          const drops = r.run.result.drops.map(function (d) {
+            const it = itemsById[d.itemId];
+            return (it ? it.name : d.itemId) + ' ×' + d.qty;
+          }).join(', ');
+          toastOk(dispatch, 'main', '🎒 Expedition complete! +' + r.run.result.gold + ' gold · +' + r.run.result.xp + ' xp · ' + (drops || 'no drops') + (r.leveledUp ? ' · LEVEL UP! 🎉' : ''));
+          dispatch({ type: T.CELEBRATION_SHOW, celebration: { type: 'loot', result: r.run.result, leveledUp: r.leveledUp } });
+          await Actions.evaluateAchievements()(dispatch, getState, ctx);
+          await Actions.refreshChild()(dispatch, getState, ctx);
+          return { ok: true, result: r.run.result };
+        } catch (e) {
+          if (e && e.code === 'RUN_NOT_FINISHED') {
+            const secs = Math.max(0, Math.ceil((e.remainingMs || 0) / 1000));
+            const msg = 'Still underway — ' + Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0') + ' to go.';
+            dispatch({ type: T.TOAST_SHOW, scope: 'main', kind: 'bad', text: msg });
+            return { ok: false, code: e.code, message: msg, remainingMs: e.remainingMs };
+          }
+          return failToast(dispatch, 'main', e);
+        }
+      };
+    },
+    openCrate: function () {
+      return async function (dispatch, getState, ctx) {
+        try {
+          const r = await ctx.services.loot.openCrate(getState().activeChildId);
+          toastOk(dispatch, 'main', '📦 Crate opened: ' + r.item.name + ' (' + r.rarity + ')!');
+          dispatch({ type: T.CELEBRATION_SHOW, celebration: { type: 'crate', item: r.item, rarity: r.rarity } });
+          await Actions.refreshChild()(dispatch, getState, ctx);
+          return { ok: true, item: r.item, rarity: r.rarity };
+        } catch (e) { return failToast(dispatch, 'main', e); }
+      };
+    },
+    upgradeBuilding: function (type) {
+      return async function (dispatch, getState, ctx) {
+        try {
+          const r = await ctx.services.building.upgrade(getState().activeChildId, type);
+          toastOk(dispatch, 'main', '🔨 ' + r.building.type + ' upgraded to level ' + r.building.level + ' for ' + r.cost + ' gold.' + (type === 'SANCTUARY' ? ' Max energy is now ' + r.guardian.maxEnergy + ' ⚡.' : ''));
+          await Actions.refreshChild()(dispatch, getState, ctx);
+          return { ok: true, building: r.building };
+        } catch (e) { return failToast(dispatch, 'main', e); }
+      };
+    },
+    evaluateAchievements: function () {
+      return async function (dispatch, getState, ctx) {
+        const id = getState().activeChildId;
+        if (!id) return { ok: true, newlyUnlocked: [] };
+        const res = await ctx.services.achievement.evaluate(id);
+        if (res.newlyUnlocked.length) {
+          dispatch({ type: T.CELEBRATION_SHOW, celebration: { type: 'achievement', defs: res.newlyUnlocked } });
+          toastOk(dispatch, 'main', '🏅 Achievement unlocked: ' + res.newlyUnlocked.map(function (d) { return d.name; }).join(', '));
+        }
+        return { ok: true, newlyUnlocked: res.newlyUnlocked };
+      };
+    },
+
+    /* integrity & backup */
+    verifyChain: function () {
+      return async function (dispatch, getState, ctx) {
+        const chain = await ctx.services.integrity.verifyChain();
+        dispatch({ type: T.CHAIN_VERIFIED, chain: chain });
+        dispatch({ type: T.TOAST_SHOW, scope: 'gate', kind: chain.valid ? 'ok' : 'bad',
+          text: chain.valid
+            ? 'Audit chain VALID — ' + chain.length + ' entries verified back to GENESIS.'
+            : 'Audit chain INVALID (' + chain.reason + ') — verified ' + chain.verified + ' of ' + chain.length + '.' });
+        return { ok: chain.valid, chain: chain };
+      };
+    },
+    recoverRewards: function () {
+      return async function (dispatch, getState, ctx) {
+        const r = await ctx.services.approval.recoverUnfinished();
+        toastOk(dispatch, 'gate', r.recovered === 0
+          ? 'Nothing to recover — all approvals fully applied.'
+          : 'Recovered ' + r.recovered + ' interrupted reward release(s).');
+        await Actions.refreshChild()(dispatch, getState, ctx);
+        return { ok: true, recovered: r.recovered };
+      };
+    },
+    exportBackup: function () {
+      return async function (dispatch, getState, ctx) {
+        try {
+          const data = await ctx.services.backup.export();
+          toastOk(dispatch, 'main', 'Backup exported. Keep the file somewhere safe.');
+          return { ok: true, data: data };
+        } catch (e) { return failToast(dispatch, 'main', e); }
+      };
+    },
+    importBackup: function (backup) {
+      return async function (dispatch, getState, ctx) {
+        try {
+          const restored = await ctx.services.backup.importReplace(backup);
+          const total = Object.keys(restored).reduce(function (sum, k) { return sum + restored[k]; }, 0);
+          await Actions.boot()(dispatch, getState, ctx);
+          toastOk(dispatch, 'main', 'Backup verified and restored: ' + total + ' records.');
+          return { ok: true, total: total };
+        } catch (e) {
+          const r = failToast(dispatch, 'main', e);
+          r.message += ' Nothing was changed.';
+          return r;
+        }
+      };
+    },
+    loadParentOverview: function () {
+      return async function (dispatch, getState, ctx) {
+        const kids = await ctx.repos.users.listByRole('CHILD');
+        const quests = await ctx.repos.quests.list();
+        const qmap = {};
+        quests.forEach(function (q) { qmap[q.id] = q; });
+        const queue = [];
+        const family = [];
+        for (const kid of kids) {
+          const g = await ctx.repos.guardians.getByUser(kid.id);
+          const pend = (await ctx.repos.submissions.listByUserAndStatus(kid.id, 'PENDING'))
+            .sort(function (a, b) { return a.submittedAt - b.submittedAt; });
+          const streaks = await ctx.repos.streaks.listByUser(kid.id);
+          const glob = streaks.find(function (x) { return x.scope === 'GLOBAL'; });
+          family.push({ child: kid, guardian: g || null, streak: glob ? glob.current : 0, pendingCount: pend.length });
+          pend.forEach(function (sub) {
+            const q = qmap[sub.questId];
+            queue.push({
+              submission: sub, child: kid,
+              questTitle: q ? q.title : sub.questId,
+              questIcon: q ? q.icon : '⭐',
+              reward: q ? q.reward : null,
+            });
+          });
+        }
+        queue.sort(function (a, b) { return a.submission.submittedAt - b.submission.submittedAt; });
+        dispatch({ type: T.PARENT_LOADED, queue: queue, family: family });
+        return { ok: true, queue: queue, family: family };
+      };
+    },
+    changePin: function (oldPin, newPin) {
+      return async function (dispatch, getState, ctx) {
+        const parent = getState().users.find(function (u) { return u.role === 'PARENT'; });
+        if (!parent) return failToast(dispatch, 'gate', { code: 'NO_PARENT', message: 'No parent account exists yet.' });
+        try {
+          await ctx.services.auth.changePin(parent.id, oldPin, newPin);
+          toastOk(dispatch, 'gate', 'PIN changed.');
+          return { ok: true };
+        } catch (e) { return failToast(dispatch, 'gate', e); }
+      };
+    },
+  };
+
+  function makeStore(ctx) {
+    const now = ctx.now || function () { return Date.now(); };
+    const fullCtx = Object.assign({}, ctx, { now: now });
+    let state = initialState(now());
+    const listeners = new Set();
+    function getState() { return state; }
+    function dispatch(action) {
+      if (typeof action === 'function') return action(dispatch, getState, fullCtx);
+      const next = reduce(state, action);
+      if (next !== state) {
+        state = next;
+        listeners.forEach(function (l) {
+          try { l(state); } catch (e) { /* a broken listener must never break the store */ }
+        });
+      }
+      return action;
+    }
+    function subscribe(fn) {
+      listeners.add(fn);
+      return function () { listeners.delete(fn); };
+    }
+    return { getState: getState, dispatch: dispatch, subscribe: subscribe };
+  }
+
+  const Selectors = {
+    selectChildren: function (s) { return s.users.filter(function (u) { return u.role === 'CHILD'; }); },
+    selectParent: function (s) { return s.users.find(function (u) { return u.role === 'PARENT'; }) || null; },
+    selectActiveChild: function (s) { return s.users.find(function (u) { return u.id === s.activeChildId; }) || null; },
+    selectGuardian: function (s) { return s.guardian; },
+    selectQuestBoard: function (s) { return s.questBoard; },
+    selectPending: function (s) { return s.pending; },
+    selectGlobalStreak: function (s) {
+      const row = s.streaks.find(function (x) { return x.scope === 'GLOBAL'; });
+      return row ? row.current : 0;
+    },
+    selectCrates: function (s) { return s.crates; },
+    selectBuildings: function (s) { return s.buildings; },
+    selectAchievements: function (s) { return s.achievements; },
+    selectInventoryDetailed: function (s) {
+      return s.inventory.map(function (row) {
+        return { itemId: row.itemId, qty: row.qty, item: s.itemsById[row.itemId] || null };
+      });
+    },
+    selectDungeonView: function (s) {
+      const run = s.dungeon.activeRun;
+      return s.dungeon.list.map(function (d) {
+        const isActive = !!(run && run.dungeonId === d.def.id);
+        return {
+          def: d.def, unlocked: d.unlocked, energyCost: d.energyCost,
+          isActive: isActive,
+          remainingMs: isActive ? Math.max(0, run.endsAt - s.now) : 0,
+          claimable: isActive && s.now >= run.endsAt,
+          runId: isActive ? run.id : null,
+          blocked: !!run && !isActive,
+        };
+      });
+    },
+    selectActiveRun: function (s) { return s.dungeon.activeRun; },
+    selectIsParentMode: function (s) { return s.mode === 'PARENT_MODE' && !!s.session; },
+    selectCanApprove: function (s) { return !!(s.session && s.now <= s.session.expiresAt); },
+    selectSessionRemainingMs: function (s) { return s.session ? Math.max(0, s.session.expiresAt - s.now) : 0; },
+    selectChain: function (s) { return s.chain; },
+  };
+
+  /* ==========================================================================
      09_TESTSUITE — one suite, two homes: runs under node (memory backend)
      during development and on-device (real IndexedDB) via the harness UI.
      ========================================================================== */
@@ -2806,6 +3609,413 @@
       const chain = await env.services.integrity.verifyChain();
       t.ok(chain.valid && chain.length === 4, 'four decisions, chain intact');
     } },
+
+    /* ---- Phase 5: state store ---- */
+    { name: 'store: boot hydrates app state from an empty database', db: true, fn: async function (t, env) {
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      const r = await store.dispatch(Actions.boot());
+      t.ok(r.ok, 'boot succeeds');
+      const s = store.getState();
+      t.equal(s.boot, 'READY', 'ready');
+      t.equal(s.users.length, 0, 'no users yet');
+      t.equal(s.activeChildId, null, 'no active child');
+      t.ok(s.chain && s.chain.valid && s.chain.length === 0, 'empty chain valid');
+      t.ok(!!s.itemsById['itm_loot_crate'], 'item catalog loaded into state');
+    } },
+    { name: 'store: createChild selects and persists across store reboots', db: true, fn: async function (t, env) {
+      const ctx = { db: env.db, repos: env.repos, services: env.services };
+      const store = makeStore(ctx);
+      await store.dispatch(Actions.boot());
+      const made = await store.dispatch(Actions.createChild('Mila', '🧒', 'Pip', 'FOX'));
+      t.ok(made.ok, 'child created');
+      t.equal(store.getState().guardian.name, 'Pip', 'guardian hydrated');
+      const store2 = makeStore(ctx);
+      await store2.dispatch(Actions.boot());
+      const s2 = store2.getState();
+      t.equal(s2.activeChildId, made.child.id, 'active child persisted to meta');
+      t.equal(s2.guardian.species, 'FOX', 'bundle rehydrated on reboot');
+    } },
+    { name: 'store: submitQuest flows into pending and the quest board', db: true, fn: async function (t, env) {
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      await store.dispatch(Actions.boot());
+      await store.dispatch(Actions.createChild('Theo', '🧒', 'Ember', 'DRAGON'));
+      const r = await store.dispatch(Actions.submitQuest('qst_water_glass'));
+      t.ok(r.ok, 'submitted');
+      const s = store.getState();
+      t.equal(s.pending.length, 1, 'pending in state');
+      t.equal(s.pending[0].status, 'PENDING', 'born pending');
+      const water = s.questBoard.find(function (b) { return b.quest.id === 'qst_water_glass'; });
+      t.equal(water.remainingToday, 3, 'board count updated');
+      t.equal(s.guardian.energy, 0, 'no rewards before approval');
+    } },
+    { name: 'store: unlock rejects wrong PINs without opening a session', db: true, fn: async function (t, env) {
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      await store.dispatch(Actions.boot());
+      await store.dispatch(Actions.setupParent('Keeper', '1234'));
+      t.ok(store.getState().parentHasPin, 'pin status tracked');
+      const bad = await store.dispatch(Actions.unlock('9999'));
+      t.ok(!bad.ok && bad.code === 'WRONG_PIN', 'wrong pin refused');
+      const s1 = store.getState();
+      t.equal(s1.session, null, 'no session opened');
+      t.equal(s1.mode, 'CHILD_MODE', 'still child mode');
+      t.ok(s1.ui.gateToast && s1.ui.gateToast.kind === 'bad', 'gate toast set');
+      const good = await store.dispatch(Actions.unlock('1234'));
+      t.ok(good.ok, 'correct pin unlocks');
+      const s2 = store.getState();
+      t.ok(s2.session && s2.session.token, 'session in state');
+      t.equal(s2.mode, 'PARENT_MODE', 'mode switched');
+    } },
+    { name: 'store: approve through the store updates everything at once', db: true, fn: async function (t, env) {
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      await store.dispatch(Actions.boot());
+      await store.dispatch(Actions.createChild('Ava', '🧒', 'Luno', 'OWL'));
+      await store.dispatch(Actions.submitQuest('qst_water_glass'));
+      await store.dispatch(Actions.setupParent('Keeper', '4321'));
+      await store.dispatch(Actions.unlock('4321'));
+      const subId = store.getState().pending[0].id;
+      const r = await store.dispatch(Actions.approve(subId));
+      t.ok(r.ok, 'approved');
+      const s = store.getState();
+      t.equal(s.pending.length, 0, 'pending cleared');
+      t.equal(s.guardian.energy, 5, 'energy released');
+      t.equal(s.guardian.gold, 5, 'gold released');
+      t.equal(Selectors.selectGlobalStreak(s), 1, 'streak in state');
+      t.ok(s.chain.valid && s.chain.length === 1, 'chain re-verified in state');
+      const spark = s.achievements.find(function (a) { return a.def.id === 'ach_first_approval'; });
+      t.ok(spark && spark.unlockedAt !== undefined, 'achievement unlocked');
+      t.ok(s.ui.celebration && s.ui.celebration.type === 'achievement', 'celebration queued');
+    } },
+    { name: 'store: approving without a live session changes nothing', db: true, fn: async function (t, env) {
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      await store.dispatch(Actions.boot());
+      await store.dispatch(Actions.createChild('Noa', '🧒', 'Boop', 'BEAR'));
+      await store.dispatch(Actions.submitQuest('qst_make_bed'));
+      const before = store.getState();
+      const r = await store.dispatch(Actions.approve(before.pending[0].id));
+      t.ok(!r.ok && r.code === 'SESSION_REQUIRED', 'refused without session');
+      const after = store.getState();
+      t.deepEqual(after.guardian, before.guardian, 'guardian untouched');
+      t.equal(after.pending.length, 1, 'submission still pending');
+      t.equal(after.chain.length, 0, 'no audit entries');
+    } },
+    { name: 'store: dungeons are fully drivable through actions', db: true, fn: async function (t, env) {
+      const clock = fakeClock(1750000000000);
+      const services = makeServices(env.db, env.repos, { now: function () { return clock.t; } });
+      const store = makeStore({ db: env.db, repos: env.repos, services: services, now: function () { return clock.t; } });
+      await store.dispatch(Actions.boot());
+      const made = await store.dispatch(Actions.createChild('Rio', '🧒', 'Sol', 'PHOENIX'));
+      await env.repos.guardians.applyBundle(made.child.id, Rewards.normalizeBundle({ energy: 30 }));
+      await store.dispatch(Actions.refreshChild());
+      const started = await store.dispatch(Actions.startDungeon('dgn_glade'));
+      t.ok(started.ok, 'started');
+      let s = store.getState();
+      t.ok(s.dungeon.activeRun, 'active run in state');
+      t.equal(s.guardian.energy, 15, 'energy paid');
+      const early = await store.dispatch(Actions.claimDungeon(s.dungeon.activeRun.id));
+      t.ok(!early.ok && early.code === 'RUN_NOT_FINISHED', 'timer enforced through store');
+      clock.tick(10 * 60000 + 1000);
+      store.dispatch(Actions.tick(clock.t));
+      const view = Selectors.selectDungeonView(store.getState());
+      t.ok(view.find(function (d) { return d.def.id === 'dgn_glade'; }).claimable, 'selector says claimable');
+      const claimed = await store.dispatch(Actions.claimDungeon(s.dungeon.activeRun.id));
+      t.ok(claimed.ok, 'claimed');
+      s = store.getState();
+      t.equal(s.guardian.gold, claimed.result.gold, 'gold in state');
+      t.equal(s.dungeon.activeRun, null, 'run cleared after claim');
+      t.ok(s.inventory.length > 0, 'drops in state inventory');
+    } },
+    { name: 'store: crates and buildings mutate state snapshots', db: true, fn: async function (t, env) {
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      await store.dispatch(Actions.boot());
+      const made = await store.dispatch(Actions.createChild('Iri', '🧒', 'Ash', 'WOLF'));
+      await env.repos.guardians.applyBundle(made.child.id, Rewards.normalizeBundle({ coins: 300, lootCrates: 1 }));
+      await store.dispatch(Actions.refreshChild());
+      t.equal(store.getState().crates, 1, 'crate in state');
+      const opened = await store.dispatch(Actions.openCrate());
+      t.ok(opened.ok, 'opened');
+      let s = store.getState();
+      t.equal(s.crates, 0, 'crate consumed in state');
+      t.ok(s.inventory.some(function (r) { return r.itemId === opened.item.id; }), 'prize in state');
+      const up = await store.dispatch(Actions.upgradeBuilding('HOME'));
+      t.ok(up.ok, 'upgraded');
+      s = store.getState();
+      t.equal(s.buildings.find(function (b) { return b.type === 'HOME'; }).level, 1, 'level in state');
+      t.equal(s.guardian.gold, 200, 'gold spent in state');
+    } },
+    { name: 'store: selectors derive views the UI can render directly', db: true, fn: async function (t, env) {
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      await store.dispatch(Actions.boot());
+      const made = await store.dispatch(Actions.createChild('Zee', '🧒', 'Shelly', 'TURTLE'));
+      await env.repos.guardians.applyBundle(made.child.id, Rewards.normalizeBundle({ energy: 20, lootCrates: 1 }));
+      await store.dispatch(Actions.refreshChild());
+      const inv = Selectors.selectInventoryDetailed(store.getState());
+      t.ok(inv.length === 1 && inv[0].item && inv[0].item.name, 'inventory joined with catalog');
+      await store.dispatch(Actions.startDungeon('dgn_glade'));
+      store.dispatch(Actions.tick(Date.now()));
+      const view = Selectors.selectDungeonView(store.getState());
+      const glade = view.find(function (d) { return d.def.id === 'dgn_glade'; });
+      t.ok(glade.isActive && glade.remainingMs > 0 && !glade.claimable, 'countdown derived');
+      t.ok(view.find(function (d) { return d.def.id === 'dgn_tide'; }).blocked, 'other dungeons blocked');
+      t.ok(!Selectors.selectCanApprove(store.getState()), 'cannot approve locked');
+      await store.dispatch(Actions.setupParent('Keeper', '2468'));
+      await store.dispatch(Actions.unlock('2468'));
+      store.dispatch(Actions.tick(Date.now()));
+      t.ok(Selectors.selectCanApprove(store.getState()), 'can approve unlocked');
+    } },
+    { name: 'store: reducer is pure — unknown actions are identity, tick moves only the clock', db: true, fn: async function (t, env) {
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      await store.dispatch(Actions.boot());
+      const s1 = store.getState();
+      store.dispatch({ type: '@@unknown/action' });
+      t.ok(store.getState() === s1, 'unknown action preserves identity');
+      store.dispatch(Actions.tick(s1.now + 5000));
+      const s2 = store.getState();
+      t.ok(s2 !== s1, 'tick produces a new state object');
+      t.equal(s2.now, s1.now + 5000, 'clock advanced');
+      t.ok(s2.users === s1.users && s2.questBoard === s1.questBoard, 'untouched slices keep their references');
+    } },
+    { name: 'store: switching children swaps the whole bundle', db: true, fn: async function (t, env) {
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      await store.dispatch(Actions.boot());
+      const a = await store.dispatch(Actions.createChild('Kid A', '🧒', 'Pip', 'FOX'));
+      await env.repos.guardians.applyBundle(a.child.id, Rewards.normalizeBundle({ energy: 50 }));
+      await store.dispatch(Actions.refreshChild());
+      t.equal(store.getState().guardian.energy, 50, 'A charged');
+      await store.dispatch(Actions.createChild('Kid B', '🧒', 'Luno', 'OWL'));
+      let s = store.getState();
+      t.equal(s.guardian.name, 'Luno', 'B active after creation');
+      t.equal(s.guardian.energy, 0, 'B starts empty');
+      await store.dispatch(Actions.selectChild(a.child.id));
+      s = store.getState();
+      t.equal(s.guardian.name, 'Pip', 'switched back to A');
+      t.equal(s.guardian.energy, 50, 'A bundle restored');
+      t.equal(Selectors.selectChildren(s).length, 2, 'both kids in state');
+    } },
+    { name: 'store: session expiry on tick closes parent mode', db: true, fn: async function (t, env) {
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      await store.dispatch(Actions.boot());
+      await store.dispatch(Actions.setupParent('Keeper', '1357'));
+      await store.dispatch(Actions.unlock('1357'));
+      const exp = store.getState().session.expiresAt;
+      store.dispatch(Actions.tick(exp + 1));
+      const s = store.getState();
+      t.equal(s.session, null, 'session cleared by the clock');
+      t.equal(s.mode, 'CHILD_MODE', 'mode dropped to child');
+      t.ok(s.ui.gateToast && s.ui.gateToast.kind === 'bad', 'expiry surfaced');
+    } },
+    { name: 'store: parent overview aggregates every child into one queue', db: true, fn: async function (t, env) {
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      await store.dispatch(Actions.boot());
+      const a = await store.dispatch(Actions.createChild('Kid A', '🧒', 'Pip', 'FOX'));
+      await store.dispatch(Actions.submitQuest('qst_water_glass'));
+      await store.dispatch(Actions.createChild('Kid B', '🧒', 'Luno', 'OWL'));
+      await store.dispatch(Actions.submitQuest('qst_make_bed'));
+      await store.dispatch(Actions.setupParent('Keeper', '8642'));
+      await store.dispatch(Actions.unlock('8642'));
+      await store.dispatch(Actions.loadParentOverview());
+      let s = store.getState();
+      t.equal(s.family.length, 2, 'both kids in the family view');
+      t.equal(s.parentQueue.length, 2, 'queue spans children');
+      t.ok(s.parentQueue[0].questTitle && s.parentQueue[0].child.name, 'queue rows carry names');
+      t.equal(s.family.reduce(function (n, f) { return n + f.pendingCount; }, 0), 2, 'pending counts add up');
+      const first = s.parentQueue[0];
+      const r = await store.dispatch(Actions.approve(first.submission.id));
+      t.ok(r.ok, 'approve from the queue works');
+      s = store.getState();
+      t.equal(s.parentQueue.length, 1, 'queue auto-refreshes after a decision');
+      t.ok(s.parentQueue[0].child.id !== first.child.id || s.parentQueue[0].submission.id !== first.submission.id, 'decided row gone');
+    } },
+    { name: 'store: changePin rotates the credential', db: true, fn: async function (t, env) {
+      const store = makeStore({ db: env.db, repos: env.repos, services: env.services });
+      await store.dispatch(Actions.boot());
+      await store.dispatch(Actions.setupParent('Keeper', '1111'));
+      await store.dispatch(Actions.unlock('1111'));
+      const ch = await store.dispatch(Actions.changePin('1111', '2222'));
+      t.ok(ch.ok, 'pin changed');
+      await store.dispatch(Actions.lock());
+      const bad = await store.dispatch(Actions.unlock('1111'));
+      t.ok(!bad.ok && bad.code === 'WRONG_PIN', 'old pin refused');
+      const good = await store.dispatch(Actions.unlock('2222'));
+      t.ok(good.ok, 'new pin unlocks');
+    } },
+
+    /* ---- Phase 7: tamper evidence, invariants, hardening ---- */
+    { name: 'tamper: editing a decision in place is detected and located', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Mila' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Pip', species: 'FOX' });
+      await env.services.auth.setupPin(parent.id, '9753');
+      const session = await env.services.auth.verifyPin(parent.id, '9753');
+      for (let i = 0; i < 2; i++) {
+        const sub = await env.services.quest.submit(child.id, 'qst_water_glass');
+        await env.services.approval.approve(session.token, sub.id);
+      }
+      t.ok((await env.services.integrity.verifyChain()).valid, 'chain valid before the attack');
+      const entries = (await env.repos.audit.list()).sort(function (a, b) { return a.timestamp - b.timestamp; });
+      // Simulate a DevTools attacker: raw write, bypassing every repository.
+      await env.db.atomic(['auditLogs'], async function (c) {
+        const evil = Object.assign({}, entries[0], { entityId: 'forged-' + entries[0].entityId });
+        await c.put('auditLogs', evil);
+      });
+      const report = await env.services.integrity.verifyChain();
+      t.ok(!report.valid, 'tampering detected');
+      t.equal(report.reason, 'TAMPERED_ENTRY', 'named for what it is');
+      t.equal(report.verified, 0, 'located at the first link');
+    } },
+    { name: 'tamper: rewriting the chain head is detected', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Theo' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Ember', species: 'DRAGON' });
+      await env.services.auth.setupPin(parent.id, '8642');
+      const session = await env.services.auth.verifyPin(parent.id, '8642');
+      const sub = await env.services.quest.submit(child.id, 'qst_make_bed');
+      await env.services.approval.approve(session.token, sub.id);
+      await env.db.atomic(['meta'], async function (c) {
+        await c.put('meta', { key: 'auditHead', value: 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef' });
+      });
+      const report = await env.services.integrity.verifyChain();
+      t.ok(!report.valid, 'head rewrite detected');
+      t.equal(report.reason, 'HEAD_MISMATCH', 'head no longer matches the verified chain');
+    } },
+    { name: 'tamper: deleting a link strands the entries after it', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Ava' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Luno', species: 'OWL' });
+      await env.services.auth.setupPin(parent.id, '2468');
+      const session = await env.services.auth.verifyPin(parent.id, '2468');
+      for (let i = 0; i < 3; i++) {
+        const sub = await env.services.quest.submit(child.id, 'qst_water_glass');
+        await env.services.approval.approve(session.token, sub.id);
+      }
+      const entries = (await env.repos.audit.list()).sort(function (a, b) { return a.timestamp - b.timestamp; });
+      await env.db.atomic(['auditLogs'], async function (c) {
+        await c.del('auditLogs', entries[1].id);
+      });
+      const report = await env.services.integrity.verifyChain();
+      t.ok(!report.valid, 'missing link detected');
+      t.equal(report.reason, 'ORPHANED_ENTRIES', 'later entries cannot connect to the chain');
+      t.equal(report.verified, 1, 'only the first link still verifies');
+    } },
+    { name: 'streaks: consecutive days climb, missed days decay gently, best never falls', db: false, fn: function (t) {
+      let s = { current: 0, best: 0, lastActiveDay: undefined };
+      s = Object.assign(s, Streaks.applyActivity(s, '2026-06-01'));
+      s = Object.assign(s, Streaks.applyActivity(s, '2026-06-02'));
+      s = Object.assign(s, Streaks.applyActivity(s, '2026-06-03'));
+      t.equal(s.current, 3, 'three days running');
+      const again = Streaks.applyActivity(s, '2026-06-03');
+      t.equal(again.current, 3, 'same day is a no-op');
+      s = Object.assign(s, Streaks.applyActivity(s, '2026-06-05'));
+      t.equal(s.current, Math.floor(3 * CONFIG.STREAK.DECAY_PER_MISSED_DAY) + 1, 'one missed day decays then counts today');
+      t.equal(s.best, 3, 'best is never reduced');
+      let threw = null;
+      try { Streaks.applyActivity(s, '2026-06-01'); } catch (e) { threw = e; }
+      t.ok(threw && threw.code === 'TIME_BACKWARDS', 'time cannot run backwards');
+    } },
+    { name: 'economy: two hundred seeded raids stay inside the configured bounds', db: false, fn: function (t) {
+      const def = CONFIG.DUNGEONS[2];
+      for (let i = 0; i < 200; i++) {
+        const r = Loot.resolveDungeon({ seed: RNG.seedFromString('sweep-' + i) }, def, CONFIG.ITEMS);
+        if (r.gold < def.gold[0] || r.gold > def.gold[1]) return t.ok(false, 'gold out of range at seed ' + i);
+        if (r.xp < def.xp[0] || r.xp > def.xp[1]) return t.ok(false, 'xp out of range at seed ' + i);
+        const total = r.drops.reduce(function (s, d) { return s + d.qty; }, 0);
+        if (total !== def.lootRolls) return t.ok(false, 'drop count drifted at seed ' + i);
+      }
+      t.ok(true, '200/200 inside bounds');
+      const rand = RNG.mulberry32(RNG.seedFromString('rarity-census'));
+      const counts = {};
+      for (let i = 0; i < 3000; i++) {
+        const r = Loot.rollRarity(rand);
+        counts[r] = (counts[r] || 0) + 1;
+      }
+      t.ok((counts.COMMON || 0) > 1000, 'commons dominate (' + counts.COMMON + '/3000)');
+      t.ok((counts.MYTHIC || 0) < 150, 'mythics stay mythic (' + (counts.MYTHIC || 0) + '/3000)');
+      t.ok((counts.COMMON || 0) > (counts.MYTHIC || 0) * 5, 'distribution is shaped as configured');
+    } },
+    { name: 'limits: balances clamp at their caps instead of overflowing', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Noa' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Boop', species: 'BEAR' });
+      const filled = await env.repos.guardians.applyBundle(child.id, Rewards.normalizeBundle({ energy: 99999 }));
+      t.equal(filled.guardian.energy, filled.guardian.maxEnergy, 'energy clamps at the cap');
+      await env.repos.inventory.addItem(child.id, 'itm_wood', CONFIG.LIMITS.MAX_QTY);
+      const row = await env.repos.inventory.addItem(child.id, 'itm_wood', 5);
+      t.equal(row.qty, CONFIG.LIMITS.MAX_QTY, 'inventory clamps at MAX_QTY');
+      let threw = null;
+      try { Rewards.normalizeBundle({ coins: -5 }); Validation.validateBundle(Rewards.normalizeBundle({ coins: -5 })); } catch (e) { threw = e; }
+      t.ok(threw, 'negative bundles are refused');
+    } },
+    { name: 'gate: a decided submission can never be decided again', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Rio' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Sol', species: 'PHOENIX' });
+      await env.services.auth.setupPin(parent.id, '1357');
+      const session = await env.services.auth.verifyPin(parent.id, '1357');
+      const sub = await env.services.quest.submit(child.id, 'qst_water_glass');
+      await env.services.approval.approve(session.token, sub.id);
+      let threw = null;
+      try { await env.services.approval.approve(session.token, sub.id); } catch (e) { threw = e; }
+      t.ok(threw && threw.code, 'second approval refused (' + (threw && threw.code) + ')');
+      threw = null;
+      try { await env.services.approval.reject(session.token, sub.id, 'changed my mind'); } catch (e) { threw = e; }
+      t.ok(threw && threw.code, 'reject-after-approve refused (' + (threw && threw.code) + ')');
+      const fresh = await env.repos.submissions.get(sub.id);
+      t.equal(fresh.status, 'APPROVED', 'decision is immutable');
+      const chain = await env.services.integrity.verifyChain();
+      t.ok(chain.valid && chain.length === 1, 'exactly one decision on the chain');
+    } },
+    { name: 'data: reseeding an existing world changes nothing', db: true, fn: async function (t, env) {
+      const first = await env.services.seed.seedIfEmpty();
+      t.ok(first.seeded, 'first boot seeds');
+      const quests1 = (await env.repos.quests.list()).length;
+      const items1 = (await env.repos.items.list()).length;
+      const second = await env.services.seed.seedIfEmpty();
+      t.ok(!second.seeded, 'second boot recognizes the world');
+      t.equal((await env.repos.quests.list()).length, quests1, 'quest catalog stable');
+      t.equal((await env.repos.items.list()).length, items1, 'item catalog stable');
+      t.ok((await env.repos.meta.get('schemaVersion')) !== undefined, 'schema version recorded');
+    } },
+    { name: 'validation: hostile shapes are refused at the door', db: true, fn: async function (t, env) {
+      let threw = null;
+      try { await env.repos.users.create({ role: 'CHILD', name: 'x'.repeat(200) }); } catch (e) { threw = e; }
+      t.ok(threw, 'absurd names refused');
+      threw = null;
+      try { await env.repos.users.create({ role: 'WIZARD', name: 'Hax' }); } catch (e) { threw = e; }
+      t.ok(threw, 'unknown roles refused');
+      threw = null;
+      try {
+        Validation.validateForStore('guardians', {
+          id: 'g1', userId: 'u1', name: 'Pip', species: 'FOX',
+          level: 1, xp: 0, energy: NaN, maxEnergy: 100, gold: 0, affection: 0,
+        });
+      } catch (e) { threw = e; }
+      t.ok(threw, 'NaN balances refused');
+    } },
+    { name: 'backup: the audit chain and credentials survive a full round-trip', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const parent = await env.repos.users.create({ role: 'PARENT', name: 'Keeper' });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Iri' });
+      await env.repos.guardians.createForUser(child.id, { name: 'Ash', species: 'WOLF' });
+      await env.services.auth.setupPin(parent.id, '4680');
+      const session = await env.services.auth.verifyPin(parent.id, '4680');
+      for (let i = 0; i < 2; i++) {
+        const sub = await env.services.quest.submit(child.id, 'qst_water_glass');
+        await env.services.approval.approve(session.token, sub.id);
+      }
+      const backup = await env.services.backup.export();
+      await env.db.clearAllStores();
+      t.equal((await env.repos.audit.list()).length, 0, 'world wiped');
+      await env.services.backup.importReplace(backup);
+      const chain = await env.services.integrity.verifyChain();
+      t.ok(chain.valid && chain.length === 2, 'chain restored and still verifies');
+      const back = await env.services.auth.verifyPin(parent.id, '4680');
+      t.ok(back && back.token, 'credentials restored — the PIN still opens the gate');
+      const g = await env.repos.guardians.getByUser(child.id);
+      t.equal(g.energy, 10, 'guardian balances restored exactly');
+    } },
   ];
 
   const TestSuite = {
@@ -2866,6 +4076,11 @@
   GOTH.makeLootService = makeLootService;
   GOTH.makeBuildingService = makeBuildingService;
   GOTH.makeAchievementService = makeAchievementService;
+  GOTH.makeStore = makeStore;
+  GOTH.Actions = Actions;
+  GOTH.Selectors = Selectors;
+  GOTH.ActionTypes = T;
+  GOTH.initialState = initialState;
   GOTH.makeServices = makeServices;
   GOTH.TestSuite = TestSuite;
 
@@ -2874,18 +4089,47 @@
 </script>
 <script type="text/babel" data-presets="react">
 /* ============================================================================
-   PHASE 4 INSPECTION HARNESS (temporary UI — the real game arrives in Phase 6)
-   New this phase: quest daily limits, dungeon expeditions, loot crates,
-   building upgrades, achievements — all live against the real database.
-   Tests still run in their own database; real data is never touched.
+   GUARDIAN OF THE HEARTH — Phase 6 game UI.
+   Rule of the house: components dispatch actions and read selectors. Nothing
+   in this file touches a service or the database directly (the Inspection
+   panel's test runner runs against the separate TEST database only).
    ========================================================================== */
-const { useState, useRef, useEffect } = React;
+const { useState, useRef, useEffect, useSyncExternalStore } = React;
 const G = window.GOTH;
+const A = G.Actions;
+const S = G.Selectors;
 
-// Dev time control: lets you fast-forward dungeon timers on the harness.
-// It shifts the WHOLE game clock, so it also ages parent sessions.
 const TIME = { offset: 0 };
 function gameNow() { return Date.now() + TIME.offset; }
+
+const SPECIES = [
+  { id: 'FOX', name: 'Fox', pet: 'Pip', emoji: '🦊', blurb: 'clever and playful' },
+  { id: 'DRAGON', name: 'Dragon', pet: 'Ember', emoji: '🐲', blurb: 'bold and brave' },
+  { id: 'OWL', name: 'Owl', pet: 'Luno', emoji: '🦉', blurb: 'wise and calm' },
+  { id: 'WOLF', name: 'Wolf', pet: 'Ash', emoji: '🐺', blurb: 'loyal night sentinel' },
+  { id: 'TURTLE', name: 'Turtle', pet: 'Shelly', emoji: '🐢', blurb: 'patient and gentle' },
+  { id: 'BEAR', name: 'Bear', pet: 'Boop', emoji: '🐻', blurb: 'gentle giant' },
+  { id: 'PHOENIX', name: 'Phoenix', pet: 'Sol', emoji: '🐦‍🔥', blurb: 'radiant and warm' },
+];
+function speciesOf(id) { return SPECIES.find(function (s) { return s.id === id; }) || SPECIES[0]; }
+function stageArt(species, level) {
+  const base = 'guardian-' + species.toLowerCase();
+  if (level >= 25) return [base + '-3.jpg', base + '-2.jpg', base + '.jpg'];
+  if (level >= 10) return [base + '-2.jpg', base + '.jpg'];
+  return [base + '.jpg'];
+}
+const RARITY_COLOR = {
+  COMMON: 'var(--r-common)', UNCOMMON: 'var(--r-uncommon)', RARE: 'var(--r-rare)',
+  EPIC: 'var(--r-epic)', LEGENDARY: 'var(--r-legendary)', MYTHIC: 'var(--r-mythic)',
+};
+const CATEGORY = {
+  HYDRATION: { label: 'Hydration', icon: '💧' },
+  HEALTH: { label: 'Health', icon: '🛁' },
+  LEARNING: { label: 'Learning', icon: '📚' },
+  RESPONSIBILITY: { label: 'Responsibility', icon: '🧺' },
+  KINDNESS: { label: 'Kindness', icon: '💛' },
+  FITNESS: { label: 'Fitness', icon: '🏃' },
+};
 
 function deleteDb(name) {
   return new Promise(function (resolve) {
@@ -2893,22 +4137,6 @@ function deleteDb(name) {
     req.onsuccess = req.onerror = req.onblocked = function () { resolve(); };
   });
 }
-
-async function bootMainDb() {
-  const backend = G.createIdbBackend(G.CONFIG.DB.name);
-  const db = G.makeDB(backend);
-  await db.open();
-  const repos = G.makeRepositories(db);
-  const services = G.makeServices(db, repos, { now: gameNow });
-  const seed = await services.seed.seedIfEmpty();
-  const recovery = await services.approval.recoverUnfinished();
-  const chain = await services.integrity.verifyChain();
-  const items = await repos.items.list();
-  const itemsById = {};
-  items.forEach(function (i) { itemsById[i.id] = i; });
-  return { db: db, repos: repos, services: services, seed: seed, recovery: recovery, chain: chain, itemsById: itemsById };
-}
-
 async function makeTestEnv() {
   await deleteDb(G.CONFIG.DB.testName);
   const backend = G.createIdbBackend(G.CONFIG.DB.testName);
@@ -2922,610 +4150,949 @@ async function makeTestEnv() {
     close: function () { return db.close(); },
   };
 }
-
 function fmtCountdown(ms) {
   const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h > 0) return h + 'h ' + m + 'm';
   return m + ':' + String(s % 60).padStart(2, '0');
 }
 
-const DEMO_QUESTS = ['qst_water_glass', 'qst_make_bed', 'qst_help_parent'];
+/* Art: tries each src in turn; if all fail, renders the emoji fallback. */
+function Art(props) {
+  const [idx, setIdx] = useState(0);
+  useEffect(function () { setIdx(0); }, [props.srcs.join('|')]);
+  if (idx >= props.srcs.length) {
+    return <div className="fallback" aria-hidden="true">{props.emoji}</div>;
+  }
+  return (
+    <img
+      src={'./' + props.srcs[idx]}
+      alt={props.alt || ''}
+      onError={function () { setIdx(idx + 1); }}
+    />
+  );
+}
+
+const noopSubscribe = function () { return function () {}; };
+const nullSnapshot = function () { return null; };
 
 function App() {
-  const [boot, setBoot] = useState({ state: 'loading' });
-  const [results, setResults] = useState([]);
-  const [running, setRunning] = useState(false);
-  const [msg, setMsg] = useState(null);
-  const [counts, setCounts] = useState(null);
-  // Parent gate
-  const [gateRevealed, setGateRevealed] = useState(false);
-  const [parent, setParent] = useState(null);
-  const [hasPin, setHasPin] = useState(false);
-  const [parentName, setParentName] = useState('Keeper');
-  const [pin, setPin] = useState('');
-  const [session, setSession] = useState(null);
-  const [gateMsg, setGateMsg] = useState(null);
-  const [chain, setChain] = useState(null);
-  // Game state
-  const [demo, setDemo] = useState(null);
-  const [tick, setTick] = useState(0);
-  const appRef = useRef(null);
-  const fileRef = useRef(null);
-  const pressTimer = useRef(null);
+  const [store, setStore] = useState(null);
+  const [fatal, setFatal] = useState(null);
+  const [splashDone, setSplashDone] = useState(false);
+  const [tab, setTab] = useState('home');
+  const [showSwitcher, setShowSwitcher] = useState(false);
+  const [showOnboard, setShowOnboard] = useState(false);
+  const storeCtx = useRef(null);
+  const state = useSyncExternalStore(
+    store ? store.subscribe : noopSubscribe,
+    store ? store.getState : nullSnapshot
+  );
 
   useEffect(function () {
-    if (!window.indexedDB) { setBoot({ state: 'noidb' }); return; }
-    bootMainDb().then(async function (app) {
-      appRef.current = app;
-      setChain(app.chain);
-      const p = (await app.repos.users.listByRole('PARENT'))[0] || null;
-      setParent(p);
-      if (p) setHasPin(!!(await app.repos.credentials.getByUser(p.id)));
-      await refreshDemo(app);
-      setBoot({ state: 'ready', seed: app.seed, recovery: app.recovery });
-    }).catch(function (e) {
-      setBoot({ state: 'error', error: (e && e.message) || String(e) });
-    });
+    if (!window.indexedDB) { setFatal('This device blocks app storage, so the hearth cannot keep its memory. Try Safari or Chrome.'); return; }
+    (async function () {
+      try {
+        const backend = G.createIdbBackend(G.CONFIG.DB.name);
+        const db = G.makeDB(backend);
+        await db.open();
+        const repos = G.makeRepositories(db);
+        const services = G.makeServices(db, repos, { now: gameNow });
+        const ctx = { db: db, repos: repos, services: services, now: gameNow };
+        storeCtx.current = ctx;
+        const s = G.makeStore(ctx);
+        setStore(s);
+        await s.dispatch(A.boot());
+      } catch (e) { setFatal((e && e.message) || String(e)); }
+    })();
+    const t = setTimeout(function () { setSplashDone(true); }, 1400);
+    return function () { clearTimeout(t); };
   }, []);
 
-  // 1s heartbeat drives session + dungeon countdowns.
   useEffect(function () {
-    if (boot.state !== 'ready') return;
-    const id = setInterval(function () { setTick(function (t) { return t + 1; }); }, 1000);
+    if (!store || !state || state.boot !== 'READY') return;
+    const id = setInterval(function () { store.dispatch(A.tick(gameNow())); }, 1000);
     return function () { clearInterval(id); };
-  }, [boot.state]);
+  }, [store, state && state.boot]);
 
+  /* toasts fade on their own */
   useEffect(function () {
-    if (session && gameNow() > session.expiresAt) {
-      setSession(null);
-      setGateMsg({ kind: 'bad', text: 'Parent session timed out. Unlock again.' });
-    }
-  }, [tick, session]);
+    if (!store || !state || !state.ui.toast) return;
+    const id = setTimeout(function () { store.dispatch(A.clearToast('main')); }, 3600);
+    return function () { clearTimeout(id); };
+  }, [store, state && state.ui.toast]);
 
-  async function refreshDemo(app) {
-    const a = app || appRef.current;
-    const childId = await a.repos.meta.get('demo.childId');
-    if (!childId) { setDemo(null); return; }
-    const child = await a.repos.users.get(childId);
-    if (!child) { setDemo(null); return; }
-    const guardian = await a.repos.guardians.getByUser(childId);
-    const pending = (await a.repos.submissions.listByUserAndStatus(childId, 'PENDING'))
-      .sort(function (x, y) { return x.submittedAt - y.submittedAt; });
-    const quests = await a.repos.quests.list();
-    const questsById = {};
-    quests.forEach(function (q) { questsById[q.id] = q; });
-    const board = await a.services.quest.listForChild(childId);
-    const boardById = {};
-    board.forEach(function (b) { boardById[b.quest.id] = b; });
-    const streaks = await a.repos.streaks.listByUser(childId);
-    const streak = streaks.find(function (s) { return s.scope === 'GLOBAL'; }) || null;
-    let dungeonState = null;
-    if (guardian) dungeonState = await a.services.dungeon.listForGuardian(guardian.id);
-    const crates = await a.services.loot.crateCount(childId);
-    const buildings = await a.services.building.overview(childId);
-    const achievements = await a.services.achievement.listForUser(childId);
-    setDemo({
-      child: child, guardian: guardian, pending: pending, questsById: questsById,
-      boardById: boardById, streak: streak, dungeonState: dungeonState,
-      crates: crates, buildings: buildings, achievements: achievements,
-    });
-  }
-
-  /* ---- hidden gate: long-press the ember 3 seconds ---- */
-  function pressStart() {
-    pressTimer.current = setTimeout(function () {
-      setGateRevealed(true);
-      setGateMsg({ kind: 'ok', text: 'Parent gate revealed.' });
-    }, 3000);
-  }
-  function pressEnd() {
-    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
-  }
-
-  /* ---- tests / backup / inspect ---- */
-  async function runTests() {
-    setRunning(true); setResults([]); setMsg(null);
-    try {
-      const out = [];
-      await G.TestSuite.runAll(makeTestEnv, function (r) { out.push(r); setResults(out.slice()); });
-    } catch (e) {
-      setMsg({ kind: 'bad', text: 'Test runner stopped: ' + ((e && e.message) || e) });
-    }
-    setRunning(false);
-  }
-  async function resetTestDb() {
-    setMsg(null);
-    await deleteDb(G.CONFIG.DB.testName);
-    setResults([]);
-    setMsg({ kind: 'ok', text: 'Test database deleted. Real data untouched.' });
-  }
-  async function exportBackup() {
-    setMsg(null);
-    try {
-      const backup = await appRef.current.services.backup.export();
-      const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'guardian-hearth-backup-' + G.TimeUtil.todayStr() + '.json';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
-      setMsg({ kind: 'ok', text: 'Backup exported. Keep the file somewhere safe.' });
-    } catch (e) {
-      setMsg({ kind: 'bad', text: 'Export failed: ' + ((e && e.message) || e) });
-    }
-  }
-  function pickImportFile() { if (fileRef.current) fileRef.current.click(); }
-  async function onImportFile(ev) {
-    const file = ev.target.files && ev.target.files[0];
-    ev.target.value = '';
-    if (!file) return;
-    setMsg(null);
-    try {
-      const backup = JSON.parse(await file.text());
-      const restored = await appRef.current.services.backup.importReplace(backup);
-      const total = Object.keys(restored).reduce(function (s, k) { return s + restored[k]; }, 0);
-      setCounts(null);
-      await refreshDemo();
-      setMsg({ kind: 'ok', text: 'Backup verified and restored: ' + total + ' records.' });
-    } catch (e) {
-      setMsg({ kind: 'bad', text: 'Import refused: ' + ((e && e.message) || e) + '\nNothing was changed.' });
-    }
-  }
-  async function inspectSeed() {
-    setMsg(null);
-    const out = [];
-    for (const s of G.STORE_NAMES) out.push({ store: s, count: await appRef.current.db.count(s) });
-    setCounts(out);
-  }
-
-  /* ---- parent gate actions ---- */
-  function gateError(e) {
-    if (e && e.code === 'LOCKED_OUT') {
-      setGateMsg({ kind: 'bad', text: 'Locked out. Try again in ' + Math.ceil((e.retryInMs || 0) / 1000) + 's.' });
-    } else if (e && e.code === 'WRONG_PIN') {
-      setGateMsg({ kind: 'bad', text: 'Incorrect PIN. ' + e.attemptsLeft + ' attempt' + (e.attemptsLeft === 1 ? '' : 's') + ' left before lockout.' });
-    } else {
-      setGateMsg({ kind: 'bad', text: (e && e.message) || String(e) });
-    }
-  }
-  async function createParentWithPin() {
-    setGateMsg(null);
-    try {
-      const a = appRef.current;
-      const p = await a.repos.users.create({ role: 'PARENT', name: parentName || 'Keeper', avatar: '🛡️' });
-      await a.services.auth.setupPin(p.id, pin);
-      setParent(p); setHasPin(true); setPin('');
-      setGateMsg({ kind: 'ok', text: 'Parent created and PIN set (PBKDF2-SHA256, 310k iterations). Now unlock with it.' });
-    } catch (e) { gateError(e); }
-  }
-  async function setPinForParent() {
-    setGateMsg(null);
-    try {
-      await appRef.current.services.auth.setupPin(parent.id, pin);
-      setHasPin(true); setPin('');
-      setGateMsg({ kind: 'ok', text: 'PIN set. Now unlock with it.' });
-    } catch (e) { gateError(e); }
-  }
-  async function unlock() {
-    setGateMsg(null);
-    try {
-      const s = await appRef.current.services.auth.verifyPin(parent.id, pin);
-      setSession(s); setPin('');
-      setGateMsg({ kind: 'ok', text: 'Parent mode unlocked. Session expires after 5 idle minutes.' });
-    } catch (e) { gateError(e); }
-  }
-  function lockNow() {
-    if (session) appRef.current.services.auth.endSession(session.token);
-    setSession(null);
-    setGateMsg({ kind: 'ok', text: 'Locked. The approval gate is closed.' });
-  }
-  async function verifyChainNow() {
-    setGateMsg(null);
-    const report = await appRef.current.services.integrity.verifyChain();
-    setChain(report);
-    setGateMsg(report.valid
-      ? { kind: 'ok', text: 'Audit chain VALID — ' + report.length + ' entries verified back to GENESIS.' }
-      : { kind: 'bad', text: 'Audit chain INVALID (' + report.reason + ') — verified ' + report.verified + ' of ' + report.length + '.' });
-  }
-  async function recoverNow() {
-    setGateMsg(null);
-    const r = await appRef.current.services.approval.recoverUnfinished();
-    await refreshDemo();
-    setGateMsg({ kind: 'ok', text: r.recovered === 0 ? 'Nothing to recover — all approvals fully applied.' : 'Recovered ' + r.recovered + ' interrupted reward release(s).' });
-  }
-  async function removeDemo() {
-    setGateMsg(null);
-    const a = appRef.current;
-    const childId = await a.repos.meta.get('demo.childId');
-    if (childId) {
-      try { await a.repos.users.removeCascade(childId); } catch (e) { /* already gone */ }
-      await a.repos.meta.set('demo.childId', '');
-    }
-    await refreshDemo();
-    setGateMsg({ kind: 'ok', text: 'Demo child removed (audit history retained by design).' });
-  }
-
-  /* ---- game actions ---- */
-  async function evaluateAchievements(childId) {
-    const res = await appRef.current.services.achievement.evaluate(childId);
-    if (res.newlyUnlocked.length) {
-      setMsg({ kind: 'ok', text: '🏅 Achievement unlocked: ' + res.newlyUnlocked.map(function (d) { return d.name; }).join(', ') });
-    }
-    return res;
-  }
-  async function createDemoChild() {
-    setMsg(null);
-    const a = appRef.current;
-    const child = await a.repos.users.create({ role: 'CHILD', name: 'Demo Kid', avatar: '🧒' });
-    await a.repos.guardians.createForUser(child.id, { name: 'Pip', species: 'FOX' });
-    await a.repos.meta.set('demo.childId', child.id);
-    await refreshDemo();
-  }
-  async function submitQuest(questId) {
-    setMsg(null);
-    try {
-      await appRef.current.services.quest.submit(demo.child.id, questId);
-      await refreshDemo();
-    } catch (e) {
-      setMsg({ kind: 'bad', text: (e && e.message) || String(e) });
-    }
-  }
-  async function decide(subId, kind) {
-    setMsg(null);
-    try {
-      const svc = appRef.current.services;
-      if (kind === 'APPROVE') {
-        const r = await svc.approval.approve(session.token, subId);
-        setMsg({ kind: 'ok', text: r.leveledUp ? 'Approved — rewards released. LEVEL UP to ' + r.guardian.level + '! 🎉' : 'Approved — rewards released to ' + r.guardian.name + '.' });
-        await evaluateAchievements(demo.child.id);
-      } else {
-        await svc.approval.reject(session.token, subId, 'not quite yet');
-        setMsg({ kind: 'ok', text: 'Rejected — nothing was granted.' });
-      }
-      const fresh = svc.auth.getSession(session.token);
-      if (fresh) setSession(fresh);
-      await refreshDemo();
-      setChain(await svc.integrity.verifyChain());
-    } catch (e) {
-      if (e && (e.code === 'SESSION_EXPIRED' || e.code === 'SESSION_INVALID')) {
-        setSession(null);
-        setGateMsg({ kind: 'bad', text: 'Parent session ended — unlock again to decide.' });
-      } else {
-        setMsg({ kind: 'bad', text: (e && e.message) || String(e) });
-      }
-    }
-  }
-  async function startDungeon(dungeonId) {
-    setMsg(null);
-    try {
-      const r = await appRef.current.services.dungeon.start(demo.guardian.id, dungeonId);
-      setMsg({ kind: 'ok', text: 'Expedition started! ' + demo.guardian.name + ' paid ' + r.energyCost + ' ⚡ and is on the way.' });
-      await refreshDemo();
-    } catch (e) {
-      setMsg({ kind: 'bad', text: (e && e.message) || String(e) });
-    }
-  }
-  async function claimDungeon(runId) {
-    setMsg(null);
-    try {
-      const a = appRef.current;
-      const r = await a.services.dungeon.claim(runId);
-      const drops = r.run.result.drops.map(function (d) {
-        const item = a.itemsById[d.itemId];
-        return (item ? item.name : d.itemId) + ' ×' + d.qty;
-      }).join(', ');
-      setMsg({ kind: 'ok', text: '🎒 Expedition complete! +' + r.run.result.gold + ' gold · +' + r.run.result.xp + ' xp · ' + (drops || 'no drops') + (r.leveledUp ? ' · LEVEL UP! 🎉' : '') });
-      await evaluateAchievements(demo.child.id);
-      await refreshDemo();
-    } catch (e) {
-      if (e && e.code === 'RUN_NOT_FINISHED') {
-        setMsg({ kind: 'bad', text: 'Still underway — ' + fmtCountdown(e.remainingMs) + ' to go. (Use fast-forward below to test.)' });
-      } else {
-        setMsg({ kind: 'bad', text: (e && e.message) || String(e) });
-      }
-    }
-  }
-  async function openCrate() {
-    setMsg(null);
-    try {
-      const r = await appRef.current.services.loot.openCrate(demo.child.id);
-      setMsg({ kind: 'ok', text: '📦 Crate opened: ' + r.item.name + ' (' + r.rarity + ')!' });
-      await refreshDemo();
-    } catch (e) {
-      setMsg({ kind: 'bad', text: (e && e.message) || String(e) });
-    }
-  }
-  async function upgradeBuilding(type) {
-    setMsg(null);
-    try {
-      const r = await appRef.current.services.building.upgrade(demo.child.id, type);
-      setMsg({ kind: 'ok', text: '🔨 ' + r.building.type + ' upgraded to level ' + r.building.level + ' for ' + r.cost + ' gold.' + (type === 'SANCTUARY' ? ' Max energy is now ' + r.guardian.maxEnergy + ' ⚡.' : '') });
-      await refreshDemo();
-    } catch (e) {
-      setMsg({ kind: 'bad', text: (e && e.message) || String(e) });
-    }
-  }
-  async function skipTime(ms) {
-    TIME.offset += ms;
-    await refreshDemo();
-    setTick(function (t) { return t + 1; });
-  }
-
-  const passed = results.filter(function (r) { return r.ok; }).length;
-  const failed = results.length - passed;
-  const done = !running && results.length > 0;
-  const sessionLeft = session ? session.expiresAt - gameNow() : 0;
-  const dz = demo && demo.dungeonState;
-  const activeRun = dz ? dz.activeRun : null;
+  const booting = !state || state.boot === 'LOADING' || !splashDone;
+  const children = state ? S.selectChildren(state) : [];
 
   return (
-    <div className="wrap">
-      <div className="eyebrow">Phase 4 · Keeper's Inspection</div>
-      <h1
-        onPointerDown={pressStart}
-        onPointerUp={pressEnd}
-        onPointerLeave={pressEnd}
-        onPointerCancel={pressEnd}
-        onContextMenu={function (e) { e.preventDefault(); }}
-        style={{ userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', cursor: 'pointer' }}
-      >
-        <span className="ember" aria-hidden="true"></span>Guardian of the Hearth
-      </h1>
-      <p className="sub">Game engine: quests · dungeons · loot · buildings · achievements</p>
+    <React.Fragment>
+      {state && state.boot === 'READY' && state.mode === 'PARENT_MODE' && state.session ? (
+        <ParentShell store={store} state={state} storeCtx={storeCtx} />
+      ) : state && state.boot === 'READY' ? (
+        children.length === 0 || showOnboard ? (
+          <Onboarding
+            store={store} state={state}
+            canCancel={children.length > 0}
+            onDone={function () { setShowOnboard(false); setTab('home'); }}
+          />
+        ) : (
+          <ChildShell
+            store={store} state={state} tab={tab} setTab={setTab}
+            openSwitcher={function () { setShowSwitcher(true); }}
+          />
+        )
+      ) : null}
 
-      {boot.state === 'loading' && (
-        <div className="card"><h2>Lighting the hearth…</h2><p className="note">Opening the database, recovering, verifying the chain.</p></div>
+      {state && state.boot === 'ERROR' && (
+        <div className="shell"><div className="card" style={{ marginTop: 60 }}>
+          <h2>The hearth didn't light</h2>
+          <p className="note">{state.bootInfo.error}</p>
+        </div></div>
+      )}
+      {fatal && (
+        <div className="shell"><div className="card" style={{ marginTop: 60 }}>
+          <h2>The hearth didn't light</h2>
+          <p className="note">{fatal}</p>
+        </div></div>
       )}
 
-      {boot.state === 'noidb' && (
-        <div className="card">
-          <h2>This preview can't store data</h2>
-          <p className="note">IndexedDB isn't available in this sandbox. Deploy to Netlify and open the live link — everything runs on-device there.</p>
+      {showSwitcher && state && (
+        <div className="veil" onClick={function () { setShowSwitcher(false); }}>
+          <div className="sheet" onClick={function (e) { e.stopPropagation(); }}>
+            <h2 style={{ marginBottom: 12 }}>Who's playing?</h2>
+            {children.map(function (c) {
+              return (
+                <button key={c.id} className="btn" style={{ width: '100%', marginBottom: 8, justifyContent: 'flex-start' }}
+                  onClick={function () { store.dispatch(A.selectChild(c.id)); setShowSwitcher(false); setTab('home'); }}>
+                  <span style={{ fontSize: 22 }}>{c.avatar}</span> {c.name}
+                  {c.id === state.activeChildId && <span className="seal" style={{ marginLeft: 'auto' }}>playing</span>}
+                </button>
+              );
+            })}
+            <button className="btn primary" style={{ width: '100%' }}
+              onClick={function () { setShowSwitcher(false); setShowOnboard(true); }}>
+              + New child
+            </button>
+          </div>
         </div>
       )}
 
-      {boot.state === 'error' && (
-        <div className="card"><h2>The hearth didn't light</h2><div className="msg bad">{boot.error}</div></div>
+      {!fatal && (
+        <div className={'splash' + (booting ? '' : ' bye')} aria-hidden={!booting}>
+          <Art srcs={['logo.jpg']} emoji="🛡️" alt="Guardian of the Hearth" />
+          <div>
+            <div className="eyebrow" style={{ textAlign: 'center', marginBottom: 6 }}>A family quest game</div>
+            <div className="display">Guardian of the Hearth</div>
+          </div>
+          <span className="ember" />
+        </div>
       )}
+    </React.Fragment>
+  );
+}
 
-      {boot.state === 'ready' && (
-        <React.Fragment>
+/* ---------------- onboarding ---------------- */
+function Onboarding(props) {
+  const kids = S.selectChildren(props.state);
+  const [name, setName] = useState('');
+  const [species, setSpecies] = useState('FOX');
+  const [petName, setPetName] = useState('Pip');
+  const [busy, setBusy] = useState(false);
+  function pick(id) { setSpecies(id); setPetName(speciesOf(id).pet); }
+  async function create() {
+    if (!name.trim() || busy) return;
+    setBusy(true);
+    const r = await props.store.dispatch(A.createChild(name.trim(), '🧒', petName.trim() || speciesOf(species).pet, species));
+    setBusy(false);
+    if (r.ok) props.onDone();
+  }
+  return (
+    <React.Fragment>
+      <div className="screen-bg home" />
+      <div className="shell">
+        <div className="shell-main" style={{ paddingTop: 8 }}>
+          <div className="eyebrow" style={{ marginBottom: 4 }}>{kids.length === 0 ? 'Welcome to the hearth' : 'A new keeper joins'}</div>
+          <h1 style={{ fontSize: 26, marginBottom: 14 }}>Choose your guardian</h1>
           <div className="card">
-            <h2>Inspection ledger</h2>
-            <div className="summary">
-              <span className="chip">{G.TestSuite.count} checks</span>
-              {results.length > 0 && <span className="chip pass">{passed} passed</span>}
-              {failed > 0 && <span className="chip fail">{failed} failed</span>}
-              {running && <span className="chip">running…</span>}
-              {done && failed === 0 && <span className="chip pass">all clear ✓</span>}
-              {chain && <span className={'chip ' + (chain.valid ? 'pass' : 'fail')}>{chain.valid ? 'chain VALID · ' + chain.length : 'chain BROKEN'}</span>}
+            <input className="field" value={name} maxLength={20} placeholder="Child's name"
+              onChange={function (e) { setName(e.target.value); }} />
+            <div className="species-grid">
+              {SPECIES.map(function (sp) {
+                return (
+                  <button key={sp.id} className={'sp-cell' + (species === sp.id ? ' on' : '')}
+                    onClick={function () { pick(sp.id); }}>
+                    <Art srcs={['guardian-' + sp.id.toLowerCase() + '.jpg']} emoji={sp.emoji} alt={sp.name} />
+                    <span className="sp-name">{sp.name}</span>
+                  </button>
+                );
+              })}
             </div>
-            <div className="btnrow">
-              <button className="primary" onClick={runTests} disabled={running}>
-                {running ? 'Inspecting… (PIN tests take a moment)' : 'Run all tests'}
+            <p className="note" style={{ marginTop: 0 }}>The {speciesOf(species).name.toLowerCase()} is {speciesOf(species).blurb}.</p>
+            <input className="field" value={petName} maxLength={16} placeholder="Guardian's name"
+              onChange={function (e) { setPetName(e.target.value); }} />
+            <div className="btnrow" style={{ marginTop: 6 }}>
+              {props.canCancel && <button className="btn" onClick={props.onDone}>Cancel</button>}
+              <button className="btn primary" disabled={!name.trim() || busy} onClick={create}>
+                {busy ? 'Lighting the hearth…' : 'Begin the watch'}
               </button>
-              <button onClick={resetTestDb} disabled={running}>Reset test data</button>
-              <button onClick={inspectSeed} disabled={running}>Inspect seed data</button>
             </div>
-            {results.length > 0 && (
-              <ul className="ledger" style={{ marginTop: 12 }}>
-                {results.map(function (r, i) {
-                  return (
-                    <li key={i} className={r.ok ? '' : 'fail'}>
-                      <span className="row">{(r.ok ? '✓ ' : '✕ ') + r.name}{!r.ok && <span className="err">{r.error}</span>}</span>
-                      <span className="ms">{r.ms}ms</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
           </div>
+          <p className="note">Quests completed in the real world feed your guardian. A parent releases every reward.</p>
+        </div>
+      </div>
+    </React.Fragment>
+  );
+}
 
-          <div className="card">
-            <h2>Quest board</h2>
-            {!demo && (
-              <React.Fragment>
-                <p className="note" style={{ marginTop: 0 }}>Create a demo child to play the full loop: submit → parent approves → rewards → raid → loot.</p>
-                <div className="btnrow"><button className="primary" onClick={createDemoChild}>Create demo child + guardian</button></div>
-              </React.Fragment>
-            )}
-            {demo && demo.guardian && (
-              <React.Fragment>
-                <p className="note" style={{ marginTop: 0 }}>
-                  🦊 <b style={{ color: 'var(--ink)' }}>{demo.guardian.name}</b> · Lv {demo.guardian.level} · ✦ {demo.guardian.gold} ·
-                  ⚡ {demo.guardian.energy}/{demo.guardian.maxEnergy} · ♥ {demo.guardian.affection} ·
-                  XP {demo.guardian.xp} · 🔥 {demo.streak ? demo.streak.current : 0}
-                </p>
-                <div className="btnrow">
-                  {DEMO_QUESTS.map(function (qid) {
-                    const q = demo.questsById[qid];
-                    const b = demo.boardById[qid];
-                    const left = b ? b.remainingToday : 0;
-                    return (
-                      <button key={qid} onClick={function () { submitQuest(qid); }} disabled={left === 0}>
-                        {q.icon} {q.title} ({left} left)
-                      </button>
-                    );
-                  })}
-                </div>
-                {demo.pending.length === 0 && <p className="note">No pending submissions. Submitting grants nothing by itself — rewards wait for the parent.</p>}
-                {demo.pending.length > 0 && (
-                  <ul className="ledger" style={{ marginTop: 12 }}>
-                    {demo.pending.map(function (s) {
-                      const q = demo.questsById[s.questId] || { title: s.questId, icon: '⭐' };
-                      return (
-                        <li key={s.id}>
-                          <span className="row">
-                            {q.icon} {q.title} — PENDING
-                            {session ? (
-                              <span style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                <button className="mini" onClick={function () { decide(s.id, 'APPROVE'); }}>Approve</button>
-                                <button className="mini" onClick={function () { decide(s.id, 'REJECT'); }}>Reject</button>
-                              </span>
-                            ) : (
-                              <span className="err" style={{ color: 'var(--dim)' }}>Awaiting a parent. Deciding requires parent mode.</span>
-                            )}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </React.Fragment>
-            )}
+/* ---------------- child shell ---------------- */
+function ChildShell(props) {
+  const state = props.state;
+  const store = props.store;
+  const [holding, setHolding] = useState(false);
+  const pressTimer = useRef(null);
+  const child = S.selectActiveChild(state);
+  const pendingCount = state.pending.length;
+
+  function pressStart() {
+    setHolding(true);
+    pressTimer.current = setTimeout(function () {
+      setHolding(false);
+      store.dispatch(A.revealGate());
+    }, 3000);
+  }
+  function pressEnd() {
+    setHolding(false);
+    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
+  }
+
+  const TABS = [
+    { id: 'home', ti: '🔥', label: 'Hearth' },
+    { id: 'quests', ti: '⭐', label: 'Quests' },
+    { id: 'raids', ti: '🗺️', label: 'Raids' },
+    { id: 'island', ti: '🏝️', label: 'Island' },
+    { id: 'bag', ti: '🎒', label: 'Bag' },
+  ];
+
+  return (
+    <React.Fragment>
+      <div className={'screen-bg ' + (props.tab === 'raids' ? 'raids' : 'home')} />
+      <div className="shell">
+        <header className="hdr">
+          <div className="hdr-title"
+            onPointerDown={pressStart} onPointerUp={pressEnd}
+            onPointerLeave={pressEnd} onPointerCancel={pressEnd}
+            onContextMenu={function (e) { e.preventDefault(); }}>
+            <span className={'ember' + (holding ? ' holding' : '')} aria-hidden="true" />
+            Guardian of the Hearth
           </div>
+          {child && (
+            <button className="hdr-kid" onClick={props.openSwitcher}>
+              <span>{child.avatar}</span> {child.name}
+            </button>
+          )}
+        </header>
+        <main className="shell-main" key={props.tab + (state.activeChildId || '')}>
+          {props.tab === 'home' && <HomeScreen store={store} state={state} setTab={props.setTab} />}
+          {props.tab === 'quests' && <QuestsScreen store={store} state={state} />}
+          {props.tab === 'raids' && <RaidsScreen store={store} state={state} />}
+          {props.tab === 'island' && <IslandScreen store={store} state={state} />}
+          {props.tab === 'bag' && <BagScreen store={store} state={state} />}
+        </main>
+      </div>
+      <nav className="tabbar">
+        {TABS.map(function (t) {
+          return (
+            <button key={t.id} className={'tab' + (props.tab === t.id ? ' on' : '')}
+              onClick={function () { props.setTab(t.id); }}>
+              <span className="ti">{t.ti}</span>{t.label}
+              {t.id === 'quests' && pendingCount > 0 && <span className="dot">{pendingCount}</span>}
+            </button>
+          );
+        })}
+      </nav>
+      {state.ui.gateRevealed && !state.session && <GateModal store={store} state={state} />}
+      {state.ui.celebration && <Celebration store={store} state={state} />}
+      {state.ui.toast && <div className={'toast ' + (state.ui.toast.kind === 'ok' ? 'ok' : 'bad')}>{state.ui.toast.text}</div>}
+    </React.Fragment>
+  );
+}
 
-          {demo && demo.guardian && dz && (
-            <div className="card">
-              <h2>Dungeons</h2>
-              {dz.dungeons.map(function (d) {
-                const isActive = activeRun && activeRun.dungeonId === d.def.id;
-                const remaining = isActive ? activeRun.endsAt - gameNow() : 0;
-                return (
-                  <div className="rowline" key={d.def.id}>
-                    <span className="grow">
-                      {d.def.name} <span className="dim">· {d.def.tier} · {d.def.durationMin}m · {d.energyCost}⚡</span>
-                      {!d.unlocked && <span className="dim"> · 🔒 Lv {d.def.unlockLevel}</span>}
-                    </span>
-                    {isActive && remaining > 0 && <span className="dim">⏳ {fmtCountdown(remaining)}</span>}
-                    {isActive && remaining <= 0 && <button className="mini" onClick={function () { claimDungeon(activeRun.id); }}>Claim 🎒</button>}
-                    {!isActive && d.unlocked && !activeRun && (
-                      <button className="mini" onClick={function () { startDungeon(d.def.id); }} disabled={demo.guardian.energy < d.energyCost}>Start</button>
-                    )}
-                    {!isActive && activeRun && <span className="dim">expedition out</span>}
-                  </div>
-                );
-              })}
-              <div className="btnrow" style={{ marginTop: 10 }}>
-                <button onClick={function () { skipTime(10 * 60000); }}>⏩ Skip 10 min</button>
-                <button onClick={function () { skipTime(60 * 60000); }}>⏩ Skip 1 hour</button>
+/* ---------------- home ---------------- */
+function HomeScreen(props) {
+  const state = props.state;
+  const g = state.guardian;
+  if (!g) return null;
+  const sp = speciesOf(g.species);
+  const xpNeeded = G.Leveling.xpToNext(g.level);
+  const pct = Math.min(100, Math.round((g.xp / xpNeeded) * 100));
+  const quick = state.questBoard.filter(function (b) { return b.remainingToday > 0; }).slice(0, 3);
+  return (
+    <React.Fragment>
+      <div className="card hero">
+        <div className="hero-art">
+          <Art srcs={stageArt(g.species, g.level)} emoji={sp.emoji} alt={sp.name} />
+          <div className="hero-name">
+            <span className="display">{g.name}</span>
+            <span className="lv-pill">Lv {g.level}</span>
+          </div>
+        </div>
+        <div className="hero-body">
+          <div className="xp-bar"><span style={{ width: pct + '%' }} /></div>
+          <div className="xp-row"><span>XP</span><span className="num">{g.xp} / {xpNeeded}</span></div>
+          <div className="chips">
+            <span className="chip gold">✦ <b>{g.gold}</b></span>
+            <span className="chip energy">⚡ <b>{g.energy}/{g.maxEnergy}</b></span>
+            <span className="chip heart">♥ <b>{g.affection}</b></span>
+            <span className="chip streak">🔥 <b>{S.selectGlobalStreak(state)}</b></span>
+          </div>
+        </div>
+      </div>
+
+      {state.pending.length > 0 && (
+        <div className="card">
+          <h2>Waiting for the Keeper</h2>
+          {state.pending.map(function (sub) {
+            const b = state.questBoard.find(function (x) { return x.quest.id === sub.questId; });
+            return (
+              <div className="pend-row" key={sub.id}>
+                <span>{b ? b.quest.icon : '⭐'}</span>
+                <span style={{ flex: 1 }}>{b ? b.quest.title : sub.questId}</span>
+                <span className="badge-wait">awaiting approval</span>
               </div>
-              <p className="note">Fast-forward is a dev control for testing timers — it ages parent sessions too.</p>
-            </div>
-          )}
-
-          {demo && demo.guardian && (
-            <div className="card">
-              <h2>Workshop &amp; island</h2>
-              <div className="rowline">
-                <span className="grow">📦 Mystery Loot Crates <span className="dim">· {demo.crates} held</span></span>
-                <button className="mini" onClick={openCrate} disabled={demo.crates === 0}>Open one</button>
-              </div>
-              {demo.buildings.map(function (b) {
-                return (
-                  <div className="rowline" key={b.type}>
-                    <span className="grow">
-                      🏗️ {b.name} <span className="dim">· Lv {b.level}/{b.maxLevel}{b.type === 'SANCTUARY' ? ' · +10⚡ cap per level' : ''}</span>
-                    </span>
-                    {b.nextCost !== null
-                      ? <button className="mini" onClick={function () { upgradeBuilding(b.type); }} disabled={demo.guardian.gold < b.nextCost}>{b.nextCost} ✦</button>
-                      : <span className="dim">MAX</span>}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {demo && demo.achievements && demo.achievements.length > 0 && (
-            <div className="card">
-              <h2>Achievements</h2>
-              {demo.achievements.map(function (a) {
-                const pct = Math.min(100, Math.round((a.progress / a.target) * 100));
-                return (
-                  <div key={a.def.id} style={{ padding: '7px 2px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                      <span>{a.unlockedAt !== undefined ? '🏅 ' : ''}{a.def.name}</span>
-                      <span className="dim">{a.progress}/{a.target}</span>
-                    </div>
-                    <div className="bar"><span style={{ width: pct + '%' }}></span></div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {(gateRevealed || session) && (
-            <div className="card" style={{ borderColor: 'rgba(232,133,61,0.55)' }}>
-              <h2>Parent gate 🛡️</h2>
-              {!parent && (
-                <React.Fragment>
-                  <p className="note" style={{ marginTop: 0 }}>No parent account exists yet. Create one and set a PIN (4–12 digits).</p>
-                  <input className="field" value={parentName} onChange={function (e) { setParentName(e.target.value); }} placeholder="Parent name" maxLength={24} />
-                  <input className="field" type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={function (e) { setPin(e.target.value); }} placeholder="Choose a PIN" maxLength={12} />
-                  <div className="btnrow"><button className="primary" onClick={createParentWithPin}>Create parent &amp; set PIN</button></div>
-                </React.Fragment>
-              )}
-              {parent && !hasPin && (
-                <React.Fragment>
-                  <p className="note" style={{ marginTop: 0 }}>{parent.name} has no PIN yet.</p>
-                  <input className="field" type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={function (e) { setPin(e.target.value); }} placeholder="Choose a PIN (4–12 digits)" maxLength={12} />
-                  <div className="btnrow"><button className="primary" onClick={setPinForParent}>Set PIN</button></div>
-                </React.Fragment>
-              )}
-              {parent && hasPin && !session && (
-                <React.Fragment>
-                  <p className="note" style={{ marginTop: 0 }}>Unlock parent mode for {parent.name}. Three wrong attempts lock the gate for 60s, doubling each time.</p>
-                  <input className="field" type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={function (e) { setPin(e.target.value); }} placeholder="Enter PIN" maxLength={12} />
-                  <div className="btnrow"><button className="primary" onClick={unlock}>Unlock</button></div>
-                </React.Fragment>
-              )}
-              {session && (
-                <React.Fragment>
-                  <div className="summary">
-                    <span className="chip pass">unlocked · {fmtCountdown(sessionLeft)} left</span>
-                    {chain && <span className={'chip ' + (chain.valid ? 'pass' : 'fail')}>{chain.valid ? 'chain VALID' : 'chain ' + chain.reason}</span>}
-                  </div>
-                  <div className="btnrow">
-                    <button onClick={lockNow}>Lock now</button>
-                    <button onClick={verifyChainNow}>Verify audit chain</button>
-                    <button onClick={recoverNow}>Recover rewards</button>
-                    <button onClick={removeDemo}>Remove demo data</button>
-                  </div>
-                  <p className="note">Every decision is appended to the hash chain. Each use extends the session; idle 5 minutes and it locks itself.</p>
-                </React.Fragment>
-              )}
-              {gateMsg && <div className={'msg ' + (gateMsg.kind === 'ok' ? 'ok' : 'bad')}>{gateMsg.text}</div>}
-            </div>
-          )}
-
-          <div className="card">
-            <h2>Backup &amp; restore</h2>
-            <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>
-              {boot.seed && boot.seed.seeded ? 'Fresh install: catalog seeded.' : 'Existing install detected.'}
-              {boot.recovery && boot.recovery.recovered > 0 ? ' Recovered ' + boot.recovery.recovered + ' interrupted reward(s) at boot.' : ''}
-              {' '}Backups are checksummed — a modified file is refused before anything is written.
-            </p>
-            <div className="btnrow">
-              <button onClick={exportBackup}>Export backup</button>
-              <button onClick={pickImportFile}>Import backup</button>
-            </div>
-            <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={onImportFile} />
-          </div>
-
-          {counts && (
-            <div className="card">
-              <h2>Seed inspection — {G.CONFIG.DB.name}</h2>
-              <table className="counts"><tbody>
-                {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
-              </tbody></table>
-            </div>
-          )}
-
-          {msg && <div className={'msg ' + (msg.kind === 'ok' ? 'ok' : 'bad')}>{msg.text}</div>}
-        </React.Fragment>
+            );
+          })}
+          <p className="note">Rewards arrive when a parent approves.</p>
+        </div>
       )}
 
-      <footer>
-        <b>Build GOTH-P4.1</b> — Phase 4 of 7. Parent gate: long-press the ember for 3 seconds.
-        This inspection screen is temporary; the real game UI (with your painted art) arrives
-        in Phase 6. Next phase: state management — the store that drives the whole interface.
-      </footer>
+      <div className="card">
+        <h2>Today's quests</h2>
+        {quick.length === 0 && <p className="note" style={{ marginTop: 0 }}>Every quest is done for today. The hearth is proud of you.</p>}
+        {quick.map(function (b) {
+          return (
+            <div className="q-card" key={b.quest.id}>
+              <span className="q-icon">{b.quest.icon}</span>
+              <span className="q-main">
+                <span className="q-title">{b.quest.title}</span>
+                <div className="q-sub">{b.remainingToday} left today · +{b.quest.reward.energy}⚡ +{b.quest.reward.coins}✦</div>
+              </span>
+              <button className="mini go" onClick={function () { props.store.dispatch(A.submitQuest(b.quest.id)); }}>I did it!</button>
+            </div>
+          );
+        })}
+        <button className="btn" style={{ width: '100%', marginTop: 4 }} onClick={function () { props.setTab('quests'); }}>
+          See the whole quest board ⭐
+        </button>
+      </div>
+    </React.Fragment>
+  );
+}
+
+/* ---------------- quests ---------------- */
+function QuestsScreen(props) {
+  const state = props.state;
+  const groups = {};
+  state.questBoard.forEach(function (b) {
+    const c = b.quest.category;
+    if (!groups[c]) groups[c] = [];
+    groups[c].push(b);
+  });
+  return (
+    <React.Fragment>
+      <h1 style={{ fontSize: 24, marginBottom: 4 }}>Quest board</h1>
+      <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>Do it in the real world first, then tap "I did it!" — a parent releases the reward.</p>
+      {Object.keys(CATEGORY).map(function (cat) {
+        const list = groups[cat];
+        if (!list || list.length === 0) return null;
+        return (
+          <React.Fragment key={cat}>
+            <div className="cat-label">
+              <span>{CATEGORY[cat].icon}</span>
+              <span className="eyebrow">{CATEGORY[cat].label}</span>
+              <span className="cat-rule" />
+            </div>
+            {list.map(function (b) {
+              const spent = b.remainingToday === 0;
+              return (
+                <div className="q-card" key={b.quest.id} style={spent ? { opacity: 0.55 } : null}>
+                  <span className="q-icon">{b.quest.icon}</span>
+                  <span className="q-main">
+                    <span className="q-title">{b.quest.title}</span>
+                    <div className="q-sub">
+                      {spent ? 'done for today ✓' : b.remainingToday + ' left today'} · +{b.quest.reward.energy}⚡ +{b.quest.reward.coins}✦ +{b.quest.reward.xp}xp
+                    </div>
+                  </span>
+                  <button className="mini go" disabled={spent}
+                    onClick={function () { props.store.dispatch(A.submitQuest(b.quest.id)); }}>
+                    I did it!
+                  </button>
+                </div>
+              );
+            })}
+          </React.Fragment>
+        );
+      })}
+      {state.pending.length > 0 && (
+        <div className="card" style={{ marginTop: 14 }}>
+          <h2>Waiting for the Keeper</h2>
+          {state.pending.map(function (sub) {
+            const b = state.questBoard.find(function (x) { return x.quest.id === sub.questId; });
+            return (
+              <div className="pend-row" key={sub.id}>
+                <span>{b ? b.quest.icon : '⭐'}</span>
+                <span style={{ flex: 1 }}>{b ? b.quest.title : sub.questId}</span>
+                <span className="badge-wait">awaiting approval</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </React.Fragment>
+  );
+}
+
+/* ---------------- raids ---------------- */
+function RaidsScreen(props) {
+  const state = props.state;
+  const g = state.guardian;
+  const view = S.selectDungeonView(state);
+  const active = view.find(function (d) { return d.isActive; });
+  return (
+    <React.Fragment>
+      <h1 style={{ fontSize: 24, marginBottom: 4 }}>Expeditions</h1>
+      <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>Spend earned energy to send {g ? g.name : 'your guardian'} raiding. One expedition at a time.</p>
+      {active && (
+        <div className="card">
+          <div className="run-banner">
+            <div className="b-thumb" style={{ width: 74, height: 74 }}>
+              <Art srcs={[active.def.id.replace('dgn_', 'dungeon-') + '.jpg']} emoji="🗺️" alt={active.def.name} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div className="display" style={{ fontSize: 17 }}>{active.def.name}</div>
+              {!active.claimable && <div className="run-count">⏳ {fmtCountdown(active.remainingMs)}</div>}
+              {active.claimable && <div className="note" style={{ margin: 0 }}>The expedition has returned!</div>}
+            </div>
+            {active.claimable && (
+              <button className="btn primary" onClick={function () { props.store.dispatch(A.claimDungeon(active.runId)); }}>
+                Open the haul 🎒
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      {view.map(function (d) {
+        const artName = d.def.id.replace('dgn_', 'dungeon-') + '.jpg';
+        const canStart = d.unlocked && !d.blocked && !d.isActive && g && g.energy >= d.energyCost;
+        return (
+          <div className="d-card" key={d.def.id}>
+            <div className="d-art">
+              <Art srcs={[artName]} emoji="🗺️" alt={d.def.name} />
+              <div className="d-body">
+                <div>
+                  <div className="d-name">{d.def.name}</div>
+                  <div className="d-meta">{d.def.durationMin} min · {d.energyCost}⚡ {d.isActive ? '· out now' : ''}</div>
+                </div>
+                {!d.isActive && d.unlocked && !d.blocked && (
+                  <button className="mini go" disabled={!canStart}
+                    onClick={function () { props.store.dispatch(A.startDungeon(d.def.id)); }}>
+                    {g && g.energy < d.energyCost ? 'Need ' + d.energyCost + '⚡' : 'Set out'}
+                  </button>
+                )}
+                {d.blocked && !d.isActive && <span className="d-meta">expedition out</span>}
+              </div>
+              {!d.unlocked && <div className="d-lock">🔒 Unlocks at level {d.def.unlockLevel}</div>}
+            </div>
+          </div>
+        );
+      })}
+    </React.Fragment>
+  );
+}
+
+/* ---------------- island ---------------- */
+function IslandScreen(props) {
+  const state = props.state;
+  const g = state.guardian;
+  return (
+    <React.Fragment>
+      <h1 style={{ fontSize: 24, marginBottom: 4 }}>Hearth Island</h1>
+      <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>Spend gold to grow your island. The Sanctuary raises your energy cap.</p>
+      <div className="card">
+        <div className="b-row">
+          <div className="b-thumb"><Art srcs={['chest.jpg']} emoji="📦" alt="Loot crate" /></div>
+          <div className="b-main">
+            <div style={{ fontWeight: 600 }}>Mystery Loot Crates</div>
+            <div className="note" style={{ margin: 0 }}>{state.crates} waiting to be opened</div>
+          </div>
+          <button className="mini go" disabled={state.crates === 0}
+            onClick={function () { props.store.dispatch(A.openCrate()); }}>
+            Open one
+          </button>
+        </div>
+      </div>
+      <div className="card">
+        <h2>Buildings</h2>
+        {state.buildings.map(function (b) {
+          const pips = [];
+          for (let i = 0; i < b.maxLevel; i++) pips.push(<span key={i} className={'pip' + (i < b.level ? ' on' : '')} />);
+          return (
+            <div className="b-row" key={b.type}>
+              <div className="b-thumb">
+                <Art srcs={['building-' + b.type.toLowerCase() + '.jpg']} emoji="🏗️" alt={b.name} />
+              </div>
+              <div className="b-main">
+                <div style={{ fontWeight: 600 }}>{b.name}</div>
+                <div className="pips">{pips}</div>
+                {b.type === 'SANCTUARY' && <div className="note" style={{ margin: '3px 0 0' }}>+10⚡ cap per level</div>}
+              </div>
+              {b.nextCost !== null
+                ? <button className="mini go" disabled={!g || g.gold < b.nextCost}
+                    onClick={function () { props.store.dispatch(A.upgradeBuilding(b.type)); }}>
+                    {b.nextCost} ✦
+                  </button>
+                : <span className="seal">MAX</span>}
+            </div>
+          );
+        })}
+      </div>
+    </React.Fragment>
+  );
+}
+
+/* ---------------- bag ---------------- */
+function BagScreen(props) {
+  const state = props.state;
+  const inv = S.selectInventoryDetailed(state).filter(function (r) { return r.qty > 0; });
+  return (
+    <React.Fragment>
+      <h1 style={{ fontSize: 24, marginBottom: 10 }}>Satchel</h1>
+      <div className="card">
+        <h2>Treasures</h2>
+        {inv.length === 0 && <p className="note" style={{ marginTop: 0 }}>Empty for now. Raids and crates fill the satchel.</p>}
+        {inv.length > 0 && (
+          <div className="inv-grid">
+            {inv.map(function (r) {
+              const rar = r.item ? r.item.rarity : 'COMMON';
+              return (
+                <div className="inv-cell" key={r.itemId}>
+                  <div className="inv-gem" style={{ color: RARITY_COLOR[rar] }}>◆</div>
+                  <div className="inv-name">{r.item ? r.item.name : r.itemId}</div>
+                  <div className="inv-qty">×{r.qty}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <div className="card">
+        <h2>Achievements</h2>
+        {state.achievements.map(function (a) {
+          const pct = Math.min(100, Math.round((a.progress / a.target) * 100));
+          return (
+            <div className="ach-row" key={a.def.id}>
+              <div className="ach-top">
+                <span>{a.unlockedAt !== undefined ? '🏅 ' : ''}{a.def.name}</span>
+                <span className="num" style={{ color: 'var(--dim)' }}>{a.progress}/{a.target}</span>
+              </div>
+              <div className="bar"><span style={{ width: pct + '%' }} /></div>
+            </div>
+          );
+        })}
+      </div>
+    </React.Fragment>
+  );
+}
+
+/* ---------------- gate modal ---------------- */
+function GateModal(props) {
+  const state = props.state;
+  const store = props.store;
+  const parent = S.selectParent(state);
+  const [name, setName] = useState('Keeper');
+  const [pin, setPin] = useState('');
+  async function go(action) {
+    const r = await store.dispatch(action);
+    if (r.ok) setPin('');
+  }
+  return (
+    <div className="veil center" onClick={function () { store.dispatch(A.hideGate()); }}>
+      <div className="modal" onClick={function (e) { e.stopPropagation(); }}>
+        <div className="eyebrow" style={{ marginBottom: 4 }}>Keeper's gate</div>
+        <h2 style={{ marginBottom: 8 }}>Parents only 🛡️</h2>
+        {!parent && (
+          <React.Fragment>
+            <p className="note" style={{ marginTop: 0 }}>Create the parent account and choose a PIN (4–12 digits).</p>
+            <input className="field" value={name} maxLength={24} placeholder="Parent name"
+              onChange={function (e) { setName(e.target.value); }} />
+            <input className="field" type="password" inputMode="numeric" autoComplete="off" value={pin} maxLength={12}
+              placeholder="Choose a PIN" onChange={function (e) { setPin(e.target.value); }} />
+            <div className="btnrow">
+              <button className="btn" onClick={function () { store.dispatch(A.hideGate()); }}>Cancel</button>
+              <button className="btn primary" onClick={function () { go(A.setupParent(name, pin)); }}>Create &amp; set PIN</button>
+            </div>
+          </React.Fragment>
+        )}
+        {parent && !state.parentHasPin && (
+          <React.Fragment>
+            <p className="note" style={{ marginTop: 0 }}>{parent.name} has no PIN yet. Choose one (4–12 digits).</p>
+            <input className="field" type="password" inputMode="numeric" autoComplete="off" value={pin} maxLength={12}
+              placeholder="Choose a PIN" onChange={function (e) { setPin(e.target.value); }} />
+            <div className="btnrow">
+              <button className="btn" onClick={function () { store.dispatch(A.hideGate()); }}>Cancel</button>
+              <button className="btn primary" onClick={function () { go(A.setupPin(pin)); }}>Set PIN</button>
+            </div>
+          </React.Fragment>
+        )}
+        {parent && state.parentHasPin && (
+          <React.Fragment>
+            <p className="note" style={{ marginTop: 0 }}>Enter the Keeper's PIN. Three wrong tries lock the gate.</p>
+            <input className="field" type="password" inputMode="numeric" autoComplete="off" value={pin} maxLength={12}
+              placeholder="PIN" onChange={function (e) { setPin(e.target.value); }} />
+            <div className="btnrow">
+              <button className="btn" onClick={function () { store.dispatch(A.hideGate()); }}>Cancel</button>
+              <button className="btn primary" onClick={function () { go(A.unlock(pin)); }}>Unlock</button>
+            </div>
+          </React.Fragment>
+        )}
+        {state.ui.gateToast && (
+          <div className={'toast ' + (state.ui.gateToast.kind === 'ok' ? 'ok' : 'bad')}
+            style={{ position: 'static', marginTop: 12 }}>
+            {state.ui.gateToast.text}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
+/* ---------------- celebrations ---------------- */
+function Celebration(props) {
+  const c = props.state.ui.celebration;
+  const store = props.store;
+  function close() { store.dispatch(A.clearCelebration()); }
+  return (
+    <div className="celebrate" onClick={close}>
+      <div className="cele-card" onClick={function (e) { e.stopPropagation(); }}>
+        {c.type === 'levelUp' && (
+          <React.Fragment>
+            <div className="burst">🎉</div>
+            <h2 className="display" style={{ fontSize: 30, margin: '6px 0' }}>Level {c.level}!</h2>
+            <p className="note" style={{ marginTop: 0 }}>Your guardian grows stronger.</p>
+          </React.Fragment>
+        )}
+        {c.type === 'achievement' && (
+          <React.Fragment>
+            <div className="burst">🏅</div>
+            <h2 style={{ margin: '6px 0' }}>Achievement unlocked</h2>
+            {c.defs.map(function (d) {
+              return <p key={d.id} style={{ margin: '4px 0', fontWeight: 600 }}>{d.name}</p>;
+            })}
+          </React.Fragment>
+        )}
+        {(c.type === 'loot' || c.type === 'crate') && (
+          <React.Fragment>
+            <Art srcs={['chest-open.jpg']} emoji="✨" alt="Open chest" />
+            <h2 style={{ margin: '4px 0 8px' }}>{c.type === 'crate' ? 'Crate opened!' : 'Expedition haul'}</h2>
+            {c.type === 'loot' && (
+              <React.Fragment>
+                <div className="drop-row"><span>Gold</span><b className="num" style={{ color: 'var(--gold)' }}>+{c.result.gold} ✦</b></div>
+                <div className="drop-row"><span>Experience</span><b className="num">+{c.result.xp} xp</b></div>
+                {c.result.drops.map(function (d) {
+                  const item = props.state.itemsById[d.itemId];
+                  const rar = item ? item.rarity : 'COMMON';
+                  return (
+                    <div className="drop-row" key={d.itemId}>
+                      <span><span style={{ color: RARITY_COLOR[rar] }}>◆</span> {item ? item.name : d.itemId} ×{d.qty}</span>
+                      <span className="rar" style={{ color: RARITY_COLOR[rar] }}>{rar}</span>
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            )}
+            {c.type === 'crate' && (
+              <div className="drop-row">
+                <span><span style={{ color: RARITY_COLOR[c.rarity] }}>◆</span> {c.item.name}</span>
+                <span className="rar" style={{ color: RARITY_COLOR[c.rarity] }}>{c.rarity}</span>
+              </div>
+            )}
+          </React.Fragment>
+        )}
+        <button className="btn primary" style={{ width: '100%', marginTop: 14 }} onClick={close}>Wonderful!</button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- parent ledger ---------------- */
+function ParentShell(props) {
+  const state = props.state;
+  const store = props.store;
+  const [ptab, setPtab] = useState('queue');
+  useEffect(function () { store.dispatch(A.loadParentOverview()); }, []);
+  useEffect(function () {
+    if (!state.ui.toast) return;
+    const id = setTimeout(function () { store.dispatch(A.clearToast('main')); }, 3600);
+    return function () { clearTimeout(id); };
+  }, [state.ui.toast]);
+  useEffect(function () {
+    if (!state.ui.gateToast) return;
+    const id = setTimeout(function () { store.dispatch(A.clearToast('gate')); }, 4500);
+    return function () { clearTimeout(id); };
+  }, [state.ui.gateToast]);
+  const left = S.selectSessionRemainingMs(state);
+  const chain = state.chain;
+  return (
+    <React.Fragment>
+      <div className="ledger-bg" />
+      <div className="shell">
+        <header className="hdr">
+          <div className="hdr-title"><span style={{ fontSize: 18 }}>📜</span> Keeper's Ledger</div>
+          <button className="hdr-kid" onClick={function () { store.dispatch(A.lock()); }}>🔒 Lock</button>
+        </header>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+          <span className="seal num">session {fmtCountdown(left)}</span>
+          {chain && <span className={'seal' + (chain.valid ? '' : ' bad')}>{chain.valid ? 'chain VALID · ' + chain.length : 'chain ' + chain.reason}</span>}
+        </div>
+        <div className="p-tabs">
+          <button className={'p-tab' + (ptab === 'queue' ? ' on' : '')} onClick={function () { setPtab('queue'); }}>
+            Approvals{state.parentQueue.length > 0 ? ' (' + state.parentQueue.length + ')' : ''}
+          </button>
+          <button className={'p-tab' + (ptab === 'family' ? ' on' : '')} onClick={function () { setPtab('family'); }}>Family</button>
+          <button className={'p-tab' + (ptab === 'settings' ? ' on' : '')} onClick={function () { setPtab('settings'); }}>Settings</button>
+        </div>
+        <main className="shell-main" style={{ paddingBottom: 30 }}>
+          {ptab === 'queue' && <ParentQueue store={store} state={state} />}
+          {ptab === 'family' && <ParentFamily store={store} state={state} />}
+          {ptab === 'settings' && <ParentSettings store={store} state={state} storeCtx={props.storeCtx} />}
+        </main>
+      </div>
+      {state.ui.toast && <div className={'toast ' + (state.ui.toast.kind === 'ok' ? 'ok' : 'bad')} style={{ bottom: 18 }}>{state.ui.toast.text}</div>}
+    </React.Fragment>
+  );
+}
+
+function ParentQueue(props) {
+  const q = props.state.parentQueue;
+  if (q.length === 0) {
+    return <div className="card"><h2>All caught up</h2><p className="note" style={{ marginTop: 0 }}>No quests are waiting. New submissions from any child appear here.</p></div>;
+  }
+  return (
+    <div className="card">
+      <h2>Awaiting your decision</h2>
+      {q.map(function (row) {
+        return (
+          <div className="ledger-li" key={row.submission.id}>
+            <span style={{ fontSize: 20 }}>{row.child.avatar}</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <b>{row.child.name}</b> · {row.questIcon} {row.questTitle}
+              {row.reward && <div className="note" style={{ margin: 0 }}>releases +{row.reward.energy}⚡ +{row.reward.coins}✦ +{row.reward.xp}xp</div>}
+            </span>
+            <span style={{ display: 'flex', gap: 6, flex: '0 0 auto' }}>
+              <button className="mini go" onClick={function () { props.store.dispatch(A.approve(row.submission.id)); }}>Approve</button>
+              <button className="mini" onClick={function () { props.store.dispatch(A.reject(row.submission.id)); }}>Reject</button>
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ParentFamily(props) {
+  const fam = props.state.family;
+  return (
+    <React.Fragment>
+      {fam.length === 0 && <div className="card"><h2>No children yet</h2><p className="note" style={{ marginTop: 0 }}>Lock the ledger and tap "+ New child" from the child screen.</p></div>}
+      {fam.map(function (f) {
+        const g = f.guardian;
+        return (
+          <div className="card" key={f.child.id}>
+            <div className="b-row" style={{ borderBottom: 'none', padding: 0 }}>
+              <div className="b-thumb">
+                {g ? <Art srcs={stageArt(g.species, g.level)} emoji={speciesOf(g.species).emoji} alt="" /> : <span>🧒</span>}
+              </div>
+              <div className="b-main">
+                <div style={{ fontWeight: 700 }}>{f.child.avatar} {f.child.name}</div>
+                {g && <div className="note" style={{ margin: 0 }}>
+                  {g.name} · Lv <b className="num">{g.level}</b> · ⚡<b className="num">{g.energy}/{g.maxEnergy}</b> · ✦<b className="num">{g.gold}</b> · 🔥<b className="num">{f.streak}</b>
+                </div>}
+              </div>
+              {f.pendingCount > 0 && <span className="seal">{f.pendingCount} waiting</span>}
+            </div>
+          </div>
+        );
+      })}
+    </React.Fragment>
+  );
+}
+
+function ParentSettings(props) {
+  const store = props.store;
+  const state = props.state;
+  const [oldPin, setOldPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmRemove, setConfirmRemove] = useState(null);
+  const [results, setResults] = useState([]);
+  const [running, setRunning] = useState(false);
+  const [counts, setCounts] = useState(null);
+  const fileRef = useRef(null);
+  const kids = S.selectChildren(state);
+
+  async function exportBackup() {
+    const r = await store.dispatch(A.exportBackup());
+    if (!r.ok) return;
+    const blob = new Blob([JSON.stringify(r.data)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'guardian-hearth-backup-' + G.TimeUtil.todayStr() + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+  async function onImportFile(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (!file) return;
+    try {
+      const backup = JSON.parse(await file.text());
+      await store.dispatch(A.importBackup(backup));
+    } catch (e) {
+      store.dispatch({ type: G.ActionTypes.TOAST_SHOW, scope: 'main', kind: 'bad', text: 'Import refused: ' + ((e && e.message) || e) + ' Nothing was changed.' });
+    }
+  }
+  async function runTests() {
+    setRunning(true); setResults([]);
+    try {
+      const out = [];
+      await G.TestSuite.runAll(makeTestEnv, function (r) { out.push(r); setResults(out.slice()); });
+    } catch (e) {
+      store.dispatch({ type: G.ActionTypes.TOAST_SHOW, scope: 'main', kind: 'bad', text: 'Inspection stopped: ' + ((e && e.message) || e) });
+    }
+    setRunning(false);
+  }
+  async function inspectSeed() {
+    const out = [];
+    for (const s of G.STORE_NAMES) out.push({ store: s, count: await props.storeCtx.current.db.count(s) });
+    setCounts(out);
+  }
+  const passed = results.filter(function (r) { return r.ok; }).length;
+  const failed = results.length - passed;
+
+  return (
+    <React.Fragment>
+      <div className="card">
+        <h2>Keeper's PIN</h2>
+        <input className="field" type="password" inputMode="numeric" autoComplete="off" value={oldPin} maxLength={12}
+          placeholder="Current PIN" onChange={function (e) { setOldPin(e.target.value); }} />
+        <input className="field" type="password" inputMode="numeric" autoComplete="off" value={newPin} maxLength={12}
+          placeholder="New PIN (4–12 digits)" onChange={function (e) { setNewPin(e.target.value); }} />
+        <button className="btn" onClick={async function () {
+          const r = await store.dispatch(A.changePin(oldPin, newPin));
+          if (r.ok) { setOldPin(''); setNewPin(''); }
+        }}>Change PIN</button>
+        {state.ui.gateToast && (
+          <div className={'toast ' + (state.ui.gateToast.kind === 'ok' ? 'ok' : 'bad')} style={{ position: 'static', marginTop: 10 }}>
+            {state.ui.gateToast.text}
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h2>Backups</h2>
+        <p className="note" style={{ marginTop: 0 }}>Export regularly — the file is checksummed, and a modified backup is refused before anything is written. This protects against iOS clearing browser data.</p>
+        <div className="btnrow" style={{ marginTop: 10 }}>
+          <button className="btn" onClick={exportBackup}>Export backup</button>
+          <button className="btn" onClick={function () { if (fileRef.current) fileRef.current.click(); }}>Import backup</button>
+        </div>
+        <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={onImportFile} />
+      </div>
+
+      <div className="card">
+        <h2>Integrity</h2>
+        <div className="btnrow">
+          <button className="btn" onClick={function () { store.dispatch(A.verifyChain()); }}>Verify audit chain</button>
+          <button className="btn" onClick={function () { store.dispatch(A.recoverRewards()); }}>Recover rewards</button>
+        </div>
+      </div>
+
+      {kids.length > 0 && (
+        <div className="card">
+          <h2>Children</h2>
+          {kids.map(function (c) {
+            return (
+              <div className="ledger-li" key={c.id}>
+                <span style={{ fontSize: 18 }}>{c.avatar}</span>
+                <span style={{ flex: 1 }}>{c.name}</span>
+                {confirmRemove === c.id ? (
+                  <span style={{ display: 'flex', gap: 6 }}>
+                    <button className="mini" style={{ borderColor: '#5C3430', color: '#F0C9C2' }}
+                      onClick={function () { setConfirmRemove(null); store.dispatch(A.removeChild(c.id)); }}>
+                      Yes, remove
+                    </button>
+                    <button className="mini" onClick={function () { setConfirmRemove(null); }}>Keep</button>
+                  </span>
+                ) : (
+                  <button className="mini" onClick={function () { setConfirmRemove(c.id); }}>Remove…</button>
+                )}
+              </div>
+            );
+          })}
+          <p className="note">Removing a child deletes their guardian, island, and items. The audit history is kept by design.</p>
+        </div>
+      )}
+
+      <div className="card">
+        <h2>Time controls (testing)</h2>
+        <p className="note" style={{ marginTop: 0 }}>Fast-forward the whole game clock to test expedition timers. It ages this parent session too.</p>
+        <div className="btnrow" style={{ marginTop: 10 }}>
+          <button className="btn" onClick={function () { TIME.offset += 10 * 60000; store.dispatch(A.tick(gameNow())); }}>⏩ 10 min</button>
+          <button className="btn" onClick={function () { TIME.offset += 60 * 60000; store.dispatch(A.tick(gameNow())); }}>⏩ 1 hour</button>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2>Inspection</h2>
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 10 }}>
+          <span className="seal num">{G.TestSuite.count} checks</span>
+          {results.length > 0 && <span className="seal num">{passed} passed</span>}
+          {failed > 0 && <span className="seal bad num">{failed} failed</span>}
+        </div>
+        <div className="btnrow">
+          <button className="btn" onClick={runTests} disabled={running}>{running ? 'Inspecting…' : 'Run all tests'}</button>
+          <button className="btn" onClick={inspectSeed}>Data counts</button>
+        </div>
+        {results.length > 0 && (
+          <ul className="ledger" style={{ marginTop: 12 }}>
+            {results.map(function (r, i) {
+              return (
+                <li key={i} className={r.ok ? '' : 'fail'}>
+                  <span>{(r.ok ? '✓ ' : '✕ ') + r.name}{!r.ok && <span className="err">{r.error}</span>}</span>
+                  <span className="ms">{r.ms}ms</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {counts && (
+          <table className="counts" style={{ marginTop: 12 }}><tbody>
+            {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
+          </tbody></table>
+        )}
+        <p className="note">Build GOTH-P7.1 · tests run in a separate database; family data is never touched.</p>
+      </div>
+    </React.Fragment>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () { /* offline shell is optional */ });
+  });
+}
 </script>
 </body>
 </html>

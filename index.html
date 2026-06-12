@@ -4259,9 +4259,19 @@ const Sfx = (function () {
   };
 })();
 
-/* ---- Music: a gentle generative hearth lullaby with fire crackle. ---- */
+/* ---- Music: real tracks when present, generative lullaby as fallback.
+   Drop music-hearth.mp3 / music-raids.mp3 into the repo and the game uses
+   them automatically — same contract as the art. ---- */
 const Music = (function () {
-  let timer = null;
+  const TRACKS = { hearth: './music-hearth.mp3', raids: './music-raids.mp3' };
+  const buffers = {};
+  const loading = {};
+  let playing = null;
+  let scene = 'hearth';
+  let wantOn = false;
+
+  /* generative fallback (the v1.2 lullaby) */
+  let fbTimer = null;
   let nextBeat = 0;
   let step = 0;
   const TEMPO = 0.86;
@@ -4307,21 +4317,21 @@ const Music = (function () {
     const buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate);
     const d = buf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
-    const srcN = c.createBufferSource();
-    srcN.buffer = buf;
+    const s = c.createBufferSource();
+    s.buffer = buf;
     const bp = c.createBiquadFilter();
     bp.type = 'bandpass';
     bp.frequency.value = 700 + Math.random() * 1800;
     bp.Q.value = 1.2;
     const g = c.createGain();
     g.gain.value = 0.012 + Math.random() * 0.012;
-    srcN.connect(bp);
+    s.connect(bp);
     bp.connect(g);
     g.connect(c.destination);
-    srcN.start(t0);
+    s.start(t0);
   }
-  function tickScheduler() {
-    if (!Sfx.isOn()) return;
+  function fbTick() {
+    if (!wantOn) return;
     const c = Sfx._ctx();
     if (!c) return;
     while (nextBeat < c.currentTime + 0.35) {
@@ -4333,19 +4343,97 @@ const Music = (function () {
       step += 1;
     }
   }
+  function startFallback() {
+    if (fbTimer) return;
+    const c = Sfx._ctx();
+    if (!c) return;
+    nextBeat = Math.max(nextBeat, c.currentTime + 0.1);
+    fbTimer = setInterval(fbTick, 120);
+    fbTick();
+  }
+  function stopFallback() {
+    if (fbTimer) { clearInterval(fbTimer); fbTimer = null; }
+  }
+
+  /* real-track player */
+  function load(name) {
+    if (buffers[name] !== undefined || loading[name]) return;
+    const c = Sfx._ctx();
+    if (!c) return;
+    loading[name] = true;
+    fetch(TRACKS[name]).then(function (r) {
+      if (!r.ok) throw new Error('missing');
+      return r.arrayBuffer();
+    }).then(function (ab) {
+      return new Promise(function (res, rej) { c.decodeAudioData(ab, res, rej); });
+    }).then(function (buf) {
+      buffers[name] = buf;
+      loading[name] = false;
+      apply();
+    }).catch(function () {
+      buffers[name] = 'missing';
+      loading[name] = false;
+      apply();
+    });
+  }
+  function stopPlaying(fade) {
+    if (!playing) return;
+    const c = Sfx._ctx();
+    const p = playing;
+    playing = null;
+    const t = c.currentTime;
+    p.gain.gain.cancelScheduledValues(t);
+    p.gain.gain.setValueAtTime(p.gain.gain.value, t);
+    p.gain.gain.linearRampToValueAtTime(0.0001, t + (fade || 0.6));
+    setTimeout(function () { try { p.src.stop(); } catch (e) {} }, ((fade || 0.6) + 0.15) * 1000);
+  }
+  function startBuffer(name) {
+    const c = Sfx._ctx();
+    if (!c) return;
+    const srcN = c.createBufferSource();
+    srcN.buffer = buffers[name];
+    srcN.loop = true;
+    const g = c.createGain();
+    const vol = name === 'raids' ? 0.55 : 0.42;
+    g.gain.setValueAtTime(0.0001, c.currentTime);
+    g.gain.linearRampToValueAtTime(vol, c.currentTime + 1.2);
+    srcN.connect(g);
+    g.connect(c.destination);
+    srcN.start();
+    playing = { name: name, src: srcN, gain: g };
+  }
+  function desired() {
+    if (scene === 'raids' && buffers.raids && buffers.raids !== 'missing') return 'raids';
+    if (buffers.hearth && buffers.hearth !== 'missing') return 'hearth';
+    return null;
+  }
+  function apply() {
+    if (!wantOn) {
+      stopPlaying(0.4);
+      stopFallback();
+      return;
+    }
+    if (!Sfx._ctx()) return;
+    load('hearth');
+    if (scene === 'raids') load('raids');
+    const want = desired();
+    if (want) {
+      stopFallback();
+      if (playing && playing.name === want) return;
+      stopPlaying(0.5);
+      startBuffer(want);
+    } else if (buffers.hearth === 'missing' && !playing) {
+      startFallback();
+    }
+  }
   return {
     sync: function () {
-      const wantOn = Sfx.isOn() && !document.hidden;
-      if (wantOn && !timer) {
-        const c = Sfx._ctx();
-        if (!c) return;
-        nextBeat = Math.max(nextBeat, c.currentTime + 0.1);
-        timer = setInterval(tickScheduler, 120);
-        tickScheduler();
-      } else if (!wantOn && timer) {
-        clearInterval(timer);
-        timer = null;
-      }
+      wantOn = Sfx.isOn() && !document.hidden;
+      apply();
+    },
+    setScene: function (s) {
+      scene = s;
+      apply();
     },
   };
 })();
@@ -4655,6 +4743,7 @@ function ChildShell(props) {
   const pressTimer = useRef(null);
   const [soundOn, setSoundOn] = useState(Sfx.isOn());
   useEffect(function () { setSoundOn(Sfx.isOn()); }, [state.now]);
+  useEffect(function () { Music.setScene(props.tab === 'raids' ? 'raids' : 'hearth'); }, [props.tab]);
   function toggleSound() {
     const v = !soundOn;
     setSoundOn(v);
@@ -5239,7 +5328,7 @@ function ParentShell(props) {
   const state = props.state;
   const store = props.store;
   const [ptab, setPtab] = useState('queue');
-  useEffect(function () { store.dispatch(A.loadParentOverview()); }, []);
+  useEffect(function () { store.dispatch(A.loadParentOverview()); Music.setScene('hearth'); }, []);
   useEffect(function () {
     if (!state.ui.toast) return;
     const id = setTimeout(function () { store.dispatch(A.clearToast('main')); }, 3600);
@@ -5489,7 +5578,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-1.2 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-1.3 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

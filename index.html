@@ -4969,6 +4969,29 @@ function qdDots(max, done) {
 }
 
 /* one place for everything that happens when a kid taps "I did it!" */
+/* ---------------- read-aloud voice ---------------- */
+const Voice = {
+  on: false,
+  ok: (typeof window !== 'undefined') && ('speechSynthesis' in window),
+  say: function (text) {
+    if (!Voice.ok || !Voice.on || !text) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.rate = 0.92;
+      u.pitch = 1.05;
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  },
+  stop: function () { if (Voice.ok) { try { window.speechSynthesis.cancel(); } catch (e) {} } },
+};
+
+function Say(props) {
+  useEffect(function () { Voice.say(props.text); }, []);
+  return null;
+}
+
 function useQuestJuice(store) {
   const [sent, setSent] = useState({});
   const [ok, setOk] = useState({});
@@ -5033,8 +5056,10 @@ function ProudMoment(props) {
   const [show, setShow] = useState(null);
   useEffect(function () {
     if (J.tick === 0 || !g) return;
-    setShow({ line: PROUD_LINES[J.tick % PROUD_LINES.length].split('{n}').join(g.name) });
+    const line = PROUD_LINES[J.tick % PROUD_LINES.length].split('{n}').join(g.name);
+    setShow({ line: line });
     Sfx.pet();
+    Voice.say(line + '! Sent to the Keeper!');
     const id = setTimeout(function () { setShow(null); }, 1600);
     return function () { clearTimeout(id); };
   }, [J.tick]);
@@ -5413,8 +5438,17 @@ function ChildShell(props) {
   const [holding, setHolding] = useState(false);
   const pressTimer = useRef(null);
   const [soundOn, setSoundOn] = useState(Sfx.isOn());
+  const [voiceOn, setVoiceOn] = useState(Voice.on);
   useEffect(function () { setSoundOn(Sfx.isOn()); }, [state.now]);
   useEffect(function () { Music.setScene(props.tab === 'raids' ? 'raids' : 'hearth'); }, [props.tab]);
+  useEffect(function () {
+    const id = state.activeChildId;
+    if (!id || !props.storeCtx || !props.storeCtx.current) return;
+    props.storeCtx.current.repos.meta.get('pref.voice.' + id).then(function (v) {
+      Voice.on = v === 'on';
+      setVoiceOn(Voice.on);
+    });
+  }, [state.activeChildId]);
   function toggleSound() {
     const v = !soundOn;
     setSoundOn(v);
@@ -5423,6 +5457,17 @@ function ChildShell(props) {
     if (props.storeCtx && props.storeCtx.current) {
       props.storeCtx.current.repos.meta.set('pref.sound', v);
     }
+  }
+  function toggleVoice() {
+    const next = !voiceOn;
+    Voice.on = next;
+    setVoiceOn(next);
+    if (!next) Voice.stop();
+    const id = state.activeChildId;
+    if (id && props.storeCtx && props.storeCtx.current) {
+      props.storeCtx.current.repos.meta.set('pref.voice.' + id, next ? 'on' : 'off');
+    }
+    if (next) Voice.say('Voice is on! Tap a quest and I will read it to you.');
   }
   const child = S.selectActiveChild(state);
   const pendingCount = state.pending.length;
@@ -5465,6 +5510,10 @@ function ChildShell(props) {
             <button className="hdr-kid snd" onClick={toggleSound}
               aria-label={soundOn ? 'Mute sounds' : 'Unmute sounds'}>
               {soundOn ? '🔊' : '🔇'}
+            </button>
+            <button className="hdr-kid snd" onClick={toggleVoice}
+              aria-label={voiceOn ? 'Turn read-aloud off' : 'Turn read-aloud on'}>
+              {voiceOn ? '🗣️' : '💬'}
             </button>
             {child && (
               <button className="hdr-kid" onClick={props.openSwitcher}>
@@ -5549,7 +5598,8 @@ function FlameCard(props) {
               {G.CONFIG.FLAME.MEMORIES.map(function (m, i) {
                 const open = fd.points >= m.at;
                 return (
-                  <li key={i} className={open ? '' : 'locked'}>
+                  <li key={i} className={open ? '' : 'locked'}
+                    onClick={function () { if (open) Voice.say(m.text); }}>
                     {open ? '\u201C' + m.text + '\u201D' : '\u2026 something stirs deeper in the flame'}
                   </li>
                 );
@@ -5683,7 +5733,7 @@ function HomeScreen(props) {
               {J.ok[b.quest.id] && <span className="stamp">✉️ SENT</span>}
               <span className="q-icon rock">{b.quest.icon}</span>
               <span className="q-main">
-                <span className="q-title">{b.quest.title}</span>
+                <span className="q-title" onClick={function () { Voice.say(b.quest.title); }}>{b.quest.title}</span>
                 <div className="q-sub">
                   {qdDots(b.quest.maxPerDay, b.quest.maxPerDay - b.remainingToday)}
                   {b.remainingToday} left today · +{b.quest.reward.energy}⚡ +{b.quest.reward.coins}✦
@@ -5768,7 +5818,7 @@ function QuestsScreen(props) {
               {J.ok[b.quest.id] && <span className="stamp">✉️ SENT</span>}
                   <span className="q-icon rock">{b.quest.icon}</span>
                   <span className="q-main">
-                    <span className="q-title">{b.quest.title}</span>
+                    <span className="q-title" onClick={function () { Voice.say(b.quest.title); }}>{b.quest.title}</span>
                     <div className="q-sub">
                       {qdDots(b.quest.maxPerDay, b.quest.maxPerDay - b.remainingToday)}
                       {spent ? 'done for today ✓' : b.remainingToday + ' left today'} · +{b.quest.reward.energy}⚡ +{b.quest.reward.coins}✦ +{b.quest.reward.xp}xp
@@ -5931,6 +5981,7 @@ function BattleOverlay(props) {
       </div>
       <div className={'arena' + (fx.shake ? ' shake' : '')}>
         {phase === 'intro' && <div className="atkban">A wild {foe.name} appears!</div>}
+        {phase === 'intro' && <Say text={'A wild ' + foe.name + ' appears!'} />}
         {fx.atkName && phase === 'fight' && (
           <div className={'atkban' + (fx.crit ? ' crit' : '') + (fx.dodgeTag ? ' dodge' : '')}>
             {fx.crit ? 'CRITICAL! ' : ''}{fx.atkName}{fx.crit || fx.dodgeTag ? '' : '!'}
@@ -5959,6 +6010,7 @@ function BattleOverlay(props) {
             <span className="vspark" style={{ left: '58%', top: '34%', '--dx': '-50px', '--dy': '-60px' }}>✨</span>
             <span className="vspark" style={{ left: '66%', top: '30%', '--dx': '54px', '--dy': '-48px' }}>⭐</span>
             <span className="vspark" style={{ left: '62%', top: '38%', '--dx': '10px', '--dy': '-76px' }}>💫</span>
+            <Say text="Victory!" />
             <div className="victory-text">VICTORY!</div>
             <button className="btn primary pulse" style={{ minWidth: '70%' }} disabled={busy} onClick={finish}>
               {busy ? 'Opening…' : 'Open the haul 🎒'}
@@ -6352,9 +6404,13 @@ function Celebration(props) {
   const c = props.state.ui.celebration;
   const store = props.store;
   function close() { store.dispatch(A.clearCelebration()); }
+  const sayText = c.type === 'levelUp' ? 'Level up! Level ' + c.level + '!'
+    : c.type === 'flame' ? 'The flame grows! ' + c.name + '!'
+    : c.type === 'achievement' ? 'Achievement! ' + (c.name || '') : '';
   return (
     <div className="celebrate" onClick={close}>
       <div className="cele-card" onClick={function (e) { e.stopPropagation(); }}>
+        {sayText ? <Say key={sayText} text={sayText} /> : null}
         {c.type === 'levelUp' && (
           <React.Fragment>
             <div className="burst">🎉</div>
@@ -6697,7 +6753,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-F1 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-F1.1 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

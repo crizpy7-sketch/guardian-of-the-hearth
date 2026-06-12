@@ -311,7 +311,8 @@
   @keyframes veilIn { from { opacity: 0; } to { opacity: 1; } }
   .sheet { width: 100%; max-width: 560px; background: var(--panel);
     border: 1px solid var(--edge); border-radius: 22px 22px 0 0;
-    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+    max-height: 86dvh; overflow-y: auto; -webkit-overflow-scrolling: touch;
     animation: sheetUp 260ms cubic-bezier(.22,1,.36,1) both; }
   @keyframes sheetUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
   .modal { width: 100%; max-width: 420px; background: var(--panel);
@@ -380,9 +381,29 @@
     60% { opacity: 0.45; }
     100% { transform: translateY(-105vh) scale(0.4); opacity: 0; }
   }
-  .hero-art img { animation: breathe 4.5s ease-in-out infinite; transform-origin: 50% 85%; }
+  .pet-stage { position: absolute; inset: 0; animation: breathe 4.5s ease-in-out infinite; transform-origin: 50% 85%; }
+  .pet-stage img { width: 100%; height: 100%; object-fit: cover;
+    animation: kenburns 16s ease-in-out infinite alternate; }
+  @keyframes kenburns { from { transform: scale(1.03) translate(0, 0); } to { transform: scale(1.11) translate(-2.5%, -2%); } }
   @keyframes breathe { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.045) translateY(-4px); } }
-  .hero-art.hop img { animation: petHop 0.6s cubic-bezier(.34,1.56,.64,1); }
+  .pet-stage.hop { animation: petHop 0.6s cubic-bezier(.34,1.56,.64,1); }
+  .pet-stage.sway { animation: petSway 0.95s ease-in-out; }
+  @keyframes petSway { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-2.2deg); } 70% { transform: rotate(2.2deg); } }
+  .pet-stage.tilt { animation: petTilt 0.7s ease; }
+  @keyframes petTilt { 0%, 100% { transform: rotate(0) scale(1); } 40% { transform: rotate(3deg) scale(1.03); } }
+  .pet-stage.shine img { filter: brightness(1.28) saturate(1.18); }
+  .emote { position: absolute; top: 20%; z-index: 3; font-size: 32px; pointer-events: none;
+    animation: emoteUp 1.7s ease-out both; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+  @keyframes emoteUp {
+    0% { transform: translateY(8px) scale(0.6); opacity: 0; }
+    15% { opacity: 1; transform: scale(1.05); }
+    100% { transform: translateY(-72px) scale(1); opacity: 0; }
+  }
+  .av-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 2px; }
+  .av-cell { width: 48px; height: 48px; border-radius: 14px; border: 2px solid var(--edge);
+    background: #1C1510; font-size: 24px; display: flex; align-items: center; justify-content: center; }
+  .av-cell.on { border-color: var(--ember); box-shadow: 0 0 10px rgba(232,133,61,0.5); }
+  .pet-stage .fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
   @keyframes petHop {
     0% { transform: scale(1); } 30% { transform: translateY(-14px) scale(1.04); }
     60% { transform: translateY(0) scale(0.98); } 80% { transform: translateY(-5px); }
@@ -437,7 +458,7 @@
     35% { box-shadow: 0 0 28px rgba(224,180,92,0.85); transform: scale(1.03); }
     100% { box-shadow: 0 0 0 rgba(224,180,92,0); }
   }
-  .isl-hero { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 4 / 3;
+  .isl-hero { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 4 / 3; max-height: 34dvh;
     margin-bottom: 10px; background: #1C1510; }
   .isl-hero img { width: 100%; height: 100%; object-fit: cover; }
   .isl-hero .fallback { position: absolute; inset: 0; display: flex; align-items: center;
@@ -453,7 +474,8 @@
 
   @media (prefers-reduced-motion: reduce) {
     .ember, .shell-main, .veil, .sheet, .modal, .cele-card, .burst, .toast,
-    .flicker, .sparks span, .hero-art img, .hero-art.hop img, .chip.flash,
+    .flicker, .sparks span, .pet-stage, .pet-stage img, .pet-stage.hop,
+    .pet-stage.sway, .pet-stage.tilt, .emote, .chip.flash,
     .tab.on .ti, .shell-main > *, .chest-wrap img,
     .isl-card.built, .q-card.justSent { animation: none !important; }
     .xp-bar > span { transition: none; }
@@ -4464,6 +4486,7 @@ const SPECIES = [
   { id: 'BEAR', name: 'Bear', pet: 'Boop', emoji: '🐻', blurb: 'gentle giant' },
   { id: 'PHOENIX', name: 'Phoenix', pet: 'Sol', emoji: '🐦‍🔥', blurb: 'radiant and warm' },
 ];
+const AVATARS = ['🧒', '👧', '👦', '🦸‍♀️', '🦸‍♂️', '🧙‍♂️', '🥷', '👸', '🤴', '🧑‍🎤'];
 function speciesOf(id) { return SPECIES.find(function (s) { return s.id === id; }) || SPECIES[0]; }
 function stageArt(species, level) {
   const base = 'guardian-' + species.toLowerCase();
@@ -4688,12 +4711,13 @@ function Onboarding(props) {
   const [name, setName] = useState('');
   const [species, setSpecies] = useState('FOX');
   const [petName, setPetName] = useState('Pip');
+  const [avatar, setAvatar] = useState('🧒');
   const [busy, setBusy] = useState(false);
   function pick(id) { setSpecies(id); setPetName(speciesOf(id).pet); }
   async function create() {
     if (!name.trim() || busy) return;
     setBusy(true);
-    const r = await props.store.dispatch(A.createChild(name.trim(), '🧒', petName.trim() || speciesOf(species).pet, species));
+    const r = await props.store.dispatch(A.createChild(name.trim(), avatar, petName.trim() || speciesOf(species).pet, species));
     setBusy(false);
     if (r.ok) props.onDone();
   }
@@ -4707,6 +4731,16 @@ function Onboarding(props) {
           <div className="card">
             <input className="field" value={name} maxLength={20} placeholder="Child's name"
               onChange={function (e) { setName(e.target.value); }} />
+            <div className="eyebrow" style={{ margin: '8px 0 0' }}>Your hero</div>
+            <div className="av-grid">
+              {AVATARS.map(function (a) {
+                return (
+                  <button key={a} className={'av-cell' + (avatar === a ? ' on' : '')}
+                    onClick={function () { setAvatar(a); }}>{a}</button>
+                );
+              })}
+            </div>
+            <div className="eyebrow" style={{ margin: '10px 0 0' }}>Your guardian</div>
             <div className="species-grid">
               {SPECIES.map(function (sp) {
                 return (
@@ -4858,6 +4892,43 @@ function HomeScreen(props) {
       }, 600);
     }
   }
+  const [idle, setIdle] = useState('');
+  const [emotes, setEmotes] = useState([]);
+  const reactRef = useRef(0);
+  function emote(icon) {
+    const e = { id: Date.now() + Math.random(), icon: icon, x: 28 + Math.random() * 44 };
+    setEmotes(function (list) { return list.concat(e); });
+    setTimeout(function () {
+      setEmotes(function (list) { return list.filter(function (x) { return x.id !== e.id; }); });
+    }, 1700);
+  }
+  useEffect(function () {
+    const id = setInterval(function () {
+      if (Math.random() < 0.25) return;
+      const moves = ['sway', 'tilt', 'shine'];
+      setIdle(moves[Math.floor(Math.random() * moves.length)]);
+      setTimeout(function () { setIdle(''); }, 1000);
+      const r = Math.random();
+      if (g && g.energy === 0 && r < 0.5) emote('💤');
+      else if (r < 0.3) emote(['✨', '❤️', '🎶'][Math.floor(Math.random() * 3)]);
+    }, 6500);
+    return function () { clearInterval(id); };
+  }, [g && g.energy === 0]);
+  function petTap() {
+    if (hop || idle) return;
+    const kind = reactRef.current % 3;
+    reactRef.current = reactRef.current + 1;
+    if (kind === 0) {
+      setHop(true); Sfx.pet(); emote('❤️');
+      setTimeout(function () { setHop(false); }, 650);
+    } else if (kind === 1) {
+      setIdle('tilt'); Sfx.pet(); emote('🎶');
+      setTimeout(function () { setIdle(''); }, 700);
+    } else {
+      setIdle('shine'); Sfx.coin(); emote('✨');
+      setTimeout(function () { setIdle(''); }, 800);
+    }
+  }
   if (!g) return null;
   const sp = speciesOf(g.species);
   const xpNeeded = G.Leveling.xpToNext(g.level);
@@ -4866,13 +4937,13 @@ function HomeScreen(props) {
   return (
     <React.Fragment>
       <div className="card hero">
-        <div className={'hero-art' + (hop ? ' hop' : '')} onClick={function () {
-          if (hop) return;
-          setHop(true);
-          Sfx.pet();
-          setTimeout(function () { setHop(false); }, 650);
-        }}>
-          <Art srcs={stageArt(g.species, g.level)} emoji={sp.emoji} alt={sp.name} />
+        <div className="hero-art" onClick={petTap}>
+          <div className={'pet-stage' + (hop ? ' hop' : '') + (idle ? ' ' + idle : '')}>
+            <Art srcs={stageArt(g.species, g.level)} emoji={sp.emoji} alt={sp.name} />
+          </div>
+          {emotes.map(function (e) {
+            return <span key={e.id} className="emote" style={{ left: e.x + '%' }}>{e.icon}</span>;
+          })}
           <div className="hero-name">
             <span className="display">{g.name}</span>
             <span className="lv-pill">Lv {g.level}</span>
@@ -5140,7 +5211,6 @@ function IslandScreen(props) {
               <span className="lv-pill">Lv {open.level}/{open.maxLevel}</span>
             </div>
             {pipsFor(open, false)}
-            <p className="note">{BUILDING_LORE[open.type]}</p>
             <div className="btnrow" style={{ marginTop: 12 }}>
               <button className="btn" onClick={function () { setOpenType(null); }}>Close</button>
               {open.nextCost !== null ? (
@@ -5152,6 +5222,7 @@ function IslandScreen(props) {
                 <span className="seal" style={{ alignSelf: 'center' }}>Fully grown ✨</span>
               )}
             </div>
+            <p className="note">{BUILDING_LORE[open.type]}</p>
           </div>
         </div>
       )}
@@ -5578,7 +5649,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-1.3 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-1.4 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

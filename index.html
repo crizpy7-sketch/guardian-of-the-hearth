@@ -244,6 +244,21 @@
   .qpet .fallback { display: flex; align-items: center; justify-content: center;
     width: 100%; height: 100%; font-size: 22px; }
   .qpet.hop { animation: petHop 0.6s cubic-bezier(.34,1.56,.64,1); }
+  .proud { position: fixed; inset: 0; z-index: 48; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px; pointer-events: none; }
+  .proud-pet { width: 150px; height: 150px; border-radius: 50%; overflow: hidden;
+    border: 3px solid var(--ember); background: #1C1510;
+    box-shadow: 0 0 50px rgba(232,133,61,0.75), 0 14px 40px rgba(0,0,0,0.6);
+    animation: proudIn 0.4s cubic-bezier(.2,1.5,.4,1) both, petHop 0.65s 0.35s cubic-bezier(.34,1.56,.64,1); }
+  .proud-pet img { width: 100%; height: 100%; object-fit: cover; }
+  .proud-pet .fallback { display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%; font-size: 64px; }
+  @keyframes proudIn { from { transform: scale(0.3) translateY(30px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+  .proud-text { font-family: var(--display); font-size: 20px; font-weight: 600; text-align: center;
+    color: var(--ink); background: rgba(26,20,16,0.88); border: 1px solid #6B5326;
+    border-radius: 999px; padding: 9px 20px; text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    box-shadow: 0 8px 26px rgba(0,0,0,0.5); animation: proudIn 0.4s 0.1s cubic-bezier(.2,1.5,.4,1) both; }
+  .proud .emote { position: absolute; top: 32%; }
   .qd { display: inline-flex; gap: 3px; margin-right: 7px; vertical-align: middle; }
   .qd i { width: 6px; height: 6px; border-radius: 50%; background: #3A2C1F; }
   .qd i.on { background: var(--gold); box-shadow: 0 0 5px rgba(224,180,92,0.6); }
@@ -618,6 +633,7 @@
     body:not(.motion-force) .qp, body:not(.motion-force) .raid-live > img,
     body:not(.motion-force) .pet-token.march, body:not(.motion-force) .pet-token.home,
     body:not(.motion-force) .rlog li.new, body:not(.motion-force) button.btn.pulse,
+    body:not(.motion-force) .proud-pet, body:not(.motion-force) .proud-text,
     body:not(.motion-force) .q-icon.rock, body:not(.motion-force) .stamp,
     body:not(.motion-force) .flight, body:not(.motion-force) .qpet.hop,
     body:not(.motion-force) .plot img.cut, body:not(.motion-force) .plot .tok,
@@ -4686,6 +4702,36 @@ function useQuestJuice(store) {
   return { sent: sent, ok: ok, bursts: bursts, flights: flights, tick: tick, submit: submit };
 }
 
+const PROUD_LINES = [
+  '{n} is so proud of you!',
+  '{n} does a happy dance!',
+  '{n} cannot wait for the Keeper to see!',
+  'Amazing! {n} cheers for you!',
+];
+function ProudMoment(props) {
+  const J = props.J;
+  const g = props.g;
+  const [show, setShow] = useState(null);
+  useEffect(function () {
+    if (J.tick === 0 || !g) return;
+    setShow({ line: PROUD_LINES[J.tick % PROUD_LINES.length].split('{n}').join(g.name) });
+    Sfx.pet();
+    const id = setTimeout(function () { setShow(null); }, 1600);
+    return function () { clearTimeout(id); };
+  }, [J.tick]);
+  if (!show || !g) return null;
+  return (
+    <div className="proud" aria-live="polite">
+      <div className="proud-pet">
+        <Art srcs={stageArt(g.species, g.level)} emoji={speciesOf(g.species).emoji} alt={g.name} />
+      </div>
+      <div className="proud-text">{show.line}</div>
+      <span className="emote" style={{ left: '38%' }}>❤️</span>
+      <span className="emote" style={{ left: '58%', animationDelay: '0.2s' }}>✨</span>
+    </div>
+  );
+}
+
 function QFlights(props) {
   return (
     <React.Fragment>
@@ -5270,6 +5316,7 @@ function HomeScreen(props) {
         </button>
       </div>
       <QFlights J={J} />
+      <ProudMoment J={J} g={g} />
     </React.Fragment>
   );
 }
@@ -5304,6 +5351,7 @@ function QuestsScreen(props) {
         <span className="chip streak">🔥 <b>{S.selectGlobalStreak(state)}</b></span>
       </div>
       <QFlights J={J} />
+      <ProudMoment J={J} g={g} />
       <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>Do it in the real world first, then tap "I did it!" — a parent releases the reward.</p>
       {state.questBoard.length > 0 && state.questBoard.every(function (x) { return x.remainingToday === 0; }) && (
         <div className="card" style={{ borderColor: '#6B5326', textAlign: 'center' }}>
@@ -6050,7 +6098,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-1.8 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-1.9 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

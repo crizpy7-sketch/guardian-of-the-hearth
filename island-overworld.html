@@ -47,7 +47,7 @@
 <body>
 <div id="game"></div>
 <div class="hud" id="hud">Hearth Island</div>
-<div style="position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:20;background:#e8853d;color:#1a1410;font-weight:800;font-size:13px;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">v10 📜</div>
+<div style="position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:20;background:#e8853d;color:#1a1410;font-weight:800;font-size:13px;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">v11 🌎</div>
 <div class="pad">
   <button class="up" data-dir="up" aria-label="Up">▲</button>
   <button class="down" data-dir="down" aria-label="Down">▼</button>
@@ -109,6 +109,34 @@ BUILDINGS.forEach(function (b) { b.door = { c: b.col, r: b.row + b.h }; });
 const DOOR_AT = {};
 BUILDINGS.forEach(function (b) { DOOR_AT[b.door.c + ',' + b.door.r] = b; });
 
+// ---- ISLAND EXIT GATE (a glowing portal on the island's edge) ----
+const EXIT_GATE = { col: 7, row: 15 }; // bottom edge, walkable
+const EXIT_URL = './index.html';       // back to the main game
+
+// ---- DRAGON PERSONALITIES -------------------------------------------------
+// the roaming guardian is Ember (young, playful). Sol is the elder at the Hearth.
+const DRAGONS = {
+  ember: {
+    name: 'Ember', emoji: '🐉', title: 'young fire dragon',
+    lines: [
+      'Ember bounces over! "Wanna explore? I love exploring!"',
+      '"I saw a shiny thing near the ruins once. Or did I dream it?"',
+      '"You\'re my favorite Keeper. Don\'t tell the others!"',
+      '"The elder Sol knows EVERYTHING. You should visit the Hearth."',
+      '"Race you to the harbor! ...later. I\'m sleepy now."',
+    ],
+  },
+  sol: {
+    name: 'Sol', emoji: '🔥', title: 'the ancient hearth guardian',
+    lines: [
+      'Sol\'s warm voice fills the air. "Welcome, young Keeper."',
+      '"Every kindness you show feeds the First Flame."',
+      '"Restore the village, and the island will remember you."',
+      '"I have watched over this hearth since before the islands rose."',
+    ],
+  },
+};
+
 // ---- PROGRESSION CONFIG ---------------------------------------------------
 // building states: 'locked' | 'unlocked' | 'active'. Start with 2 unlocked; others locked.
 const START_UNLOCKED = ['Home', 'Sanctuary'];
@@ -144,7 +172,8 @@ function buildingWelcome(label) {
 // ---- SAVE / LOAD (localStorage) -------------------------------------------
 const SAVE_KEY = 'goth_island_save_v1';
 const Save = {
-  data: { px: 7, py: 10, talks: 0, unlocked: START_UNLOCKED.slice(), flags: {} },
+  data: { px: 7, py: 10, talks: 0, unlocked: START_UNLOCKED.slice(), flags: {},
+    quests: {}, friendship: {}, villageLevel: {} },
   load: function () {
     try {
       const raw = localStorage.getItem(SAVE_KEY);
@@ -318,6 +347,36 @@ class IslandScene extends Phaser.Scene {
     this.tweens.add({ targets: this.shrineGlow, scale: 1.4, alpha: 0.18, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     this.tweens.add({ targets: this.shrine, scale: 1.25, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
+    // --- SOL, the elder dragon, resting beside the Hearth (stationary NPC) ---
+    const solX = (7.5 + 1.2) * T, solY = 7.5 * T;
+    this.add.ellipse(solX, solY + T * 0.26, T * 0.5, T * 0.22, 0x000000, 0.28).setDepth(8);
+    this.solGlow = this.add.circle(solX, solY, T * 0.4, 0xff7a3d, 0.32).setDepth(8);
+    this.solSprite = this.add.container(solX, solY, [
+      this.add.circle(0, 2, T * 0.33, 0xb8401e),
+      this.add.circle(0, 0, T * 0.29, 0xff7a3d).setStrokeStyle(2.5, 0xffd98a),
+      this.add.text(0, -1, '🔥', { fontSize: '22px' }).setOrigin(0.5),
+    ]).setDepth(9);
+    this.sol = { gridX: 8, gridY: 7 }; // grid tile for proximity (near Hearth, walkable-adjacent)
+    this.tweens.add({ targets: this.solSprite, scaleX: 1.04, scaleY: 0.96, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: this.solGlow, alpha: 0.14, scale: 1.2, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+    // --- EXIT GATE: a shimmering portal at the island's edge ---
+    const exX = (EXIT_GATE.col + 0.5) * T, exY = (EXIT_GATE.row + 0.5) * T;
+    this.add.ellipse(exX, exY + T * 0.3, T * 0.7, T * 0.25, 0x000000, 0.3).setDepth(1);
+    // two stone pillars
+    const gateG = this.add.graphics().setDepth(4);
+    gateG.fillStyle(0x5a4a6e, 1);
+    gateG.fillRect(exX - T * 0.5, exY - T * 0.5, T * 0.18, T);
+    gateG.fillRect(exX + T * 0.32, exY - T * 0.5, T * 0.18, T);
+    gateG.fillStyle(0x7a6a9e, 1);
+    gateG.fillRect(exX - T * 0.55, exY - T * 0.55, T * 1.1, T * 0.12);
+    // swirling portal glow between pillars
+    this.exitGlow = this.add.ellipse(exX, exY, T * 0.6, T * 0.85, 0x9b7ed8, 0.55).setDepth(3);
+    this.add.ellipse(exX, exY, T * 0.35, T * 0.6, 0xd0b8ff, 0.6).setDepth(3);
+    this.add.text(exX, exY - T * 0.7, '✨ Gate ✨', { fontFamily: 'system-ui', fontSize: '11px',
+      color: '#d0b8ff', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setDepth(5);
+    this.tweens.add({ targets: this.exitGlow, scaleX: 1.2, alpha: 0.35, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
     // --- PLAYER (grid is truth) ---
     this.player = {
       gridX: 7, gridY: 10, state: 'IDLE', facing: 'up',
@@ -465,13 +524,54 @@ class IslandScene extends Phaser.Scene {
   onTalkKey() {
     if (this.dialogue.active) { this.advanceDialogue(); return; }
     if (this.player.state !== 'IDLE') return;
-    const near = (Math.abs(this.player.gridX - this.guardian.gridX) + Math.abs(this.player.gridY - this.guardian.gridY)) <= 2;
-    if (!near) return;
-    // pick a dialogue line (rotate through), then handle unlock progression
-    const line = DRAGON_LINES[Save.data.talks % DRAGON_LINES.length];
-    Save.data.talks += 1; Save.save();
     const self = this;
-    this.startDialogue('🐉 Dragon', line, function () { self.checkUnlocks(); });
+    const dist = function (gx, gy) { return Math.abs(self.player.gridX - gx) + Math.abs(self.player.gridY - gy); };
+
+    // 1) EXIT GATE has priority — leave the island
+    if (dist(EXIT_GATE.col, EXIT_GATE.row) <= 1) { this.leaveIsland(); return; }
+
+    // 2) SOL the elder (near the Hearth) — wise guidance, advances quests
+    if (this.sol && dist(this.sol.gridX, this.sol.gridY) <= 2) {
+      Save.data.friendship.sol = (Save.data.friendship.sol || 0) + 1;
+      const line = DRAGONS.sol.lines[(Save.data.friendship.sol - 1) % DRAGONS.sol.lines.length];
+      Save.save();
+      this.startDialogue(DRAGONS.sol.emoji + ' ' + DRAGONS.sol.name + ' \u00b7 elder', line, function () { self.onMetSol(); });
+      return;
+    }
+
+    // 3) EMBER the roaming dragon — playful, drives village unlocks
+    if (dist(this.guardian.gridX, this.guardian.gridY) <= 2) {
+      Save.data.friendship.ember = (Save.data.friendship.ember || 0) + 1;
+      Save.data.talks += 1;
+      const line = DRAGONS.ember.lines[(Save.data.friendship.ember - 1) % DRAGONS.ember.lines.length];
+      Save.save();
+      this.startDialogue(DRAGONS.ember.emoji + ' ' + DRAGONS.ember.name + ' \u00b7 ' + DRAGONS.ember.title, line, function () { self.checkUnlocks(); });
+      return;
+    }
+  }
+
+  // ---- QUEST: meeting Sol completes 'The First Flame' and unlocks Garden ----
+  onMetSol() {
+    const self = this;
+    if (!Save.data.quests.firstFlame) {
+      Save.data.quests.firstFlame = true;
+      Save.unlock('Garden');
+      Save.save();
+      this.applyBuildingStates();
+      this.startDialogue('\u2728 Quest complete', 'The First Flame \u2014 you met Sol, the elder. The Garden awakens!', null);
+    }
+  }
+
+  // ---- EXIT: fade out, save, return to the main game ----
+  leaveIsland() {
+    if (this._leaving) return;
+    this._leaving = true;
+    this.player.state = 'MOVING';
+    Save.data.px = this.player.gridX; Save.data.py = this.player.gridY; Save.save();
+    if (this.hud) this.hud.textContent = '\u2728 Leaving the island\u2026';
+    const cam = this.cameras.main;
+    cam.fadeOut(450, 12, 10, 24);
+    cam.once('camerafadeoutcomplete', function () { window.location.href = EXIT_URL; });
   }
 
   // ---- PROGRESSION: unlock buildings after enough talks ----
@@ -676,11 +776,18 @@ class IslandScene extends Phaser.Scene {
   }
 
   update() {
-    // show the Talk button when near the dragon and free to talk (UI only)
+    // context-aware prompt: exit gate / Sol / Ember (UI only, no logic change)
     if (this.talkBtn) {
-      const near = (Math.abs(this.player.gridX - this.guardian.gridX) + Math.abs(this.player.gridY - this.guardian.gridY)) <= 2;
-      const show = near && this.player.state === 'IDLE' && !this.dialogue.active && !this._entering;
-      this.talkBtn.style.display = show ? 'block' : 'none';
+      const free = this.player.state === 'IDLE' && !this.dialogue.active && !this._entering && !this._leaving;
+      const dd = (gx, gy) => Math.abs(this.player.gridX - gx) + Math.abs(this.player.gridY - gy);
+      let label = null;
+      if (free) {
+        if (dd(EXIT_GATE.col, EXIT_GATE.row) <= 1) label = '\u2728 Leave island (E)';
+        else if (this.sol && dd(this.sol.gridX, this.sol.gridY) <= 2) label = '\uD83D\uDD25 Talk to Sol (E)';
+        else if (dd(this.guardian.gridX, this.guardian.gridY) <= 2) label = '\uD83D\uDC09 Talk to Ember (E)';
+      }
+      if (label) { this.talkBtn.textContent = label; this.talkBtn.style.display = 'block'; }
+      else this.talkBtn.style.display = 'none';
     }
     // visual sync: keep shadows + glows under their entities (does NOT touch grid/movement)
     if (this.playerShadow) { this.playerShadow.x = this.playerSprite.x; this.playerShadow.y = this.playerSprite.y + CONFIG.TILE * 0.28; }

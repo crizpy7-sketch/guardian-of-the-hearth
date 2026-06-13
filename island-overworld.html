@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<title>Guardian of the Hearth — Island</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #1A1410; overflow: hidden;
+    font-family: -apple-system, system-ui, sans-serif; -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent; }
+  #game { width: 100vw; height: 100dvh; }
+  /* on-screen d-pad for touch */
+  .pad { position: fixed; left: max(16px, env(safe-area-inset-left)); bottom: calc(20px + env(safe-area-inset-bottom));
+    width: 168px; height: 168px; z-index: 10; touch-action: none; }
+  .pad button { position: absolute; width: 56px; height: 56px; border: none; border-radius: 14px;
+    background: rgba(36,27,20,0.86); color: #EDE3D2; font-size: 24px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5); border: 1px solid rgba(232,133,61,0.4); }
+  .pad button:active { background: rgba(232,133,61,0.55); }
+  .pad .up { left: 56px; top: 0; }
+  .pad .down { left: 56px; top: 112px; }
+  .pad .left { left: 0; top: 56px; }
+  .pad .right { left: 112px; top: 56px; }
+  .hud { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+    z-index: 10; background: rgba(26,20,16,0.85); color: #EDE3D2; border: 1px solid rgba(232,133,61,0.4);
+    border-radius: 999px; padding: 6px 16px; font-size: 14px; font-weight: 600; white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+  .hint { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: max(16px, env(safe-area-inset-right));
+    z-index: 10; color: rgba(237,227,210,0.55); font-size: 12px; max-width: 130px; text-align: right; line-height: 1.4; }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div class="hud" id="hud">Hearth Island</div>
+<div style="position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:20;background:#e8853d;color:#1a1410;font-weight:800;font-size:13px;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">BUILD v6 ✓</div>
+<div class="pad">
+  <button class="up" data-dir="up" aria-label="Up">▲</button>
+  <button class="down" data-dir="down" aria-label="Down">▼</button>
+  <button class="left" data-dir="left" aria-label="Left">◀</button>
+  <button class="right" data-dir="right" aria-label="Right">▶</button>
+</div>
+<div class="hint">Arrow keys or tap the pad. Walk into a building to enter.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+<script>
+/* =========================================================================
+   GUARDIAN OF THE HEARTH — Pokémon-style step overworld (Phaser 3)
+   - Grid is the source of truth. Pixel position is derived from grid.
+   - Player state machine: IDLE (accepts input) / MOVING (locked).
+   - One tile per input. Tween-based movement (NOT velocity). 180ms.
+   - Six buildings are solid collision tiles.
+   - Guardian wanders on a timer, one tile at a time, same collision rules.
+   - Camera follows smoothly, grid-aligned.
+   ========================================================================= */
+
+// ---- TUNABLE CONFIG -------------------------------------------------------
+const CONFIG = {
+  TILE: 40,            // tile size in px
+  COLS: 16,            // grid width in tiles
+  ROWS: 16,            // grid height in tiles
+  MOVE_MS: 180,        // player step tween duration (Pokémon feel ~150-250ms)
+  GUARDIAN_MS: 950,    // guardian wanders a step roughly every ~1s (Pokémon NPC feel)
+  GUARDIAN_MOVE_MS: 220,
+  FOLLOW_LERP: 0.12,   // camera smoothing
+  COLORS: {
+    grassA: 0x3f7d4a, grassB: 0x478a52, path: 0xb79a6a, pathEdge: 0x9c7f54,
+    water: 0x3a6ea5, building: 0x6b4a2e, buildingRoof: 0x8a3b2e, buildingDoor: 0x2a1c12,
+    shrine: 0xe8853d,
+  },
+};
+
+// The six buildings as solid tiles {col,row,label}. Everything else is walkable.
+const BUILDINGS = [
+  { col: 3,  row: 2,  w: 2, h: 2, label: 'Home',      color: 0x8a3b2e },
+  { col: 11, row: 2,  w: 2, h: 2, label: 'Garden',    color: 0x4a7a3b },
+  { col: 3,  row: 12, w: 2, h: 2, label: 'Workshop',  color: 0x7a5a2e },
+  { col: 11, row: 12, w: 2, h: 2, label: 'Harbor',    color: 0x3a6ea5 },
+  { col: 7,  row: 6,  w: 2, h: 2, label: 'Sanctuary', color: 0x6b4a8a },
+  { col: 12, row: 9,  w: 2, h: 2, label: 'Ruins',     color: 0x5a5a5a },
+];
+
+const DIRS = {
+  up:    { dx: 0,  dy: -1 },
+  down:  { dx: 0,  dy: 1 },
+  left:  { dx: -1, dy: 0 },
+  right: { dx: 1,  dy: 0 },
+};
+
+// ---- WORLD STATE ----------------------------------------------------------
+const WORLD = {
+  blocked: {},  // "col,row" -> building object
+};
+function key(c, r) { return c + ',' + r; }
+BUILDINGS.forEach(function (b) {
+  for (let dc = 0; dc < b.w; dc++) {
+    for (let dr = 0; dr < b.h; dr++) {
+      WORLD.blocked[key(b.col + dc, b.row + dr)] = b;
+    }
+  }
+});
+
+function isWalkable(c, r) {
+  if (c < 0 || r < 0 || c >= CONFIG.COLS || r >= CONFIG.ROWS) return false;
+  if (WORLD.blocked[key(c, r)]) return false;
+  return true;
+}
+
+// ---- SCENE ----------------------------------------------------------------
+class IslandScene extends Phaser.Scene {
+  constructor() { super('island'); }
+
+  create() {
+    const T = CONFIG.TILE;
+    this.cameras.main.setBackgroundColor('#1a1410');
+    this.cameras.main.setBounds(0, 0, CONFIG.COLS * T, CONFIG.ROWS * T);
+
+    // --- draw the tile map (grass + a cross path) ---
+    const g = this.add.graphics();
+    for (let c = 0; c < CONFIG.COLS; c++) {
+      for (let r = 0; r < CONFIG.ROWS; r++) {
+        const onPath = (c === 7 || c === 8 || r === 7 || r === 8);
+        let col = ((c + r) % 2 === 0) ? CONFIG.COLORS.grassA : CONFIG.COLORS.grassB;
+        if (onPath) col = CONFIG.COLORS.path;
+        g.fillStyle(col, 1);
+        g.fillRect(c * T, r * T, T, T);
+        // subtle tile grid line
+        g.lineStyle(1, 0x000000, 0.06);
+        g.strokeRect(c * T, r * T, T, T);
+      }
+    }
+
+    // --- draw buildings as solid tiles with a roof + door ---
+    this.buildingLabels = [];
+    BUILDINGS.forEach(function (b) {
+      const x = b.col * T, y = b.row * T, w = b.w * T, h = b.h * T;
+      g.fillStyle(b.color, 1);
+      g.fillRect(x + 3, y + 3, w - 6, h - 6);
+      g.fillStyle(0x000000, 0.25);
+      g.fillRect(x + 3, y + 3, w - 6, h * 0.34);
+      g.fillStyle(CONFIG.COLORS.buildingDoor, 1);
+      g.fillRect(x + w * 0.4, y + h * 0.55, w * 0.2, h * 0.42);
+      g.lineStyle(2, 0x000000, 0.35);
+      g.strokeRect(x + 3, y + 3, w - 6, h - 6);
+      const lbl = this.add.text(x + w / 2, y - 6, b.label, {
+        fontFamily: 'system-ui', fontSize: '12px', color: '#EDE3D2',
+        stroke: '#000000', strokeThickness: 4,
+      }).setOrigin(0.5, 1).setDepth(5);
+      this.buildingLabels.push(lbl);
+    }, this);
+
+    // --- the Hearth shrine at center (glowing, walkable-adjacent landmark) ---
+    const hx = 7.5 * T, hy = 7.5 * T;
+    this.shrine = this.add.circle(hx, hy, 10, CONFIG.COLORS.shrine).setDepth(4);
+    this.tweens.add({ targets: this.shrine, scale: 1.5, alpha: 0.7, duration: 900,
+      yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+    // --- PLAYER (grid is truth) ---
+    this.player = {
+      gridX: 7, gridY: 10, state: 'IDLE', facing: 'up',
+    };
+    const px = this.tileToPx(this.player.gridX), py = this.tileToPx(this.player.gridY);
+    this.playerSprite = this.add.container(px, py, [
+      this.add.circle(0, 0, T * 0.30, 0x2a5fd0).setStrokeStyle(3, 0xffffff),
+      this.add.text(0, 0, '🧒', { fontSize: '20px' }).setOrigin(0.5),
+    ]).setDepth(10);
+    // facing indicator (a small notch)
+    this.facer = this.add.triangle(px, py, 0, -6, -5, 4, 5, 4, 0xffffff).setDepth(11);
+
+    // --- GUARDIAN (also grid-based, wanders on a timer) ---
+    this.guardian = { gridX: 7, gridY: 11, state: 'IDLE' };
+    const gx = this.tileToPx(this.guardian.gridX), gy = this.tileToPx(this.guardian.gridY);
+    this.guardianSprite = this.add.container(gx, gy, [
+      this.add.circle(0, 0, T * 0.28, 0xe8853d).setStrokeStyle(3, 0xffd98a),
+      this.add.text(0, 0, '🐲', { fontSize: '18px' }).setOrigin(0.5),
+    ]).setDepth(9);
+
+    // --- camera follows player, smooth + grid stable ---
+    this.cameras.main.startFollow(this.playerSprite, true, CONFIG.FOLLOW_LERP, CONFIG.FOLLOW_LERP);
+    this.cameras.main.setZoom(this.computeZoom());
+    this.scale.on('resize', function () { this.cameras.main.setZoom(this.computeZoom()); }, this);
+
+    // --- INPUT: arrow keys -> discrete steps ---
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.heldDir = null;
+
+    // touch d-pad
+    const self = this;
+    document.querySelectorAll('.pad button').forEach(function (btn) {
+      const dir = btn.getAttribute('data-dir');
+      btn.addEventListener('touchstart', function (e) { e.preventDefault(); self.heldDir = dir; }, { passive: false });
+      btn.addEventListener('touchend', function (e) { e.preventDefault(); if (self.heldDir === dir) self.heldDir = null; }, { passive: false });
+      btn.addEventListener('mousedown', function () { self.heldDir = dir; });
+      btn.addEventListener('mouseup', function () { if (self.heldDir === dir) self.heldDir = null; });
+    });
+
+    // --- guardian wander timer (turn-based timing, independent of player) ---
+    this.time.addEvent({
+      delay: CONFIG.GUARDIAN_MS, loop: true,
+      callback: this.guardianStep, callbackScope: this,
+    });
+
+    this.hud = document.getElementById('hud');
+    if (this.hud) this.hud.textContent = 'start ' + this.player.gridX + ',' + this.player.gridY + ' walkable=' + isWalkable(this.player.gridX, this.player.gridY);
+  }
+
+  computeZoom() {
+    // fit the grid comfortably; zoom so ~9 tiles tall are visible
+    const visibleTiles = 9;
+    const z = (this.scale.height) / (visibleTiles * CONFIG.TILE);
+    return Math.max(1, Math.min(2.4, z));
+  }
+
+  tileToPx(t) { return t * CONFIG.TILE + CONFIG.TILE / 2; }
+
+  // ---- PLAYER STEP: validate -> lock -> tween -> unlock ----
+  tryMove(dir) {
+    if (this.player.state !== 'IDLE') return;          // input locked during movement
+    const d = DIRS[dir];
+    this.player.facing = dir;
+    this.updateFacer();
+    const tc = this.player.gridX + d.dx, tr = this.player.gridY + d.dy;
+    // blocked by terrain/buildings OR by the guardian standing there
+    const guardianThere = (tc === this.guardian.gridX && tr === this.guardian.gridY);
+    if (!isWalkable(tc, tr) || guardianThere) {
+      const b = WORLD.blocked[key(tc, tr)];
+      if (b && this.hud) { this.hud.textContent = '🚪 ' + b.label; }
+      this.bump(dir);
+      return;
+    }
+    this.player.state = 'MOVING';
+    this.player.gridX = tc; this.player.gridY = tr;     // grid updates AFTER validation
+    if (this.hud) this.hud.textContent = 'tile ' + tc + ',' + tr + ' walkable=' + isWalkable(tc, tr) + ' onBld=' + (WORLD.blocked[key(tc,tr)] ? WORLD.blocked[key(tc,tr)].label : 'no');
+    const nx = this.tileToPx(tc), ny = this.tileToPx(tr);
+    const self = this;
+    this.tweens.add({
+      targets: [this.playerSprite, this.facer], x: nx, y: ny,
+      duration: CONFIG.MOVE_MS, ease: 'Linear',
+      onUpdate: function () { self.syncFacer(); },
+      onComplete: function () {
+        // hard snap to the grid so sprite can never drift from grid truth
+        self.playerSprite.x = self.tileToPx(self.player.gridX);
+        self.playerSprite.y = self.tileToPx(self.player.gridY);
+        self.player.state = 'IDLE';
+        self.syncFacer();
+      },
+    });
+  }
+
+  bump(dir) {
+    // guard: only one bump at a time, and lock input during it so bumps can't stack/drift
+    if (this.player.state !== 'IDLE') return;
+    const d = DIRS[dir];
+    const self = this;
+    // origin is ALWAYS the true grid pixel, never the live sprite position
+    const baseX = this.tileToPx(this.player.gridX);
+    const baseY = this.tileToPx(this.player.gridY);
+    this.playerSprite.x = baseX; this.playerSprite.y = baseY; // start from truth
+    this.player.state = 'MOVING'; // lock so no new input/bump until this finishes
+    this.tweens.add({
+      targets: this.playerSprite,
+      x: baseX + d.dx * 7, y: baseY + d.dy * 7, duration: 90, yoyo: true, ease: 'Quad.easeOut',
+      onUpdate: function () { self.syncFacer(); },
+      onComplete: function () {
+        // hard snap back to the exact grid pixel — sprite can NEVER drift into a building
+        self.playerSprite.x = baseX; self.playerSprite.y = baseY;
+        self.player.state = 'IDLE';
+        self.syncFacer();
+      },
+    });
+  }
+
+  updateFacer() {
+    // place the facing notch on the correct side of the player
+    const d = DIRS[this.player.facing];
+    this.facer.setRotation({ up: 0, right: Math.PI / 2, down: Math.PI, left: -Math.PI / 2 }[this.player.facing]);
+    this.facerOffset = { x: d.dx * CONFIG.TILE * 0.42, y: d.dy * CONFIG.TILE * 0.42 };
+    this.syncFacer();
+  }
+  syncFacer() {
+    if (!this.facerOffset) this.facerOffset = { x: 0, y: -CONFIG.TILE * 0.42 };
+    this.facer.x = this.playerSprite.x + this.facerOffset.x;
+    this.facer.y = this.playerSprite.y + this.facerOffset.y;
+  }
+
+  // ---- GUARDIAN STEP: random direction, validate, tween one tile ----
+  guardianStep() {
+    if (this.guardian.state !== 'IDLE') return;
+    // architect spec: random directional AI, one tile, collision-aware, tween-based.
+    // ~70% of the time it actually moves; otherwise it pauses a beat (feels natural).
+    if (Math.random() < 0.3) return;
+    const order = Phaser.Utils.Array.Shuffle(['up', 'down', 'left', 'right']);
+    for (let i = 0; i < order.length; i++) {
+      const d = DIRS[order[i]];
+      const tc = this.guardian.gridX + d.dx, tr = this.guardian.gridY + d.dy;
+      // walkable, not the player's tile, and stay near the island center (don't drift to edges forever)
+      if (isWalkable(tc, tr) && !(tc === this.player.gridX && tr === this.player.gridY)) {
+        return this.guardianMoveTo(tc, tr);
+      }
+    }
+  }
+
+  guardianMoveTo(tc, tr) {
+    this.guardian.state = 'MOVING';
+    this.guardian.gridX = tc; this.guardian.gridY = tr;
+    const nx = this.tileToPx(tc), ny = this.tileToPx(tr);
+    const self = this;
+    this.tweens.add({
+      targets: this.guardianSprite, x: nx, y: ny,
+      duration: CONFIG.GUARDIAN_MOVE_MS, ease: 'Sine.easeInOut',
+      onComplete: function () {
+        self.guardianSprite.x = self.tileToPx(self.guardian.gridX);
+        self.guardianSprite.y = self.tileToPx(self.guardian.gridY);
+        self.guardian.state = 'IDLE';
+      },
+    });
+  }
+
+  update() {
+    // SAFETY: the player must NEVER occupy a blocked tile. If they do, snap to a safe tile.
+    if (!isWalkable(this.player.gridX, this.player.gridY)) {
+      console.warn('[BUG] player on blocked tile', this.player.gridX, this.player.gridY,
+        '-> snapping to safe tile');
+      // find nearest safe tile (spiral out)
+      let safe = null;
+      for (let r = 1; r < 8 && !safe; r++) {
+        for (let dy = -r; dy <= r && !safe; dy++) {
+          for (let dx = -r; dx <= r && !safe; dx++) {
+            const c = this.player.gridX + dx, rr = this.player.gridY + dy;
+            if (isWalkable(c, rr)) safe = { c: c, r: rr };
+          }
+        }
+      }
+      if (safe) {
+        this.player.gridX = safe.c; this.player.gridY = safe.r;
+        this.playerSprite.x = this.tileToPx(safe.c);
+        this.playerSprite.y = this.tileToPx(safe.r);
+      }
+    }
+    // convert held direction (key or pad) into ONE discrete step when IDLE
+    let dir = this.heldDir;
+    if (this.cursors.up.isDown) dir = 'up';
+    else if (this.cursors.down.isDown) dir = 'down';
+    else if (this.cursors.left.isDown) dir = 'left';
+    else if (this.cursors.right.isDown) dir = 'right';
+    if (dir && this.player.state === 'IDLE') this.tryMove(dir);
+  }
+}
+
+// ---- BOOT -----------------------------------------------------------------
+const game = new Phaser.Game({
+  type: Phaser.AUTO,
+  parent: 'game',
+  backgroundColor: '#1a1410',
+  scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: window.innerWidth, height: window.innerHeight },
+  pixelArt: false,
+  scene: [IslandScene],
+});
+
+// ---- lightweight self-test (logged to console; proves grid logic) ---------
+(function selfTest() {
+  const results = [];
+  function ok(name, cond) { results.push((cond ? 'PASS ' : 'FAIL ') + name); }
+  ok('building footprint blocked', WORLD.blocked['3,2'] && WORLD.blocked['4,3'] && WORLD.blocked['3,3'] && WORLD.blocked['4,2']);
+  ok('open tile is walkable', isWalkable(7, 10) === true);
+  ok('building not walkable', isWalkable(3, 2) === false && isWalkable(4, 3) === false);
+  ok('out of bounds not walkable', isWalkable(-1, 5) === false && isWalkable(99, 5) === false);
+  ok('six 2x2 = 24 blocked tiles', Object.keys(WORLD.blocked).length === 24);
+  console.log('[Island self-test]\n' + results.join('\n'));
+})();
+</script>
+</body>
+</html>

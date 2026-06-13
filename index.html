@@ -281,6 +281,16 @@
   .wlist li:last-child { border-bottom: none; }
   .wlist li.locked { color: var(--dim); font-style: normal; font-size: 13px; }
   .cele-flame { font-size: 64px; animation: burst 900ms ease both, emberPulse 2s 0.9s ease-in-out infinite; }
+  /* explore island mode link (safe link to standalone Phaser world) */
+  .explore-btn { display: flex; align-items: center; gap: 12px; text-decoration: none;
+    background: linear-gradient(135deg, #2a4a6e, #1e3450); border: 1px solid rgba(120,170,220,0.4);
+    border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; color: var(--ink);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3); transition: transform 120ms ease; }
+  .explore-btn:active { transform: scale(0.98); }
+  .explore-emoji { font-size: 32px; flex: 0 0 auto; }
+  .explore-title { display: block; font-family: var(--display); font-size: 16px; font-weight: 700; }
+  .explore-sub { display: block; font-size: 12px; color: rgba(237,227,210,0.7); margin-top: 2px; }
+  .explore-arrow { margin-left: auto; font-size: 28px; color: rgba(237,227,210,0.6); flex: 0 0 auto; }
   .vlist { list-style: none; margin: 10px 0 0; padding: 0; max-height: 44dvh; overflow-y: auto; }
   .vlist li { display: flex; align-items: center; gap: 8px; padding: 13px 10px; font-size: 16px;
     border-bottom: 1px solid #2A2018; border-radius: 10px; cursor: pointer; }
@@ -6715,6 +6725,14 @@ function IslandScreen(props) {
     <React.Fragment>
       <h1 style={{ fontSize: 24, marginBottom: 4 }}>Hearth Island</h1>
       <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>Your island, alive. Tap a building to visit it.</p>
+      <a className="explore-btn" href="./island-overworld.html" target="_blank" rel="noopener">
+        <span className="explore-emoji">🕹️</span>
+        <span>
+          <span className="explore-title">Explore Island Mode</span>
+          <span className="explore-sub">Walk around with your guardian (beta)</span>
+        </span>
+        <span className="explore-arrow">›</span>
+      </a>
       <div className="card">
         <div className="b-row" style={{ borderBottom: 'none', padding: 0 }}>
           <div className="b-thumb" style={{ width: 70, height: 70 }}><Art srcs={['chest.jpg']} emoji="📦" alt="Loot crate" /></div>
@@ -7327,7 +7345,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W1.3 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W1.4 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

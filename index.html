@@ -991,6 +991,19 @@
       BUILDING_COST_GROWTH: 1.6,
       CRAFT_ENERGY_COST: 10,
       DUNGEON_ENERGY: { SHORT: 15, MEDIUM: 30, LONG: 50 },
+      // First-time welcome gift so a new young keeper can play & feel rewarded right away.
+      // Uses only real resources: full energy, starter coins, loot crates, a few materials.
+      STARTER_GRANT: {
+        energyToFull: true,
+        gold: 200,
+        affection: 15,
+        lootCrates: 3,
+        materials: [
+          { itemId: 'itm_wood', qty: 5 },
+          { itemId: 'itm_stone', qty: 5 },
+          { itemId: 'itm_crystal', qty: 1 },
+        ],
+      },
     },
 
     RARITY_WEIGHTS: { COMMON: 50, UNCOMMON: 27, RARE: 13, EPIC: 6, LEGENDARY: 3, MYTHIC: 1 },
@@ -1883,11 +1896,14 @@
     };
 
     const GuardianRepo = {
-      createForUser: function (userId, fields) {
+      createForUser: function (userId, fields, opts) {
+        const sg = (opts && opts.starter) ? (CONFIG.ECONOMY.STARTER_GRANT || {}) : {};
         const g = {
           id: Ids.uuid(), userId: userId, name: fields.name, species: fields.species,
-          level: 1, xp: 0, energy: 0, maxEnergy: CONFIG.ECONOMY.BASE_MAX_ENERGY,
-          gold: 0, affection: 0,
+          level: 1, xp: 0,
+          energy: sg.energyToFull ? CONFIG.ECONOMY.BASE_MAX_ENERGY : 0,
+          maxEnergy: CONFIG.ECONOMY.BASE_MAX_ENERGY,
+          gold: sg.gold || 0, affection: sg.affection || 0,
         };
         return db.atomic(['guardians', 'users'], async function (c) {
           const u = await c.get('users', userId);
@@ -3124,7 +3140,18 @@
       return async function (dispatch, getState, ctx) {
         try {
           const child = await ctx.repos.users.create({ role: 'CHILD', name: name, avatar: avatar || '🧒' });
-          await ctx.repos.guardians.createForUser(child.id, { name: guardianName, species: species });
+          await ctx.repos.guardians.createForUser(child.id, { name: guardianName, species: species }, { starter: !STARTER_DISABLED });
+          // Welcome gift: starter crates + materials so a new keeper can play right away.
+          // (Energy + gold are granted at guardian creation.) Uses the real reward pipeline.
+          try {
+            const sg = STARTER_DISABLED ? null : CONFIG.ECONOMY.STARTER_GRANT;
+            if (sg && (sg.lootCrates || (sg.materials && sg.materials.length))) {
+              await ctx.repos.guardians.applyBundle(child.id, {
+                coins: 0, energy: 0, xp: 0, affection: 0,
+                materials: sg.materials || [], lootCrates: sg.lootCrates || 0,
+              });
+            }
+          } catch (e) { /* starter gift is best-effort; never block child creation */ }
           await ctx.repos.meta.set('app.activeChildId', child.id);
           dispatch({ type: T.USERS_LOADED, users: await loadUsers(ctx) });
           dispatch({ type: T.CHILD_SELECTED, childId: child.id });
@@ -4877,12 +4904,15 @@
     } },
   ];
 
+  // Tests verify mechanics on a clean L1 baseline, so they disable the welcome grant.
+  let STARTER_DISABLED = false;
   const TestSuite = {
     count: TESTS.length,
     // makeEnv: async () => { db, repos, services, reset() } — injected by the
     // host (node: memory backend; browser harness: real IndexedDB test DB).
     runAll: async function (makeEnv, onResult) {
       const results = [];
+      STARTER_DISABLED = true; // tests use the clean baseline
       const env = await makeEnv();
       for (const test of TESTS) {
         const t = makeAssert();
@@ -7534,7 +7564,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W2 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W2.1 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

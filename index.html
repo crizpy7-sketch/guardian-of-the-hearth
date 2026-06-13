@@ -732,6 +732,29 @@
   .isl-hero .fallback { position: absolute; inset: 0; display: flex; align-items: center;
     justify-content: center; font-size: 60px; }
   /* ---------- the Living Island ---------- */
+  /* ---------- day / night cycle ---------- */
+  .sky-veil { position: absolute; inset: 0; z-index: 1; pointer-events: none; mix-blend-mode: screen; }
+  .tod-night .sky-veil { mix-blend-mode: normal; }
+  .tod-dusk .sky-veil { mix-blend-mode: screen; }
+  .starfield { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+  .star { position: absolute; border-radius: 50%; background: #FFFDF0;
+    box-shadow: 0 0 4px rgba(255,253,240,0.9); animation: twinkleStar 3s ease-in-out infinite; }
+  @keyframes twinkleStar { 0%, 100% { opacity: 0.25; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.1); } }
+  .celestial { position: absolute; z-index: 1; width: 46px; height: 46px; border-radius: 50%;
+    transform: translate(-50%, -50%); pointer-events: none; transition: left 60s linear, top 60s linear, opacity 1.5s ease; }
+  .celestial.sun { background: radial-gradient(circle at 50% 45%, #FFF7D6, #FFD15C 55%, #FF9E3D 85%);
+    box-shadow: 0 0 32px 10px rgba(255,200,90,0.7); }
+  .celestial.moon { width: 38px; height: 38px;
+    background: radial-gradient(circle at 38% 38%, #FFFFFF, #E8ECF5 60%, #C7CEE0 90%);
+    box-shadow: 0 0 26px 6px rgba(220,230,255,0.55); }
+  .hearth-halo { position: absolute; z-index: 1; transform: translate(-50%, -50%); border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,160,70,0.55), rgba(255,120,40,0.18) 55%, transparent 75%);
+    pointer-events: none; animation: hearthPulse 4.5s ease-in-out infinite; }
+  @keyframes hearthPulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.08); } }
+  .win-glow { position: absolute; left: 50%; top: 58%; transform: translateX(-50%);
+    width: 26%; height: 14%; border-radius: 40%; pointer-events: none;
+    background: radial-gradient(ellipse, rgba(255,210,120,0.85), rgba(255,180,80,0.25) 60%, transparent 75%);
+    filter: blur(1px); }
   .island-scene { position: relative; width: 100%; aspect-ratio: 613 / 1100;
     border-radius: 20px; overflow: hidden; border: 1px solid var(--edge);
     background: radial-gradient(420px 300px at 50% 30%, #2E2444, #1B1830 75%);
@@ -813,6 +836,7 @@
     body:not(.motion-force) .pet-token.march, body:not(.motion-force) .pet-token.home,
     body:not(.motion-force) .rlog li.new, body:not(.motion-force) button.btn.pulse,
     body:not(.motion-force) .flame-orb .fl, body:not(.motion-force) .island-shrine,
+    body:not(.motion-force) .star, body:not(.motion-force) .hearth-halo, body:not(.motion-force) .celestial,
     body:not(.motion-force) .t-spark, body:not(.motion-force) .bag-empty-icon,
     body:not(.motion-force) .treasure.r-legendary .t-gem, body:not(.motion-force) .treasure.r-mythic .t-gem,
     body:not(.motion-force) .bag-brag,
@@ -902,6 +926,36 @@
     RARITY_WEIGHTS: { COMMON: 50, UNCOMMON: 27, RARE: 13, EPIC: 6, LEGENDARY: 3, MYTHIC: 1 },
 
     STREAK: { DECAY_PER_MISSED_DAY: 0.8 },
+    DAYNIGHT: {
+      // Phase boundaries in local hours [start, end). Derived from the device clock.
+      PHASES: [
+        { id: 'dawn',    from: 5,  to: 8,  name: 'Dawn' },
+        { id: 'day',     from: 8,  to: 17, name: 'Day' },
+        { id: 'dusk',    from: 17, to: 20, name: 'Dusk' },
+        { id: 'night',   from: 20, to: 24, name: 'Night' },
+        { id: 'night',   from: 0,  to: 5,  name: 'Night' },
+      ],
+      // Sky gradient (top -> bottom) per phase, drawn as an overlay above the island art.
+      SKY: {
+        dawn:  ['rgba(255,180,120,0.42)', 'rgba(255,150,170,0.20)', 'rgba(90,70,110,0.10)'],
+        day:   ['rgba(150,200,255,0.14)', 'rgba(255,255,255,0.0)',  'rgba(255,240,200,0.06)'],
+        dusk:  ['rgba(255,140,70,0.40)',  'rgba(180,90,140,0.30)',  'rgba(40,40,90,0.30)'],
+        night: ['rgba(10,16,48,0.66)',    'rgba(20,24,60,0.55)',    'rgba(8,10,30,0.62)'],
+      },
+      // How much the whole island is dimmed/cooled per phase (brightness, saturate).
+      LIGHT: {
+        dawn:  { bright: 0.96, sat: 1.04 },
+        day:   { bright: 1.06, sat: 1.08 },
+        dusk:  { bright: 0.92, sat: 1.10 },
+        night: { bright: 0.66, sat: 0.86 },
+      },
+      // The Hearth is the soul of the world: it glows strongest in the dark.
+      HEARTH_GLOW: { dawn: 0.5, day: 0.28, dusk: 0.7, night: 1.0 },
+      // Celestial body: sun by day, moon by night, arcing across the sky.
+      SHOW_STARS: { dawn: 0.2, day: 0, dusk: 0.35, night: 1 },
+      WINDOWS_LIT: { dawn: 0.3, day: 0, dusk: 0.6, night: 1 },
+      CROSSFADE_MS: 1500,
+    },
     FLAME: {
       FAMILY_ID: 'FAMILY',
       KEY: 'family.flame',
@@ -3323,6 +3377,45 @@
     },
   };
 
+  const TimeOfDay = {
+    phaseAt: function (date) {
+      const h = date.getHours() + date.getMinutes() / 60;
+      const phases = CONFIG.DAYNIGHT.PHASES;
+      for (let i = 0; i < phases.length; i++) {
+        if (h >= phases[i].from && h < phases[i].to) return phases[i];
+      }
+      return phases[phases.length - 1];
+    },
+    // 0..1 progress of the celestial arc within the lit part of the day (for sun/moon position)
+    arc: function (date) {
+      const h = date.getHours() + date.getMinutes() / 60;
+      const ph = TimeOfDay.phaseAt(date);
+      if (ph.id === 'night') {
+        // moon arc spans dusk-end(20) -> dawn-start(5) wrapping midnight
+        let t = (h >= 20) ? (h - 20) : (h + 4);
+        return Math.max(0, Math.min(1, t / 9));
+      }
+      // sun arc spans dawn-start(5) -> dusk-end(20)
+      return Math.max(0, Math.min(1, (h - 5) / 15));
+    },
+    describe: function (date) {
+      const d = date || new Date();
+      const ph = TimeOfDay.phaseAt(d);
+      const C = CONFIG.DAYNIGHT;
+      return {
+        id: ph.id,
+        name: ph.name,
+        arc: TimeOfDay.arc(d),
+        sky: C.SKY[ph.id],
+        light: C.LIGHT[ph.id],
+        hearthGlow: C.HEARTH_GLOW[ph.id],
+        stars: C.SHOW_STARS[ph.id],
+        windows: C.WINDOWS_LIT[ph.id],
+        isNight: ph.id === 'night',
+      };
+    },
+  };
+
   const Flame = {
     stageIndex: function (points) {
       const st = CONFIG.FLAME.STAGES;
@@ -4672,6 +4765,19 @@
       await env.services.achievement.evaluate(child.id);
       t.equal((await env.repos.counters.get(F.FAMILY_ID, F.KEY)).value, F.SOURCES.KINDNESS * 2 + F.SOURCES.ACHIEVEMENT, 'no double-spark on re-evaluate');
     } },
+    { name: 'daynight: phases and hearth glow derive from the clock', db: false, fn: function (t) {
+      function at(h, m) { const d = new Date(2025, 0, 15, h, m || 0); return TimeOfDay.describe(d); }
+      t.equal(at(6).id, 'dawn', '6am is dawn');
+      t.equal(at(12).id, 'day', 'noon is day');
+      t.equal(at(18).id, 'dusk', '6pm is dusk');
+      t.equal(at(22).id, 'night', '10pm is night');
+      t.equal(at(2).id, 'night', '2am is night');
+      t.ok(at(22).hearthGlow > at(12).hearthGlow, 'hearth burns brighter at night than noon');
+      t.equal(at(22).hearthGlow, 1, 'hearth at full glow at night');
+      t.ok(at(2).isNight, '2am flagged as night');
+      t.ok(at(12).stars === 0, 'no stars at noon');
+      t.ok(at(22).arc >= 0 && at(22).arc <= 1, 'moon arc within range');
+    } },
     { name: 'flame: stages and memories map to thresholds', db: false, fn: function (t) {
       const checks = [[0, 0], [59, 0], [60, 1], [239, 1], [240, 2], [699, 2], [700, 3], [1799, 3], [1800, 4], [99999, 4]];
       checks.forEach(function (c) { t.equal(Flame.stageIndex(c[0]), c[1], c[0] + ' pts -> stage ' + c[1]); });
@@ -4735,6 +4841,7 @@
   GOTH.SCHEMA = SCHEMA;
   GOTH.STORE_NAMES = STORE_NAMES;
   GOTH.Flame = Flame;
+  GOTH.TimeOfDay = TimeOfDay;
   GOTH.Ids = Ids;
   GOTH.RNG = RNG;
   GOTH.Leveling = Leveling;
@@ -4764,6 +4871,7 @@
   GOTH.Actions = Actions;
   GOTH.Selectors = Selectors;
   GOTH.Selectors.selectFlame = function (state) { return Flame.describe(state.flame || 0); };
+  GOTH.Selectors.selectTimeOfDay = function () { return TimeOfDay.describe(new Date()); };
   GOTH.ActionTypes = T;
   GOTH.initialState = initialState;
   GOTH.makeServices = makeServices;
@@ -6468,6 +6576,29 @@ const PLOTS = [
   { type: 'RUINS', x: 73, y: 61, w: 25 },
   { type: 'SANCTUARY', x: 49, y: 70.5, w: 26 },
 ];
+// Re-render the world on a gentle tick so the sky shifts with real time.
+function useWorldClock(everyMs) {
+  const [, setN] = useState(0);
+  useEffect(function () {
+    const id = setInterval(function () { setN(function (x) { return x + 1; }); }, everyMs || 60000);
+    return function () { clearInterval(id); };
+  }, []);
+}
+// A deterministic starfield (positions fixed so stars don't jump between renders).
+const STARS = (function () {
+  const rng = G.RNG.mulberry32(20260613);
+  const out = [];
+  for (let i = 0; i < 26; i++) {
+    out.push({
+      left: (rng() * 100).toFixed(2) + '%',
+      top: (rng() * 46).toFixed(2) + '%',
+      size: (1 + rng() * 1.6).toFixed(2),
+      delay: (rng() * 3).toFixed(2),
+    });
+  }
+  return out;
+})();
+
 const FIREFLIES = (function () {
   const arr = [];
   const spots = [[16, 22], [82, 18], [12, 52], [86, 48], [22, 78], [78, 80], [50, 44], [60, 12]];
@@ -6498,15 +6629,18 @@ function PlotBuilding(props) {
           <Art srcs={['building-' + p.type.toLowerCase() + '.jpg']} emoji="🏗️" alt={props.name} />
         </span>
       )}
+      {props.windows > 0 && <span className="win-glow" style={{ opacity: props.windows, transition: 'opacity 1.5s ease' }} />}
       <span className="plot-tag">{props.name} · Lv {props.level}</span>
     </button>
   );
 }
 
 function IslandScreen(props) {
+  useWorldClock(60000);
   const state = props.state;
   const fd = S.selectFlame(state);
   const FV = G.CONFIG.FLAME.VISUALS;
+  const tod = S.selectTimeOfDay();
   const g = state.guardian;
   const child = S.selectActiveChild(state);
   const [openType, setOpenType] = useState(null);
@@ -6546,23 +6680,46 @@ function IslandScreen(props) {
           </button>
         </div>
       </div>
-      <div className="island-scene">
+      <div className={'island-scene tod-' + tod.id}>
         {!bgFail && <img className="base" src="./bg-island.jpg" alt=""
-          style={{ filter: 'saturate(' + FV.WARMTH[fd.stage] + ') brightness(' + FV.BRIGHT[fd.stage] + ')' }}
+          style={{ filter: 'saturate(' + (FV.WARMTH[fd.stage] * tod.light.sat) + ') brightness(' + (FV.BRIGHT[fd.stage] * tod.light.bright) + ')',
+            transition: 'filter ' + (G.CONFIG.DAYNIGHT.CROSSFADE_MS) + 'ms ease' }}
           onError={function () { setBgFail(true); }} />}
+        <div className="sky-veil" style={{
+          background: 'linear-gradient(180deg, ' + tod.sky[0] + ' 0%, ' + tod.sky[1] + ' 45%, ' + tod.sky[2] + ' 100%)',
+          transition: 'background ' + G.CONFIG.DAYNIGHT.CROSSFADE_MS + 'ms ease' }} />
+        {tod.stars > 0 && (
+          <div className="starfield" style={{ opacity: tod.stars, transition: 'opacity 1.5s ease' }}>
+            {STARS.map(function (s, i) {
+              return <span key={i} className="star" style={{ left: s.left, top: s.top,
+                width: s.size + 'px', height: s.size + 'px', animationDelay: s.delay + 's' }} />;
+            })}
+          </div>
+        )}
+        <span className={'celestial ' + (tod.isNight ? 'moon' : 'sun')}
+          style={{ left: (8 + tod.arc * 84) + '%', top: (62 - Math.sin(tod.arc * Math.PI) * 50) + '%',
+            opacity: (tod.id === 'day' || tod.isNight) ? 1 : 0.85 }} />
         {FIREFLIES.slice(0, FV.FIREFLIES[fd.stage])}
         <span className="puff" style={{ left: '51.5%', top: '19%' }} />
         <span className="puff" style={{ left: '52.5%', top: '19.5%', animationDelay: '1.3s' }} />
         <span className="puff" style={{ left: '50.8%', top: '20%', animationDelay: '2.6s' }} />
         <span className="island-shrine" style={{ left: '48.5%', top: '47.5%',
-          width: FV.SHRINE_PX[fd.stage] + 'px', height: FV.SHRINE_PX[fd.stage] + 'px',
-          boxShadow: '0 0 ' + FV.SHRINE_GLOW[fd.stage] + 'px ' + Math.round(FV.SHRINE_GLOW[fd.stage] * 0.6) + 'px rgba(232,133,61,0.65)' }} />
+          width: (FV.SHRINE_PX[fd.stage] * (0.85 + tod.hearthGlow * 0.5)) + 'px',
+          height: (FV.SHRINE_PX[fd.stage] * (0.85 + tod.hearthGlow * 0.5)) + 'px',
+          boxShadow: '0 0 ' + Math.round(FV.SHRINE_GLOW[fd.stage] * (0.6 + tod.hearthGlow)) + 'px '
+            + Math.round(FV.SHRINE_GLOW[fd.stage] * (0.4 + tod.hearthGlow * 0.6)) + 'px rgba(255,150,60,'
+            + (0.5 + tod.hearthGlow * 0.4) + ')',
+          transition: 'all ' + G.CONFIG.DAYNIGHT.CROSSFADE_MS + 'ms ease' }} />
+        <div className="hearth-halo" style={{ left: '48.5%', top: '47.5%',
+          width: (120 + tod.hearthGlow * 120) + 'px', height: (120 + tod.hearthGlow * 120) + 'px',
+          opacity: 0.18 + tod.hearthGlow * 0.5,
+          transition: 'all ' + G.CONFIG.DAYNIGHT.CROSSFADE_MS + 'ms ease' }} />
         {PLOTS.map(function (p) {
           const b = byType[p.type];
           if (!b) return null;
           return (
             <PlotBuilding key={p.type} plot={p} name={b.name} level={b.level}
-              built={built === p.type}
+              built={built === p.type} windows={tod.windows}
               onOpen={function () { setOpenType(p.type); }} />
           );
         })}
@@ -7122,7 +7279,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-F2.0 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W1 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

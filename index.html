@@ -369,7 +369,7 @@
     background: linear-gradient(90deg, #5FA052, #8FD06F); }
   .hp.mid > i { background: linear-gradient(90deg, #B8862E, #E0B45C); }
   .hp.low > i { background: linear-gradient(90deg, #8F2F26, #C75146); }
-  .arena { position: relative; z-index: 2; flex: 1; min-height: 0; }
+  .arena { position: relative; z-index: 2; flex: 1 1 auto; min-height: 240px; }
   .arena.shake { animation: arenaShake 0.3s ease; }
   @keyframes arenaShake {
     0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-7px, 3px); }
@@ -427,9 +427,10 @@
   .victory-text { font-family: var(--display); font-size: 44px; font-weight: 700; color: var(--gold);
     text-shadow: 0 0 30px rgba(224,180,92,0.8), 0 4px 12px rgba(0,0,0,0.8);
     animation: pop 0.5s cubic-bezier(.2,1.5,.4,1) both; }
-  .b-controls { position: relative; z-index: 3; padding: 0 16px calc(16px + env(safe-area-inset-bottom));
-    display: flex; gap: 10px; }
-  .b-controls .btn { flex: 1; min-height: 58px; font-size: 17px; }
+  .b-controls { position: relative; z-index: 8; flex: 0 0 auto;
+    padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
+    display: flex; gap: 10px; background: linear-gradient(180deg, transparent, rgba(16,12,9,0.85) 40%); }
+  .b-controls .btn { flex: 1; min-height: 60px; font-size: 18px; touch-action: manipulation; }
   button.btn.pulse { animation: btnPulse 1.4s ease-in-out infinite; }
   @keyframes btnPulse {
     0%, 100% { box-shadow: 0 0 0 rgba(232,133,61,0); }
@@ -6046,6 +6047,7 @@ function BattleOverlay(props) {
   function attack() {
     if (lock || phase !== 'fight') return;
     setLock(true);
+    Sfx.tap();
     const i = idx;
     function strike() {
       setFx({ lunge: true });
@@ -6877,7 +6879,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-F1.2 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-F1.3 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

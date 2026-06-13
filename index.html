@@ -592,6 +592,21 @@
   .pet-stage.tilt { animation: petTilt 0.7s ease; }
   @keyframes petTilt { 0%, 100% { transform: rotate(0) scale(1); } 40% { transform: rotate(3deg) scale(1.03); } }
   .pet-stage.shine img { filter: brightness(1.28) saturate(1.18); }
+  /* animated multi-frame guardian (when frame PNGs exist) */
+  .anim-frame { width: 100%; height: 100%; object-fit: contain; image-rendering: auto; }
+  .pet-stage .anim-frame { object-fit: cover; }
+  /* mood motions for the SINGLE-image fallback — every guardian moves, frames or not */
+  .pet-stage.m-walk img { animation: kenburns 16s ease-in-out infinite alternate, walkWag 0.7s ease-in-out infinite; }
+  .pet-stage.m-cheer { animation: cheerBounce 0.6s ease-in-out infinite; }
+  .pet-stage.m-cheer img { animation: kenburns 16s ease-in-out infinite alternate, cheerWiggle 0.6s ease-in-out infinite; }
+  .pet-stage.m-sleep { animation: sleepBreathe 5.5s ease-in-out infinite; }
+  .pet-stage.m-sleep img { animation: none; filter: brightness(0.82) saturate(0.85); transform: rotate(-3deg); }
+  .pet-stage.m-play img { animation: kenburns 16s ease-in-out infinite alternate, playSpin 1.1s ease-in-out infinite; }
+  @keyframes walkWag { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+  @keyframes cheerBounce { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-12px) scale(1.05, 0.96); } }
+  @keyframes cheerWiggle { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+  @keyframes sleepBreathe { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.02, 0.99) translateY(2px); } }
+  @keyframes playSpin { 0%, 100% { transform: rotate(-8deg) scale(1); } 50% { transform: rotate(8deg) scale(1.04); } }
   .emote { position: absolute; top: 20%; z-index: 3; font-size: 32px; pointer-events: none;
     animation: emoteUp 1.7s ease-out both; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
   @keyframes emoteUp {
@@ -5203,6 +5218,67 @@ function stageArt(species, level) {
   if (level >= 10) return [base + '-2.jpg', base + '.jpg'];
   return [base + '.jpg'];
 }
+
+// Frame files for a named motion, e.g. guardian-dragon-walk1.png ... -walk4.png.
+// Probed in order; the static portrait is always the final fallback inside AnimArt.
+function frameSet(species, motion, count) {
+  const base = 'guardian-' + species.toLowerCase() + '-' + motion;
+  const out = [];
+  for (let i = 1; i <= count; i++) out.push(base + i + '.png');
+  return out;
+}
+
+// AnimArt: if frame files exist it flips them as a loop; the moment a frame 404s
+// (i.e. the family hasn't generated that motion yet) it falls back to the static
+// portrait + CSS motion. Zero-config: every species works with or without frames.
+function AnimArt(props) {
+  const frames = props.frames || [];
+  const [ready, setReady] = useState(frames.length > 0 ? 'probe' : 'none');
+  const [frame, setFrame] = useState(0);
+  const probedFor = useRef('');
+  const key = frames.join('|');
+  useEffect(function () {
+    if (frames.length === 0) { setReady('none'); return; }
+    if (probedFor.current === key) return;
+    probedFor.current = key;
+    setReady('probe');
+    let alive = true;
+    const im = new Image();
+    im.onload = function () { if (alive) setReady('anim'); };
+    im.onerror = function () { if (alive) setReady('none'); };
+    im.src = './' + frames[0];
+    return function () { alive = false; };
+  }, [key]);
+  useEffect(function () {
+    if (ready !== 'anim' || frames.length < 2) return;
+    var reduce = false;
+    try {
+      reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        && !document.body.classList.contains('motion-force');
+    } catch (e) {}
+    if (reduce) { setFrame(0); return; }
+    const fps = props.fps || 6;
+    const id = setInterval(function () {
+      setFrame(function (f) { return (f + 1) % frames.length; });
+    }, Math.round(1000 / fps));
+    return function () { clearInterval(id); };
+  }, [ready, key]);
+  if (ready === 'anim') {
+    return <img src={'./' + frames[frame]} alt={props.alt || ''} className="anim-frame" />;
+  }
+  // fallback: the proven static portrait (with its own onError chain) + CSS motion class
+  return <Art srcs={props.fallback} emoji={props.emoji} alt={props.alt} />;
+}
+
+// Picks the right motion for the guardian's current situation.
+function guardianMotion(species, level, mood) {
+  const base = stageArt(species, level);
+  if (mood === 'walk') return { frames: frameSet(species, 'walk', 4), fallback: base, fps: 7, cls: 'm-walk' };
+  if (mood === 'celebrate') return { frames: frameSet(species, 'cheer', 3), fallback: base, fps: 8, cls: 'm-cheer' };
+  if (mood === 'sleep') return { frames: frameSet(species, 'sleep', 2), fallback: base, fps: 2, cls: 'm-sleep' };
+  if (mood === 'play') return { frames: frameSet(species, 'play', 3), fallback: base, fps: 8, cls: 'm-play' };
+  return { frames: frameSet(species, 'idle', 2), fallback: base, fps: 3, cls: '' };
+}
 const RARITY_COLOR = {
   COMMON: 'var(--r-common)', UNCOMMON: 'var(--r-uncommon)', RARE: 'var(--r-rare)',
   EPIC: 'var(--r-epic)', LEGENDARY: 'var(--r-legendary)', MYTHIC: 'var(--r-mythic)',
@@ -5798,6 +5874,8 @@ function HomeScreen(props) {
   }
   if (!g) return null;
   const sp = speciesOf(g.species);
+  const homeMood = g.energy <= 8 ? 'sleep' : 'idle';
+  const homeMotion = guardianMotion(g.species, g.level, homeMood);
   const xpNeeded = G.Leveling.xpToNext(g.level);
   const pct = Math.min(100, Math.round((g.xp / xpNeeded) * 100));
   const quick = state.questBoard.filter(function (b) { return b.remainingToday > 0; }).slice(0, 3);
@@ -5805,8 +5883,8 @@ function HomeScreen(props) {
     <React.Fragment>
       <div className="card hero">
         <div className="hero-art" onClick={petTap}>
-          <div className={'pet-stage' + (hop ? ' hop' : '') + (idle ? ' ' + idle : '')}>
-            <Art srcs={stageArt(g.species, g.level)} emoji={sp.emoji} alt={sp.name} />
+          <div className={'pet-stage' + (hop ? ' hop' : '') + (idle ? ' ' + idle : '') + ' ' + homeMotion.cls}>
+            <AnimArt frames={homeMotion.frames} fallback={homeMotion.fallback} fps={homeMotion.fps} emoji={sp.emoji} alt={sp.name} />
           </div>
           {emotes.map(function (e) {
             return <span key={e.id} className="emote" style={{ left: e.x + '%' }}>{e.icon}</span>;
@@ -6181,7 +6259,10 @@ function RaidsScreen(props) {
             <Art srcs={[active.def.id.replace('dgn_', 'dungeon-') + '.jpg']} emoji="🗺️" alt={active.def.name} />
             <div className={'pet-token ' + (active.claimable ? 'home' : 'march')}
               style={active.claimable ? null : { left: (6 + prog * 76) + '%' }}>
-              <Art srcs={stageArt(g.species, g.level)} emoji={speciesOf(g.species).emoji} alt="" />
+              {(function () {
+                const rm = guardianMotion(g.species, g.level, active.claimable ? 'celebrate' : 'walk');
+                return <AnimArt frames={rm.frames} fallback={rm.fallback} fps={rm.fps} emoji={speciesOf(g.species).emoji} alt="" />;
+              })()}
             </div>
             <div className="raid-head">
               <span className="display" style={{ fontSize: 17 }}>
@@ -6879,7 +6960,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-F1.3 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-F1.4 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

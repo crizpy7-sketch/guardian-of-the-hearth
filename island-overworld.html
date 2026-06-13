@@ -29,12 +29,25 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
   .hint { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: max(16px, env(safe-area-inset-right));
     z-index: 10; color: rgba(237,227,210,0.55); font-size: 12px; max-width: 130px; text-align: right; line-height: 1.4; }
+  .talk-btn { position: fixed; top: calc(60px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+    z-index: 15; background: #e8853d; color: #1a1410; border: none; font-weight: 800; font-size: 15px;
+    padding: 10px 20px; border-radius: 999px; box-shadow: 0 3px 10px rgba(0,0,0,0.5); animation: talkPulse 1.4s ease-in-out infinite; }
+  @keyframes talkPulse { 0%,100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.06); } }
+  .dialogue { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    padding: 0 12px calc(16px + env(safe-area-inset-bottom)); }
+  .dialogue-box { max-width: 560px; margin: 0 auto; background: rgba(20,16,12,0.97);
+    border: 2px solid #e8853d; border-radius: 16px; padding: 16px 18px 14px; position: relative;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.5); }
+  .dialogue-name { font-family: var(--display, system-ui); font-weight: 800; color: #ffd98a; font-size: 15px; margin-bottom: 6px; }
+  .dialogue-text { color: #EDE3D2; font-size: 17px; line-height: 1.5; min-height: 52px; }
+  .dialogue-more { position: absolute; right: 16px; bottom: 8px; color: rgba(232,133,61,0.8); font-size: 12px; animation: bobMore 1s ease-in-out infinite; }
+  @keyframes bobMore { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
 </style>
 </head>
 <body>
 <div id="game"></div>
 <div class="hud" id="hud">Hearth Island</div>
-<div style="position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:20;background:#e8853d;color:#1a1410;font-weight:800;font-size:13px;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">v9 🚪</div>
+<div style="position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:20;background:#e8853d;color:#1a1410;font-weight:800;font-size:13px;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">v10 📜</div>
 <div class="pad">
   <button class="up" data-dir="up" aria-label="Up">▲</button>
   <button class="down" data-dir="down" aria-label="Down">▼</button>
@@ -42,6 +55,14 @@
   <button class="right" data-dir="right" aria-label="Right">▶</button>
 </div>
 <div class="hint">Arrow keys or tap the pad. Walk into a building to enter.</div>
+<button class="talk-btn" id="talkBtn" style="display:none;">💬 Talk (E)</button>
+<div class="dialogue" id="dialogue" style="display:none;">
+  <div class="dialogue-box">
+    <div class="dialogue-name" id="dialogueName"></div>
+    <div class="dialogue-text" id="dialogueText"></div>
+    <div class="dialogue-more" id="dialogueMore">▼ tap / E</div>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
 <script>
@@ -87,6 +108,65 @@ const BUILDINGS = [
 BUILDINGS.forEach(function (b) { b.door = { c: b.col, r: b.row + b.h }; });
 const DOOR_AT = {};
 BUILDINGS.forEach(function (b) { DOOR_AT[b.door.c + ',' + b.door.r] = b; });
+
+// ---- PROGRESSION CONFIG ---------------------------------------------------
+// building states: 'locked' | 'unlocked' | 'active'. Start with 2 unlocked; others locked.
+const START_UNLOCKED = ['Home', 'Sanctuary'];
+// which interactions unlock which buildings (talk to dragon N times -> unlock more)
+const UNLOCK_RULES = [
+  { afterTalks: 1, unlock: 'Garden' },
+  { afterTalks: 2, unlock: 'Workshop' },
+  { afterTalks: 3, unlock: 'Harbor' },
+  { afterTalks: 4, unlock: 'Ruins' },
+];
+
+// ---- DRAGON DIALOGUE ------------------------------------------------------
+const DRAGON_LINES = [
+  'The dragon watches you quietly\u2026',
+  'It seems calm today.',
+  'Something stirs deep in the island\u2026',
+  'The dragon tilts its head, studying you.',
+  'A warm ember-glow flickers in its eyes.',
+  'It lets out a soft, rumbling purr.',
+];
+function buildingWelcome(label) {
+  const map = {
+    Home: 'The hearth burns warm here. This is home.',
+    Garden: 'Glowing herbs and shy mushrooms grow in neat rows.',
+    Workshop: 'Tools and half-built wonders rest on the benches.',
+    Harbor: 'Little boats bob, waiting for far journeys.',
+    Sanctuary: 'A peaceful nest among the branches. The guardian rests here.',
+    Ruins: 'Old stones hum with forgotten rune-magic.',
+  };
+  return map[label] || ('Inside the ' + label + '.');
+}
+
+// ---- SAVE / LOAD (localStorage) -------------------------------------------
+const SAVE_KEY = 'goth_island_save_v1';
+const Save = {
+  data: { px: 7, py: 10, talks: 0, unlocked: START_UNLOCKED.slice(), flags: {} },
+  load: function () {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && typeof d.px === 'number') {
+          Save.data = Object.assign(Save.data, d);
+          if (!Array.isArray(Save.data.unlocked)) Save.data.unlocked = START_UNLOCKED.slice();
+        }
+      }
+    } catch (e) {}
+    return Save.data;
+  },
+  save: function () {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(Save.data)); } catch (e) {}
+  },
+  isUnlocked: function (label) { return Save.data.unlocked.indexOf(label) !== -1; },
+  unlock: function (label) {
+    if (Save.data.unlocked.indexOf(label) === -1) { Save.data.unlocked.push(label); Save.save(); return true; }
+    return false;
+  },
+};
 
 const DIRS = {
   up:    { dx: 0,  dy: -1 },
@@ -309,6 +389,120 @@ class IslandScene extends Phaser.Scene {
 
     this.hud = document.getElementById('hud');
     if (this.hud) this.hud.textContent = 'Hearth Island';
+
+    // ---- restore saved player position (grid truth) ----
+    Save.load();
+    if (isWalkable(Save.data.px, Save.data.py)) {
+      this.player.gridX = Save.data.px; this.player.gridY = Save.data.py;
+      this.playerSprite.x = this.tileToPx(Save.data.px);
+      this.playerSprite.y = this.tileToPx(Save.data.py);
+      this.syncFacer();
+    }
+
+    // ---- dialogue state ----
+    this.dialogue = { active: false, full: '', shown: 0, timer: null, onClose: null };
+    this.dlgEl = document.getElementById('dialogue');
+    this.dlgName = document.getElementById('dialogueName');
+    this.dlgText = document.getElementById('dialogueText');
+    this.talkBtn = document.getElementById('talkBtn');
+
+    // talk key + button (reuse self from above)
+    this.input.keyboard.on('keydown-E', function () { self.onTalkKey(); });
+    if (this.talkBtn) {
+      this.talkBtn.addEventListener('touchstart', function (e) { e.preventDefault(); self.onTalkKey(); }, { passive: false });
+      this.talkBtn.addEventListener('click', function () { self.onTalkKey(); });
+    }
+    // tapping the dialogue advances/closes it
+    if (this.dlgEl) {
+      this.dlgEl.addEventListener('touchstart', function (e) { e.preventDefault(); self.advanceDialogue(); }, { passive: false });
+      this.dlgEl.addEventListener('click', function () { self.advanceDialogue(); });
+    }
+    this.input.keyboard.on('keydown-SPACE', function () { if (self.dialogue.active) self.advanceDialogue(); });
+
+    // apply building locked/unlocked visuals
+    this.applyBuildingStates();
+  }
+
+  // ---- DIALOGUE SYSTEM (typewriter) ----
+  startDialogue(name, text, onClose) {
+    this.dialogue.active = true;
+    this.dialogue.full = text;
+    this.dialogue.shown = 0;
+    this.dialogue.onClose = onClose || null;
+    if (this.dlgName) this.dlgName.textContent = name;
+    if (this.dlgText) this.dlgText.textContent = '';
+    if (this.dlgEl) this.dlgEl.style.display = 'block';
+    if (this.talkBtn) this.talkBtn.style.display = 'none';
+    this.player.state = 'MOVING'; // lock movement during dialogue
+    const self = this;
+    if (this.dialogue.timer) clearInterval(this.dialogue.timer);
+    this.dialogue.timer = setInterval(function () {
+      self.dialogue.shown++;
+      if (self.dlgText) self.dlgText.textContent = self.dialogue.full.slice(0, self.dialogue.shown);
+      if (self.dialogue.shown >= self.dialogue.full.length) { clearInterval(self.dialogue.timer); self.dialogue.timer = null; }
+    }, 28);
+  }
+  advanceDialogue() {
+    if (!this.dialogue.active) return;
+    // if still typing, reveal all; else close
+    if (this.dialogue.timer) {
+      clearInterval(this.dialogue.timer); this.dialogue.timer = null;
+      this.dialogue.shown = this.dialogue.full.length;
+      if (this.dlgText) this.dlgText.textContent = this.dialogue.full;
+      return;
+    }
+    this.closeDialogue();
+  }
+  closeDialogue() {
+    this.dialogue.active = false;
+    if (this.dlgEl) this.dlgEl.style.display = 'none';
+    this.player.state = 'IDLE'; // resume control
+    const cb = this.dialogue.onClose; this.dialogue.onClose = null;
+    if (cb) cb();
+  }
+
+  // ---- TALK: pressing E near the dragon ----
+  onTalkKey() {
+    if (this.dialogue.active) { this.advanceDialogue(); return; }
+    if (this.player.state !== 'IDLE') return;
+    const near = (Math.abs(this.player.gridX - this.guardian.gridX) + Math.abs(this.player.gridY - this.guardian.gridY)) <= 2;
+    if (!near) return;
+    // pick a dialogue line (rotate through), then handle unlock progression
+    const line = DRAGON_LINES[Save.data.talks % DRAGON_LINES.length];
+    Save.data.talks += 1; Save.save();
+    const self = this;
+    this.startDialogue('🐉 Dragon', line, function () { self.checkUnlocks(); });
+  }
+
+  // ---- PROGRESSION: unlock buildings after enough talks ----
+  checkUnlocks() {
+    const self = this;
+    for (let i = 0; i < UNLOCK_RULES.length; i++) {
+      const rule = UNLOCK_RULES[i];
+      if (Save.data.talks >= rule.afterTalks && !Save.isUnlocked(rule.unlock)) {
+        Save.unlock(rule.unlock);
+        self.applyBuildingStates();
+        self.startDialogue('\u2728 The island stirs', 'The ' + rule.unlock + ' has awakened! You can enter it now.', null);
+        return; // one unlock per talk
+      }
+    }
+  }
+
+  // ---- building locked/unlocked visuals (locked = dimmed + 🔒) ----
+  applyBuildingStates() {
+    if (!this._lockIcons) this._lockIcons = {};
+    const T = CONFIG.TILE;
+    const self = this;
+    BUILDINGS.forEach(function (b) {
+      const unlocked = Save.isUnlocked(b.label);
+      // lock icon over locked buildings
+      if (!unlocked && !self._lockIcons[b.label]) {
+        const cx = b.col * T + (b.w * T) / 2, cy = b.row * T + (b.h * T) / 2;
+        self._lockIcons[b.label] = self.add.text(cx, cy, '🔒', { fontSize: '22px' }).setOrigin(0.5).setDepth(21);
+      } else if (unlocked && self._lockIcons[b.label]) {
+        self._lockIcons[b.label].destroy(); self._lockIcons[b.label] = null;
+      }
+    });
   }
 
   computeZoom() {
@@ -351,8 +545,14 @@ class IslandScene extends Phaser.Scene {
         self.player.state = 'IDLE';
         self.syncFacer();
         // building entry: did we land on a door tile?
+        // save position after every completed step
+        Save.data.px = self.player.gridX; Save.data.py = self.player.gridY; Save.save();
+        // building entry: did we land on a door tile?
         const b = DOOR_AT[self.player.gridX + ',' + self.player.gridY];
-        if (b) self.enterBuilding(b);
+        if (b) {
+          if (Save.isUnlocked(b.label)) self.enterBuilding(b);
+          else self.startDialogue('\uD83D\uDD12 ' + b.label, 'This place is still sleeping. Talk to the dragon to awaken the island.', null);
+        }
       },
     });
   }
@@ -476,6 +676,12 @@ class IslandScene extends Phaser.Scene {
   }
 
   update() {
+    // show the Talk button when near the dragon and free to talk (UI only)
+    if (this.talkBtn) {
+      const near = (Math.abs(this.player.gridX - this.guardian.gridX) + Math.abs(this.player.gridY - this.guardian.gridY)) <= 2;
+      const show = near && this.player.state === 'IDLE' && !this.dialogue.active && !this._entering;
+      this.talkBtn.style.display = show ? 'block' : 'none';
+    }
     // visual sync: keep shadows + glows under their entities (does NOT touch grid/movement)
     if (this.playerShadow) { this.playerShadow.x = this.playerSprite.x; this.playerShadow.y = this.playerSprite.y + CONFIG.TILE * 0.28; }
     if (this.guardianShadow) { this.guardianShadow.x = this.guardianSprite.x; this.guardianShadow.y = this.guardianSprite.y + CONFIG.TILE * 0.26; }

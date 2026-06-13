@@ -281,6 +281,11 @@
   .wlist li:last-child { border-bottom: none; }
   .wlist li.locked { color: var(--dim); font-style: normal; font-size: 13px; }
   .cele-flame { font-size: 64px; animation: burst 900ms ease both, emberPulse 2s 0.9s ease-in-out infinite; }
+  .vlist { list-style: none; margin: 10px 0 0; padding: 0; max-height: 44dvh; overflow-y: auto; }
+  .vlist li { display: flex; align-items: center; gap: 8px; padding: 13px 10px; font-size: 16px;
+    border-bottom: 1px solid #2A2018; border-radius: 10px; cursor: pointer; }
+  .vlist li:active { background: #2A2018; }
+  .vlist li.cur { background: #241B14; border: 1px solid var(--ember-deep); }
   .qd { display: inline-flex; gap: 3px; margin-right: 7px; vertical-align: middle; }
   .qd i { width: 6px; height: 6px; border-radius: 50%; background: #3A2C1F; }
   .qd i.on { background: var(--gold); box-shadow: 0 0 5px rgba(224,180,92,0.6); }
@@ -4972,13 +4977,43 @@ function qdDots(max, done) {
 /* ---------------- read-aloud voice ---------------- */
 const Voice = {
   on: false,
+  chosen: '',
   ok: (typeof window !== 'undefined') && ('speechSynthesis' in window),
+  list: [],
+  refresh: function () {
+    if (!Voice.ok) return;
+    try { Voice.list = window.speechSynthesis.getVoices() || []; } catch (e) { Voice.list = []; }
+  },
+  score: function (v) {
+    if (!v || String(v.lang || '').indexOf('en') !== 0) return -1;
+    const n = String(v.name || '');
+    let s = 0;
+    if (/premium/i.test(n)) s += 100;
+    if (/enhanced/i.test(n)) s += 80;
+    if (/^(Ava|Zoe|Samantha|Allison|Nicky|Evan|Joelle|Karen|Moira|Tessa|Serena|Daniel)/i.test(n)) s += 40;
+    if (v.localService) s += 10;
+    if (String(v.lang || '') === 'en-US') s += 5;
+    return s;
+  },
+  best: function () {
+    Voice.refresh();
+    let top = null, ts = -1;
+    Voice.list.forEach(function (v) { const s = Voice.score(v); if (s > ts) { ts = s; top = v; } });
+    return top;
+  },
+  byName: function (name) {
+    if (!name) return null;
+    Voice.refresh();
+    for (let i = 0; i < Voice.list.length; i++) { if (Voice.list[i].name === name) return Voice.list[i]; }
+    return null;
+  },
   say: function (text) {
     if (!Voice.ok || !Voice.on || !text) return;
     try {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-US';
+      const v = Voice.byName(Voice.chosen) || Voice.best();
+      if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'en-US'; }
       u.rate = 0.92;
       u.pitch = 1.05;
       window.speechSynthesis.speak(u);
@@ -4986,6 +5021,20 @@ const Voice = {
   },
   stop: function () { if (Voice.ok) { try { window.speechSynthesis.cancel(); } catch (e) {} } },
 };
+if (Voice.ok) {
+  Voice.refresh();
+  try { window.speechSynthesis.addEventListener('voiceschanged', Voice.refresh); } catch (e) {}
+}
+
+function playClip(src, fallbackText) {
+  try {
+    const a = new Audio(src);
+    a.volume = 0.9;
+    a.onerror = function () { Voice.say(fallbackText); };
+    const p = a.play();
+    if (p && p.catch) p.catch(function () { Voice.say(fallbackText); });
+  } catch (e) { Voice.say(fallbackText); }
+}
 
 function Say(props) {
   useEffect(function () { Voice.say(props.text); }, []);
@@ -5432,6 +5481,49 @@ function Onboarding(props) {
 }
 
 /* ---------------- child shell ---------------- */
+function VoicePicker(props) {
+  const [voices, setVoices] = useState([]);
+  useEffect(function () {
+    function compute() {
+      Voice.refresh();
+      const en = Voice.list.filter(function (v) { return Voice.score(v) >= 0; });
+      en.sort(function (a, b) { return Voice.score(b) - Voice.score(a); });
+      setVoices(en.slice(0, 8));
+    }
+    compute();
+    try { window.speechSynthesis.addEventListener('voiceschanged', compute); } catch (e) {}
+    return function () {
+      try { window.speechSynthesis.removeEventListener('voiceschanged', compute); } catch (e) {}
+    };
+  }, []);
+  return (
+    <div className="veil" onClick={props.onClose}>
+      <div className="sheet" onClick={function (e) { e.stopPropagation(); }}>
+        <div className="eyebrow">Pick a voice</div>
+        <p className="note" style={{ marginTop: 4 }}>Tap one to hear it. {props.childName} keeps this voice.</p>
+        <ul className="vlist">
+          {voices.map(function (v) {
+            const pretty = v.name.replace(/\s*\((Enhanced|Premium)\)\s*/i, '');
+            const fancy = /premium|enhanced/i.test(v.name);
+            const cur = v.name === props.current || (!props.current && voices[0] && v.name === voices[0].name);
+            return (
+              <li key={v.name} className={cur ? 'cur' : ''} onClick={function () { props.onPick(v.name); }}>
+                <span style={{ flex: 1 }}>{pretty}{fancy ? ' \u2728' : ''}</span>
+                {cur ? <span style={{ color: 'var(--gold)' }}>\u2713</span> : null}
+              </li>
+            );
+          })}
+          {voices.length === 0 && <li className="cur">Loading device voices\u2026</li>}
+        </ul>
+        <button className="btn" style={{ width: '100%', marginTop: 10 }} onClick={props.onOff}>
+          \uD83D\uDD07 Turn read-aloud off
+        </button>
+        <button className="btn primary" style={{ width: '100%', marginTop: 8 }} onClick={props.onClose}>Done</button>
+      </div>
+    </div>
+  );
+}
+
 function ChildShell(props) {
   const state = props.state;
   const store = props.store;
@@ -5439,6 +5531,8 @@ function ChildShell(props) {
   const pressTimer = useRef(null);
   const [soundOn, setSoundOn] = useState(Sfx.isOn());
   const [voiceOn, setVoiceOn] = useState(Voice.on);
+  const [voiceChoice, setVoiceChoice] = useState(Voice.chosen);
+  const [showVoices, setShowVoices] = useState(false);
   useEffect(function () { setSoundOn(Sfx.isOn()); }, [state.now]);
   useEffect(function () { Music.setScene(props.tab === 'raids' ? 'raids' : 'hearth'); }, [props.tab]);
   useEffect(function () {
@@ -5447,6 +5541,10 @@ function ChildShell(props) {
     props.storeCtx.current.repos.meta.get('pref.voice.' + id).then(function (v) {
       Voice.on = v === 'on';
       setVoiceOn(Voice.on);
+    });
+    props.storeCtx.current.repos.meta.get('pref.voiceName.' + id).then(function (v) {
+      Voice.chosen = v || '';
+      setVoiceChoice(Voice.chosen);
     });
   }, [state.activeChildId]);
   function toggleSound() {
@@ -5458,16 +5556,37 @@ function ChildShell(props) {
       props.storeCtx.current.repos.meta.set('pref.sound', v);
     }
   }
-  function toggleVoice() {
-    const next = !voiceOn;
-    Voice.on = next;
-    setVoiceOn(next);
-    if (!next) Voice.stop();
+  function setVoicePref(on) {
     const id = state.activeChildId;
     if (id && props.storeCtx && props.storeCtx.current) {
-      props.storeCtx.current.repos.meta.set('pref.voice.' + id, next ? 'on' : 'off');
+      props.storeCtx.current.repos.meta.set('pref.voice.' + id, on ? 'on' : 'off');
     }
-    if (next) Voice.say('Voice is on! Tap a quest and I will read it to you.');
+  }
+  function toggleVoice() {
+    if (!voiceOn) {
+      Voice.on = true;
+      setVoiceOn(true);
+      setVoicePref(true);
+      Voice.say('Voice is on! Tap a quest and I will read it to you.');
+    } else {
+      setShowVoices(true);
+    }
+  }
+  function voiceOff() {
+    Voice.on = false;
+    setVoiceOn(false);
+    setShowVoices(false);
+    Voice.stop();
+    setVoicePref(false);
+  }
+  function pickVoice(name) {
+    Voice.chosen = name;
+    setVoiceChoice(name);
+    const id = state.activeChildId;
+    if (id && props.storeCtx && props.storeCtx.current) {
+      props.storeCtx.current.repos.meta.set('pref.voiceName.' + id, name);
+    }
+    Voice.say('Hi ' + (child ? child.name : 'friend') + '! I will read your quests!');
   }
   const child = S.selectActiveChild(state);
   const pendingCount = state.pending.length;
@@ -5512,9 +5631,14 @@ function ChildShell(props) {
               {soundOn ? '🔊' : '🔇'}
             </button>
             <button className="hdr-kid snd" onClick={toggleVoice}
-              aria-label={voiceOn ? 'Turn read-aloud off' : 'Turn read-aloud on'}>
+              aria-label={voiceOn ? 'Voice options' : 'Turn read-aloud on'}>
               {voiceOn ? '🗣️' : '💬'}
             </button>
+            {showVoices && (
+              <VoicePicker childName={child ? child.name : ''} current={voiceChoice}
+                onPick={pickVoice} onOff={voiceOff}
+                onClose={function () { setShowVoices(false); }} />
+            )}
             {child && (
               <button className="hdr-kid" onClick={props.openSwitcher}>
                 <span>{child.avatar}</span> {child.name}
@@ -5599,7 +5723,7 @@ function FlameCard(props) {
                 const open = fd.points >= m.at;
                 return (
                   <li key={i} className={open ? '' : 'locked'}
-                    onClick={function () { if (open) Voice.say(m.text); }}>
+                    onClick={function () { if (open) playClip('./voice-whisper-' + (i + 1) + '.mp3', m.text); }}>
                     {open ? '\u201C' + m.text + '\u201D' : '\u2026 something stirs deeper in the flame'}
                   </li>
                 );
@@ -6753,7 +6877,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-F1.1 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-F1.2 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

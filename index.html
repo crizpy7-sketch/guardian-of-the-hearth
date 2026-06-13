@@ -401,6 +401,9 @@
     animation: marchBob 1.6s ease-in-out infinite; }
   .b-me img { width: 100%; height: 100%; object-fit: cover; }
   .b-me .fallback { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 50px; }
+  .b-me.has-fire { width: 150px; height: 110px; border-radius: 16px; overflow: visible;
+    background: none; border: none; box-shadow: none; }
+  .b-me.has-fire .anim-frame { object-fit: contain; overflow: visible; }
   .b-me.lunge { animation: lunge 0.45s cubic-bezier(.3,1.2,.5,1); }
   @keyframes lunge { 0%, 100% { transform: translate(0, 0); } 45% { transform: translate(130%, -36%) rotate(8deg) scale(1.08); } }
   .b-me.hop2 { animation: petHop 0.45s ease; }
@@ -5277,7 +5280,8 @@ function guardianMotion(species, level, mood) {
   if (mood === 'celebrate') return { frames: frameSet(species, 'cheer', 3), fallback: base, fps: 8, cls: 'm-cheer' };
   if (mood === 'sleep') return { frames: frameSet(species, 'sleep', 2), fallback: base, fps: 2, cls: 'm-sleep' };
   if (mood === 'play') return { frames: frameSet(species, 'play', 3), fallback: base, fps: 8, cls: 'm-play' };
-  return { frames: frameSet(species, 'idle', 2), fallback: base, fps: 3, cls: '' };
+  // idle: a gentle wing-flap loop if cheer frames exist (slowed right down), else the static portrait breathing.
+  return { frames: frameSet(species, 'cheer', 2), fallback: base, fps: 2.5, cls: '' };
 }
 const RARITY_COLOR = {
   COMMON: 'var(--r-common)', UNCOMMON: 'var(--r-uncommon)', RARE: 'var(--r-rare)',
@@ -6079,6 +6083,16 @@ function BattleOverlay(props) {
   const g = props.g;
   const foe = ENEMIES[props.def.id] || { name: 'Shadow', emoji: '👾' };
   const foeFile = 'enemy-' + props.def.id.replace('dgn_', '') + '.png';
+  const atkFrames = frameSet(g.species, 'attack', 2);
+  const [hasAtk, setHasAtk] = useState(false);
+  useEffect(function () {
+    let alive = true;
+    const im = new Image();
+    im.onload = function () { if (alive) setHasAtk(true); };
+    im.onerror = function () { if (alive) setHasAtk(false); };
+    im.src = './' + atkFrames[0];
+    return function () { alive = false; };
+  }, [atkFrames.join('|')]);
   const plan = useRef(null);
   if (!plan.current) {
     const rand = G.RNG.mulberry32(((props.run.seed >>> 0) + 13) >>> 0);
@@ -6198,8 +6212,13 @@ function BattleOverlay(props) {
             <span className="fallback">{foe.emoji}</span>
           )}
         </div>
-        <div className={'b-me' + (fx.lunge ? ' lunge' : '') + (fx.hop2 ? ' hop2' : '')}>
-          <Art srcs={stageArt(g.species, g.level)} emoji={speciesOf(g.species).emoji} alt={g.name} />
+        <div className={'b-me' + (fx.lunge ? ' lunge' : '') + (fx.hop2 ? ' hop2' : '') + (hasAtk ? ' has-fire' : '')}>
+          {hasAtk ? (
+            <img className="anim-frame" alt={g.name}
+              src={'./' + (fx.lunge ? atkFrames[1] : atkFrames[0])} />
+          ) : (
+            <Art srcs={stageArt(g.species, g.level)} emoji={speciesOf(g.species).emoji} alt={g.name} />
+          )}
         </div>
         {nums.map(function (n) {
           return (
@@ -6960,7 +6979,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-F1.4 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-F1.6 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

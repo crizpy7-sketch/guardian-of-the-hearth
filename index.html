@@ -282,6 +282,48 @@
   .wlist li.locked { color: var(--dim); font-style: normal; font-size: 13px; }
   .cele-flame { font-size: 64px; animation: burst 900ms ease both, emberPulse 2s 0.9s ease-in-out infinite; }
   /* explore island mode link (safe link to standalone Phaser world) */
+  /* ===== Sol's cinematic welcome ===== */
+  .sol-cine { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 24px;
+    background: radial-gradient(circle at 50% 38%, #2a1c3a 0%, #14100c 70%);
+    animation: solFade 1.2s ease both; }
+  @keyframes solFade { from { opacity: 0; } to { opacity: 1; } }
+  .sol-stars { position: absolute; inset: 0; pointer-events: none; }
+  .sol-star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff;
+    box-shadow: 0 0 6px rgba(255,255,255,0.9); animation: solTwinkle 2.6s ease-in-out infinite; }
+  @keyframes solTwinkle { 0%,100% { opacity: 0.2; transform: scale(0.6); } 50% { opacity: 1; transform: scale(1.2); } }
+  .sol-stage { position: relative; width: 220px; height: 220px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+  .sol-halo { position: absolute; width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,150,60,0.55), rgba(255,120,40,0.15) 55%, transparent 72%);
+    animation: solPulse 3s ease-in-out infinite; }
+  @keyframes solPulse { 0%,100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.15); opacity: 1; } }
+  .sol-dragon { font-size: 120px; filter: drop-shadow(0 0 24px rgba(255,170,80,0.8)); animation: solBreathe 3.2s ease-in-out infinite; position: relative; z-index: 2; }
+  @keyframes solBreathe { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.04); } }
+  .sol-flame { position: absolute; bottom: 6px; font-size: 46px; animation: solFlick 0.5s ease-in-out infinite alternate; z-index: 3; }
+  @keyframes solFlick { from { transform: scale(1) rotate(-3deg); opacity: 0.9; } to { transform: scale(1.15) rotate(3deg); opacity: 1; } }
+  .sol-namecard { font-family: var(--display); font-size: 16px; color: #ffd98a; margin-bottom: 14px;
+    text-shadow: 0 2px 12px rgba(232,133,61,0.6); letter-spacing: 0.3px; }
+  .sol-speech { max-width: 460px; min-height: 84px; text-align: center; color: #f5ead6; font-size: 22px;
+    line-height: 1.5; margin-bottom: 22px; font-family: var(--display); }
+  .sol-caret { animation: solCaret 0.8s steps(1) infinite; color: #e8853d; }
+  @keyframes solCaret { 50% { opacity: 0; } }
+  .sol-cta { background: linear-gradient(135deg, #ffb14e, #e8853d); color: #1a1410; border: none;
+    border-radius: 999px; padding: 18px 40px; font-size: 22px; font-weight: 800; font-family: var(--display);
+    box-shadow: 0 6px 24px rgba(232,133,61,0.6); animation: solCta 1.4s ease-in-out infinite; cursor: pointer; }
+  @keyframes solCta { 0%,100% { transform: scale(1); box-shadow: 0 6px 24px rgba(232,133,61,0.6); } 50% { transform: scale(1.06); box-shadow: 0 8px 32px rgba(232,133,61,0.9); } }
+  .sol-skip { position: absolute; top: calc(16px + env(safe-area-inset-top)); right: 16px;
+    background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.6); border: none; border-radius: 999px;
+    padding: 8px 16px; font-size: 14px; cursor: pointer; }
+  /* tutorial highlight ring (points kids at the right button) */
+  .tut-spot { position: fixed; z-index: 190; border-radius: 18px; pointer-events: none;
+    box-shadow: 0 0 0 4px rgba(232,133,61,0.9), 0 0 0 9999px rgba(10,8,6,0.72);
+    animation: tutSpot 1.3s ease-in-out infinite; }
+  @keyframes tutSpot { 0%,100% { box-shadow: 0 0 0 4px rgba(232,133,61,0.9), 0 0 0 9999px rgba(10,8,6,0.72); } 50% { box-shadow: 0 0 0 8px rgba(255,200,90,1), 0 0 0 9999px rgba(10,8,6,0.72); } }
+  .tut-coach { position: fixed; z-index: 191; left: 50%; transform: translateX(-50%);
+    background: rgba(20,16,12,0.97); border: 2px solid #e8853d; border-radius: 16px; padding: 14px 18px;
+    max-width: 320px; text-align: center; box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
+  .tut-coach .tc-sol { font-size: 34px; }
+  .tut-coach .tc-text { color: #f5ead6; font-size: 17px; font-family: var(--display); margin-top: 4px; line-height: 1.4; }
   .explore-btn { display: flex; align-items: center; gap: 12px; text-decoration: none;
     background: linear-gradient(135deg, #2a4a6e, #1e3450); border: 1px solid rgba(120,170,220,0.4);
     border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; color: var(--ink);
@@ -5257,6 +5299,19 @@ const Voice = {
     } catch (e) {}
   },
   stop: function () { if (Voice.ok) { try { window.speechSynthesis.cancel(); } catch (e) {} } },
+  // speak() ALWAYS voices (used by Sol's welcome tutorial), regardless of the per-child toggle.
+  speak: function (text, onEnd) {
+    if (!Voice.ok || !text) { if (onEnd) onEnd(); return; }
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      const v = Voice.byName(Voice.chosen) || Voice.best();
+      if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'en-US'; }
+      u.rate = 0.86; u.pitch = 1.0; // warm, slow, grandfatherly for Sol
+      if (onEnd) u.onend = onEnd;
+      window.speechSynthesis.speak(u);
+    } catch (e) { if (onEnd) onEnd(); }
+  },
 };
 if (Voice.ok) {
   Voice.refresh();
@@ -5611,6 +5666,7 @@ function App() {
   const [tab, setTab] = useState('home');
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [showOnboard, setShowOnboard] = useState(false);
+  const [solIntro, setSolIntro] = useState(false);
   const storeCtx = useRef(null);
   const state = useSyncExternalStore(
     store ? store.subscribe : noopSubscribe,
@@ -5693,8 +5749,16 @@ function App() {
   const booting = !state || state.boot === 'LOADING' || !splashDone;
   const children = state ? S.selectChildren(state) : [];
 
+  // First-time magic: if there are no keepers yet and Sol hasn't welcomed them, play the cinematic.
+  useEffect(function () {
+    if (state && state.boot === 'READY' && children.length === 0 && !solTutorialDone()) {
+      setSolIntro(true);
+    }
+  }, [state && state.boot, children.length]);
+
   return (
     <React.Fragment>
+      {solIntro && <SolWelcome onDone={function () { setSolIntro(false); }} />}
       {state && state.boot === 'READY' && state.mode === 'PARENT_MODE' && state.session ? (
         <ParentShell store={store} state={state} storeCtx={storeCtx} />
       ) : state && state.boot === 'READY' ? (
@@ -5757,6 +5821,59 @@ function App() {
         </div>
       )}
     </React.Fragment>
+  );
+}
+
+/* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
+const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
+function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
+function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }
+
+function SolWelcome(props) {
+  // a sequence of "beats" — Sol speaks each, child taps the glowing button to continue.
+  const BEATS = [
+    { text: 'Hello, little Guardian. I have been waiting for you.', btn: 'Hello! \uD83D\uDC4B' },
+    { text: 'A magical world needs your kindness and your courage.', btn: 'Okay! \u2728' },
+    { text: 'My name is Sol. I am the Guardian of the Hearth, and I will be your friend.', btn: 'Hi Sol! \uD83D\uDD25' },
+    { text: 'Together we will light the First Flame and care for the dragons. Are you ready?', btn: 'Yes! Let\'s go! \uD83C\uDF1F' },
+  ];
+  const [beat, setBeat] = useState(0);
+  const [shown, setShown] = useState(0);
+  const cur = BEATS[beat];
+
+  // speak each beat as it appears; typewriter the words for kids who can read a little
+  useEffect(function () {
+    setShown(0);
+    Voice.speak(cur.text);
+    const id = setInterval(function () {
+      setShown(function (s) { if (s >= cur.text.length) { clearInterval(id); return s; } return s + 1; });
+    }, 38);
+    return function () { clearInterval(id); };
+  }, [beat]);
+
+  function next() {
+    Voice.stop();
+    if (beat < BEATS.length - 1) setBeat(beat + 1);
+    else { markSolTutorialDone(); props.onDone(); }
+  }
+
+  return (
+    <div className="sol-cine" onClick={function () { /* tap text area reveals full line */ if (shown < cur.text.length) setShown(cur.text.length); }}>
+      <div className="sol-stars">
+        {Array.from({ length: 18 }).map(function (_, i) {
+          return <span key={i} className="sol-star" style={{ left: (7 + (i * 37) % 92) + '%', top: (8 + (i * 53) % 78) + '%', animationDelay: (i * 0.21) + 's' }} />;
+        })}
+      </div>
+      <div className="sol-stage">
+        <div className="sol-halo" />
+        <div className="sol-dragon">🐉</div>
+        <div className="sol-flame">🔥</div>
+      </div>
+      <div className="sol-namecard">Sol · Guardian of the Hearth</div>
+      <div className="sol-speech">{cur.text.slice(0, shown)}<span className="sol-caret">|</span></div>
+      <button className="sol-cta" onClick={function (e) { e.stopPropagation(); next(); }}>{cur.btn}</button>
+      <button className="sol-skip" onClick={function (e) { e.stopPropagation(); Voice.stop(); markSolTutorialDone(); props.onDone(); }}>Skip</button>
+    </div>
   );
 }
 
@@ -6012,6 +6129,63 @@ function ChildShell(props) {
       {state.ui.gateRevealed && !state.session && <GateModal store={store} state={state} />}
       {state.ui.celebration && <Celebration store={store} state={state} />}
       {state.ui.toast && <div className={'toast ' + (state.ui.toast.kind === 'ok' ? 'ok' : 'bad')}>{state.ui.toast.text}</div>}
+      {showCoach && <TutorialCoach tab={props.tab} onDone={function () { setShowCoach(false); }} />}
+    </React.Fragment>
+  );
+}
+
+/* ---------------- first-mission guided coach (voice + highlight) ---------------- */
+const COACH_KEY = 'goth.coach.firstmission.v1';
+function coachDone() { try { return localStorage.getItem(COACH_KEY) === '1'; } catch (e) { return false; } }
+function markCoachDone() { try { localStorage.setItem(COACH_KEY, '1'); } catch (e) {} }
+
+function TutorialCoach(props) {
+  // steps: point to Island tab -> celebrate. Minimal reading, Sol's voice leads.
+  const STEPS = [
+    { sol: '🐉', text: 'Tap the Island to meet your dragon friends!', target: 'island', speak: 'Tap the Island, to meet your dragon friends!' },
+    { sol: '🔥', text: 'You did it! You are a true Guardian of the Hearth!', target: null, speak: 'You did it! You are a true Guardian of the Hearth!' },
+  ];
+  const [step, setStep] = useState(0);
+  const cur = STEPS[step];
+  const [spot, setSpot] = useState(null);
+
+  // speak current step + position the highlight ring over the target tab
+  useEffect(function () {
+    Voice.speak(cur.speak);
+    if (cur.target) {
+      const el = document.querySelector('.tabbar .tab:nth-child(' + (4) + ')'); // island is 4th tab
+      if (el) {
+        const r = el.getBoundingClientRect();
+        setSpot({ left: r.left - 4, top: r.top - 4, width: r.width + 8, height: r.height + 8 });
+      }
+      // advance when the child actually opens the island
+      if (props.tab === 'island') { /* handled by watcher below */ }
+    } else {
+      setSpot(null);
+    }
+  }, [step]);
+
+  // when the child taps the island, advance to the celebration
+  useEffect(function () {
+    if (step === 0 && props.tab === 'island') {
+      Sfx.victory && Sfx.victory();
+      setStep(1);
+    }
+  }, [props.tab]);
+
+  function finish() { Voice.stop(); markCoachDone(); props.onDone(); }
+
+  return (
+    <React.Fragment>
+      {spot && <div className="tut-spot" style={{ left: spot.left, top: spot.top, width: spot.width, height: spot.height }} />}
+      <div className="tut-coach" style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}>
+        <div className="tc-sol">{cur.sol}</div>
+        <div className="tc-text">{cur.text}</div>
+        {cur.target === null && (
+          <button className="sol-cta" style={{ marginTop: 12, padding: '12px 28px', fontSize: 18 }}
+            onClick={finish}>Yay! 🌟</button>
+        )}
+      </div>
     </React.Fragment>
   );
 }
@@ -7243,6 +7417,15 @@ function ParentSettings(props) {
       </div>
 
       <div className="card">
+        <h2>Sol's Welcome Story</h2>
+        <p className="note" style={{ marginTop: 0 }}>Replay the magical first-time intro where Sol greets your child and shows them how to begin.</p>
+        <button className="btn" onClick={function () {
+          try { localStorage.removeItem(SOL_WELCOME_KEY); localStorage.removeItem(COACH_KEY); } catch (e) {}
+          window.location.reload();
+        }}>🔥 Replay Sol's Welcome</button>
+      </div>
+
+      <div className="card">
         <h2>Backups</h2>
         <p className="note" style={{ marginTop: 0 }}>Export regularly — the file is checksummed, and a modified backup is refused before anything is written. This protects against iOS clearing browser data.</p>
         <div className="btnrow" style={{ marginTop: 10 }}>
@@ -7345,7 +7528,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W1.4 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W2 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

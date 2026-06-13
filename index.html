@@ -454,6 +454,51 @@
   .pip.on { background: var(--gold); box-shadow: 0 0 6px rgba(224,180,92,0.5); }
 
   /* ---------- bag ---------- */
+  /* ---------- treasure satchel (kid-friendly) ---------- */
+  .bag-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
+  .bag-count { font-family: var(--display); font-size: 14px; color: var(--gold);
+    background: rgba(224,180,92,0.12); border: 1px solid var(--ember-deep); border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
+  .bag-shelf { background: linear-gradient(180deg, #241B14, #1C1510); }
+  .bag-empty { text-align: center; padding: 22px 10px; }
+  .bag-empty-icon { font-size: 56px; animation: floaty 3s ease-in-out infinite; }
+  @keyframes floaty { 0%,100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-8px) rotate(4deg); } }
+  .bag-brag { text-align: center; font-family: var(--display); font-size: 15px; color: var(--gold);
+    margin: 0 0 12px; animation: emberPulse 2s ease-in-out infinite; }
+  .treasure-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 12px; }
+  .treasure { -webkit-appearance: none; appearance: none; cursor: pointer; font: inherit; color: var(--ink);
+    border: none; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 12px 8px 10px; border-radius: 18px; position: relative;
+    background: rgba(20,16,12,0.55); border: 2px solid var(--edge); transition: transform 120ms ease; }
+  .treasure:active { transform: scale(0.94); }
+  .treasure.pop { animation: treasurePop 0.6s cubic-bezier(.2,1.5,.4,1); }
+  @keyframes treasurePop { 0%,100% { transform: scale(1); } 40% { transform: scale(1.12) rotate(-3deg); } }
+  .t-gem { position: relative; width: 72px; height: 72px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.18), rgba(0,0,0,0.25)); }
+  .t-emoji { font-size: 42px; line-height: 1; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.45)); }
+  .t-name { font-size: 12px; line-height: 1.2; text-align: center; font-weight: 600; }
+  .t-qty { position: absolute; top: 6px; right: 8px; min-width: 22px; height: 22px; padding: 0 5px;
+    border-radius: 999px; background: var(--ember); color: #1A1410; font-family: var(--mono);
+    font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+  .t-spark { position: absolute; font-size: 15px; pointer-events: none; }
+  .t-spark.s1 { top: 2px; left: 4px; animation: twinkle 1.8s ease-in-out infinite; }
+  .t-spark.s2 { bottom: 4px; right: 2px; animation: twinkle 1.8s ease-in-out 0.4s infinite; }
+  .t-spark.s3 { top: 10px; right: 8px; animation: twinkle 1.8s ease-in-out 0.8s infinite; }
+  @keyframes twinkle { 0%,100% { opacity: 0.3; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.2); } }
+  /* rarity glow rings */
+  .treasure.r-common { border-color: #4A4036; }
+  .treasure.r-uncommon { border-color: var(--r-uncommon); }
+  .treasure.r-rare { border-color: var(--r-rare); box-shadow: 0 0 14px rgba(91,155,213,0.35); }
+  .treasure.r-rare .t-gem { box-shadow: 0 0 18px rgba(91,155,213,0.5); }
+  .treasure.r-epic { border-color: var(--r-epic); box-shadow: 0 0 16px rgba(168,107,209,0.45); }
+  .treasure.r-epic .t-gem { box-shadow: 0 0 22px rgba(168,107,209,0.6); }
+  .treasure.r-legendary { border-color: var(--r-legendary); box-shadow: 0 0 20px rgba(224,180,92,0.55); }
+  .treasure.r-legendary .t-gem { box-shadow: 0 0 26px rgba(224,180,92,0.7); animation: gemGlow 2.4s ease-in-out infinite; }
+  .treasure.r-mythic { border-color: var(--r-mythic); box-shadow: 0 0 24px rgba(232,93,117,0.6); }
+  .treasure.r-mythic .t-gem { box-shadow: 0 0 30px rgba(232,93,117,0.75); animation: gemGlow 1.8s ease-in-out infinite; }
+  .treasure.r-mythic .t-name, .treasure.r-legendary .t-name { color: var(--gold); }
+  @keyframes gemGlow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
   .inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 9px; }
   .inv-cell { background: rgba(20,16,12,0.6); border: 1px solid var(--edge); border-radius: 13px;
     padding: 10px 8px; text-align: center; }
@@ -613,6 +658,8 @@
   @keyframes cheerWiggle { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
   @keyframes sleepBreathe { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.02, 0.99) translateY(2px); } }
   @keyframes playSpin { 0%, 100% { transform: rotate(-8deg) scale(1); } 50% { transform: rotate(8deg) scale(1.04); } }
+  .pet-stage.m-breathe .anim-frame, .duo-pet.m-breathe .anim-frame { animation: softBreathe 3.6s ease-in-out infinite; transform-origin: 50% 92%; }
+  @keyframes softBreathe { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.035, 1.015) translateY(-1px); } }
   .emote { position: absolute; top: 20%; z-index: 3; font-size: 32px; pointer-events: none;
     animation: emoteUp 1.7s ease-out both; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
   @keyframes emoteUp {
@@ -766,6 +813,9 @@
     body:not(.motion-force) .pet-token.march, body:not(.motion-force) .pet-token.home,
     body:not(.motion-force) .rlog li.new, body:not(.motion-force) button.btn.pulse,
     body:not(.motion-force) .flame-orb .fl, body:not(.motion-force) .island-shrine,
+    body:not(.motion-force) .t-spark, body:not(.motion-force) .bag-empty-icon,
+    body:not(.motion-force) .treasure.r-legendary .t-gem, body:not(.motion-force) .treasure.r-mythic .t-gem,
+    body:not(.motion-force) .bag-brag,
     body:not(.motion-force) .cele-flame,
     body:not(.motion-force) .proud-pet, body:not(.motion-force) .proud-text,
     body:not(.motion-force) .q-icon.rock, body:not(.motion-force) .stamp,
@@ -5238,52 +5288,60 @@ function frameSet(species, motion, count) {
 // (i.e. the family hasn't generated that motion yet) it falls back to the static
 // portrait + CSS motion. Zero-config: every species works with or without frames.
 function AnimArt(props) {
-  const frames = props.frames || [];
-  const [ready, setReady] = useState(frames.length > 0 ? 'probe' : 'none');
+  // props.frames is the MAX candidate list (e.g. up to 4). We probe each in order and
+  // animate however many actually exist: 0 -> static fallback, 1 -> static, 2+ -> smooth cycle.
+  const candidates = props.frames || [];
+  const [okFrames, setOkFrames] = useState(null); // null = probing, [] = none, [...] = the real ones
   const [frame, setFrame] = useState(0);
   const probedFor = useRef('');
-  const key = frames.join('|');
-  // Probe + PRELOAD every frame before animating, so nothing flickers blank mid-loop.
+  const key = candidates.join('|');
   useEffect(function () {
-    if (frames.length === 0) { setReady('none'); return; }
+    if (candidates.length === 0) { setOkFrames([]); return; }
     if (probedFor.current === key) return;
     probedFor.current = key;
-    setReady('probe');
+    setOkFrames(null);
+    setFrame(0);
     let alive = true;
-    let loaded = 0;
-    let failed = false;
-    frames.forEach(function (f) {
+    // Probe sequentially: a frame only counts if it AND all earlier frames loaded,
+    // so we never animate with a gap (e.g. frame1+frame3 but missing frame2).
+    const results = new Array(candidates.length).fill(null);
+    let done = 0;
+    candidates.forEach(function (f, i) {
       const im = new Image();
-      im.onload = function () {
-        loaded += 1;
-        if (alive && loaded === frames.length && !failed) setReady('anim');
-      };
-      im.onerror = function () { if (alive && !failed) { failed = true; setReady('none'); } };
+      im.onload = function () { results[i] = true; finish(); };
+      im.onerror = function () { results[i] = false; finish(); };
       im.src = './' + f;
     });
+    function finish() {
+      done += 1;
+      if (done < candidates.length || !alive) return;
+      const good = [];
+      for (let i = 0; i < results.length; i++) {
+        if (results[i]) good.push(candidates[i]); else break;
+      }
+      setOkFrames(good);
+    }
     return function () { alive = false; };
   }, [key]);
-  // Advance frames on an eased cadence; opacity cross-fade (CSS) smooths the swap.
   useEffect(function () {
-    if (ready !== 'anim' || frames.length < 2) return;
+    if (!okFrames || okFrames.length < 2) return;
     var reduce = false;
     try {
       reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
         && !document.body.classList.contains('motion-force');
     } catch (e) {}
     if (reduce) { setFrame(0); return; }
-    const hold = Math.max(220, Math.round(1000 / (props.fps || 4)));
+    const hold = Math.max(160, Math.round(1000 / (props.fps || 4)));
     const id = setInterval(function () {
-      setFrame(function (f) { return (f + 1) % frames.length; });
+      setFrame(function (f) { return (f + 1) % okFrames.length; });
     }, hold);
     return function () { clearInterval(id); };
-  }, [ready, key]);
-  if (ready === 'anim') {
-    // Stack all frames; cross-fade opacity to the active one. No hard src swap = no pop.
+  }, [okFrames, key]);
+  if (okFrames && okFrames.length >= 1) {
     const fade = (props.fade != null) ? props.fade : 420;
     return (
       <div className="anim-stack" aria-label={props.alt || ''}>
-        {frames.map(function (f, i) {
+        {okFrames.map(function (f, i) {
           return (
             <img key={f} src={'./' + f} alt=""
               className="anim-frame"
@@ -5293,24 +5351,39 @@ function AnimArt(props) {
       </div>
     );
   }
-  // fallback: the proven static portrait (with its own onError chain) + CSS motion class
+  // still probing OR none found -> the proven static portrait + CSS motion fallback
   return <Art srcs={props.fallback} emoji={props.emoji} alt={props.alt} />;
 }
 
 // Picks the right motion for the guardian's current situation.
 function guardianMotion(species, level, mood) {
   const base = stageArt(species, level);
-  if (mood === 'walk') return { frames: frameSet(species, 'walk', 2), fallback: base, fps: 2.4, fade: 380, cls: 'm-walk' };
-  if (mood === 'celebrate') return { frames: frameSet(species, 'cheer', 2), fallback: base, fps: 3.5, fade: 240, cls: 'm-cheer' };
-  if (mood === 'sleep') return { frames: frameSet(species, 'sleep', 2), fallback: base, fps: 1.4, fade: 900, cls: 'm-sleep' };
-  if (mood === 'play') return { frames: frameSet(species, 'play', 2), fallback: base, fps: 4, fade: 220, cls: 'm-play' };
-  // idle: a gentle, slow wing-flap if cheer frames exist; long fade = soft breathing, no blink.
-  return { frames: frameSet(species, 'cheer', 2), fallback: base, fps: 1.6, fade: 850, cls: '' };
+  if (mood === 'walk') return { frames: frameSet(species, 'walk', 4), fallback: base, fps: 6, fade: 140, cls: 'm-walk' };
+  if (mood === 'celebrate') return { frames: frameSet(species, 'cheer', 4), fallback: base, fps: 5, fade: 160, cls: 'm-cheer' };
+  if (mood === 'sleep') return { frames: frameSet(species, 'sleep', 3), fallback: base, fps: 1.6, fade: 700, cls: 'm-sleep' };
+  if (mood === 'play') return { frames: frameSet(species, 'play', 4), fallback: base, fps: 6, fade: 140, cls: 'm-play' };
+  // idle: a SINGLE clean frame (wings folded) + CSS breathing. One frame = zero wing-overlap ghosting.
+  return { frames: ['guardian-' + species.toLowerCase() + '-cheer2.png'], fallback: base, fps: 1, fade: 0, cls: 'm-breathe' };
 }
 const RARITY_COLOR = {
   COMMON: 'var(--r-common)', UNCOMMON: 'var(--r-uncommon)', RARE: 'var(--r-rare)',
   EPIC: 'var(--r-epic)', LEGENDARY: 'var(--r-legendary)', MYTHIC: 'var(--r-mythic)',
 };
+// big friendly treasure emoji for every item — a 5-year-old reads pictures, not names
+const ITEM_EMOJI = {
+  itm_wood: '🪵', itm_stone: '🪨', itm_fiber: '🌾', itm_clay: '🧱', itm_iron: '⛓️',
+  itm_herbs: '🌿', itm_crystal: '🔮', itm_moonpetal: '🌸', itm_starsteel: '⚙️',
+  itm_phoenix_feather: '🪶', itm_aether_shard: '💠', itm_loot_crate: '🎁',
+  itm_berry: '🫐', itm_apple: '🍎', itm_honey: '🍯', itm_royal_stew: '🍲',
+  itm_wood_sword: '🗡️', itm_leather_cap: '🧢', itm_iron_shield: '🛡️', itm_scout_boots: '🥾',
+  itm_runed_blade: '⚔️', itm_guardian_plate: '🦺', itm_dawn_crown: '👑',
+  itm_red_scarf: '🧣', itm_party_hat: '🎉', itm_star_cape: '⭐', itm_mythic_aura: '✨',
+};
+function itemEmoji(id) { return ITEM_EMOJI[id] || '💎'; }
+const RARITY_LABEL = {
+  COMMON: 'Common', UNCOMMON: 'Nice!', RARE: 'Rare!', EPIC: 'Epic!!', LEGENDARY: 'Legendary!!!', MYTHIC: 'MYTHIC!!!',
+};
+const RARITY_RANK = { COMMON: 0, UNCOMMON: 1, RARE: 2, EPIC: 3, LEGENDARY: 4, MYTHIC: 5 };
 const CATEGORY = {
   HYDRATION: { label: 'Hydration', icon: '💧' },
   HEALTH: { label: 'Health', icon: '🛁' },
@@ -6504,7 +6577,7 @@ function IslandScreen(props) {
         {g && (function () {
           const im = guardianMotion(g.species, g.level, 'idle');
           return (
-            <span className="duo-pet" style={{ left: '53%', top: '49.5%' }}>
+            <span className={'duo-pet ' + im.cls} style={{ left: '53%', top: '49.5%' }}>
               <AnimArt frames={im.frames} fallback={im.fallback} fps={im.fps} fade={im.fade} emoji={speciesOf(g.species).emoji} alt={g.name} />
             </span>
           );
@@ -6541,28 +6614,67 @@ function IslandScreen(props) {
 }
 
 /* ---------------- bag ---------------- */
+function TreasureCell(props) {
+  const r = props.r;
+  const rar = r.item ? r.item.rarity : 'COMMON';
+  const rank = RARITY_RANK[rar] || 0;
+  const [pop, setPop] = useState(false);
+  function tap() {
+    Sfx.coin();
+    Voice.say((r.item ? r.item.name : 'treasure') + '. ' + RARITY_LABEL[rar]);
+    setPop(true);
+    setTimeout(function () { setPop(false); }, 650);
+  }
+  return (
+    <button className={'treasure r-' + rar.toLowerCase() + (pop ? ' pop' : '')} onClick={tap}>
+      <span className="t-gem">
+        <span className="t-emoji">{itemEmoji(r.itemId)}</span>
+        {rank >= 2 && <span className="t-spark s1">✨</span>}
+        {rank >= 3 && <span className="t-spark s2">⭐</span>}
+        {rank >= 4 && <span className="t-spark s3">💫</span>}
+      </span>
+      <span className="t-name">{r.item ? r.item.name : r.itemId}</span>
+      {r.qty > 1 && <span className="t-qty">{r.qty}</span>}
+    </button>
+  );
+}
+
 function BagScreen(props) {
   const state = props.state;
   const inv = S.selectInventoryDetailed(state).filter(function (r) { return r.qty > 0; });
+  const sorted = inv.slice().sort(function (a, b) {
+    const ra = RARITY_RANK[a.item ? a.item.rarity : 'COMMON'] || 0;
+    const rb = RARITY_RANK[b.item ? b.item.rarity : 'COMMON'] || 0;
+    return rb - ra;
+  });
+  const totalKinds = inv.length;
+  const totalCount = inv.reduce(function (s, r) { return s + r.qty; }, 0);
+  const best = sorted.length ? (sorted[0].item ? sorted[0].item.rarity : 'COMMON') : null;
   return (
     <React.Fragment>
-      <h1 style={{ fontSize: 24, marginBottom: 10 }}>Satchel</h1>
-      <div className="card">
-        <h2>Treasures</h2>
-        {inv.length === 0 && <p className="note" style={{ marginTop: 0 }}>Empty for now. Raids and crates fill the satchel.</p>}
-        {inv.length > 0 && (
-          <div className="inv-grid">
-            {inv.map(function (r) {
-              const rar = r.item ? r.item.rarity : 'COMMON';
-              return (
-                <div className="inv-cell" key={r.itemId}>
-                  <div className="inv-gem" style={{ color: RARITY_COLOR[rar] }}>◆</div>
-                  <div className="inv-name">{r.item ? r.item.name : r.itemId}</div>
-                  <div className="inv-qty">×{r.qty}</div>
-                </div>
-              );
-            })}
+      <div className="bag-head">
+        <h1 style={{ fontSize: 26, margin: 0 }}>🎒 My Treasures</h1>
+        {totalKinds > 0 && (
+          <span className="bag-count">{totalCount} {totalCount === 1 ? 'treasure' : 'treasures'}</span>
+        )}
+      </div>
+      <div className="card bag-shelf">
+        {inv.length === 0 && (
+          <div className="bag-empty">
+            <div className="bag-empty-icon">🗝️</div>
+            <p className="note" style={{ margin: 0 }}>Your treasure chest is waiting!</p>
+            <p className="note" style={{ margin: '4px 0 0', fontSize: 13 }}>Send your guardian on a raid to find shiny things.</p>
           </div>
+        )}
+        {inv.length > 0 && (
+          <React.Fragment>
+            {best && (RARITY_RANK[best] >= 3) && (
+              <div className="bag-brag">Wow! You found something {RARITY_LABEL[best].replace(/!+/g, '')}!</div>
+            )}
+            <div className="treasure-grid">
+              {sorted.map(function (r) { return <TreasureCell key={r.itemId} r={r} />; })}
+            </div>
+          </React.Fragment>
         )}
       </div>
       <div className="card">
@@ -7010,7 +7122,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-F1.7 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-F2.0 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

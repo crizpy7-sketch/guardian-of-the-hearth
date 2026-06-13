@@ -354,12 +354,15 @@
   .rlog li.new { animation: logIn 0.45s ease both; color: var(--ink); }
   @keyframes logIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
   /* ---------- battle arena ---------- */
-  .battle { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column;
+  .battle { position: fixed; inset: 0; z-index: 70; height: 100dvh; max-height: 100dvh;
+    display: flex; flex-direction: column; overflow: hidden;
     background: #14100C; animation: veilIn 250ms ease both; }
   .battle .bd { position: absolute; inset: 0; }
-  .battle .bd img { width: 100%; height: 100%; object-fit: cover; opacity: 0.55; }
+  .battle .bd img { width: 100%; height: 100%; object-fit: cover; opacity: 0.78; }
   .battle .bd::after { content: ""; position: absolute; inset: 0;
-    background: linear-gradient(180deg, rgba(20,14,22,0.75), rgba(16,12,9,0.55) 40%, rgba(16,12,9,0.92)); }
+    background: linear-gradient(180deg, rgba(20,14,22,0.45) 0%, rgba(16,12,9,0.2) 35%, rgba(16,12,9,0.78) 100%); }
+  .battle .bd::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34%; z-index: 1;
+    background: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(60,40,24,0.55), transparent 70%); }
   .b-top { position: relative; z-index: 2; padding: max(14px, env(safe-area-inset-top)) 16px 0; }
   .b-foe-name { display: flex; justify-content: space-between; align-items: baseline;
     font-family: var(--display); font-size: 18px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
@@ -369,13 +372,13 @@
     background: linear-gradient(90deg, #5FA052, #8FD06F); }
   .hp.mid > i { background: linear-gradient(90deg, #B8862E, #E0B45C); }
   .hp.low > i { background: linear-gradient(90deg, #8F2F26, #C75146); }
-  .arena { position: relative; z-index: 2; flex: 1 1 auto; min-height: 240px; }
+  .arena { position: relative; z-index: 2; flex: 1 1 auto; min-height: 0; overflow: hidden; }
   .arena.shake { animation: arenaShake 0.3s ease; }
   @keyframes arenaShake {
     0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-7px, 3px); }
     50% { transform: translate(6px, -4px); } 75% { transform: translate(-4px, 2px); }
   }
-  .b-foe { position: absolute; right: 9%; bottom: 32%; width: 38%; max-width: 210px;
+  .b-foe { position: absolute; right: 10%; bottom: 14%; width: 36%; max-width: 200px;
     display: flex; align-items: center; justify-content: center; transform-origin: center bottom;
     animation: menace 2.6s ease-in-out infinite; }
   @keyframes menace { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-9px) rotate(1.5deg); } }
@@ -395,14 +398,14 @@
     35% { transform: scale(1.15); filter: brightness(3); }
     100% { transform: scale(0.1) rotate(220deg); opacity: 0; }
   }
-  .b-me { position: absolute; left: 9%; bottom: 32%; width: 124px; height: 124px;
-    border-radius: 24px; overflow: hidden; border: 3px solid var(--ember);
-    box-shadow: 0 0 22px rgba(232,133,61,0.7); background: #1C1510;
+  .b-me { position: absolute; left: 8%; bottom: 12%; width: 30%; max-width: 150px; aspect-ratio: 1;
+    height: auto; border-radius: 20px; overflow: hidden; border: 3px solid var(--ember);
+    box-shadow: 0 0 22px rgba(232,133,61,0.7); background: rgba(28,21,16,0.5);
     transform-origin: center bottom; animation: idleBattle 2.2s ease-in-out infinite; }
   @keyframes idleBattle { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-5px) rotate(1deg); } }
   .b-me img { width: 100%; height: 100%; object-fit: cover; }
   .b-me .fallback { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 50px; }
-  .b-me.has-fire { width: 190px; height: 150px; border-radius: 0; overflow: visible;
+  .b-me.has-fire { width: 46%; max-width: 230px; height: auto; aspect-ratio: 1.3; border-radius: 0; overflow: visible;
     background: none; border: none; box-shadow: none; }
   .b-me.has-fire .anim-frame { object-fit: contain; overflow: visible; }
   .b-me.has-fire .anim-stack { animation: battleBreath 1.8s ease-in-out infinite; transform-origin: center bottom; }
@@ -444,9 +447,9 @@
     text-shadow: 0 0 30px rgba(224,180,92,0.8), 0 4px 12px rgba(0,0,0,0.8);
     animation: pop 0.5s cubic-bezier(.2,1.5,.4,1) both; }
   .b-controls { position: relative; z-index: 12; flex: 0 0 auto;
-    padding: 14px 16px calc(24px + env(safe-area-inset-bottom));
-    display: flex; gap: 10px; background: linear-gradient(180deg, transparent, rgba(16,12,9,0.92) 35%); }
-  .b-controls .btn { flex: 1; min-height: 64px; font-size: 19px; touch-action: manipulation; }
+    padding: 10px 14px calc(14px + env(safe-area-inset-bottom));
+    display: flex; gap: 10px; background: linear-gradient(180deg, transparent, rgba(16,12,9,0.95) 30%); }
+  .b-controls .btn { flex: 1; min-height: 58px; font-size: 19px; touch-action: manipulation; }
   button.btn.pulse { animation: btnPulse 1.4s ease-in-out infinite; }
   @keyframes btnPulse {
     0%, 100% { box-shadow: 0 0 0 rgba(232,133,61,0); }
@@ -7324,7 +7327,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W1.2 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W1.3 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

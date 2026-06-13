@@ -34,7 +34,7 @@
 <body>
 <div id="game"></div>
 <div class="hud" id="hud">Hearth Island</div>
-<div style="position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:20;background:#e8853d;color:#1a1410;font-weight:800;font-size:13px;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">v8 🐉</div>
+<div style="position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:20;background:#e8853d;color:#1a1410;font-weight:800;font-size:13px;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">v9 🚪</div>
 <div class="pad">
   <button class="up" data-dir="up" aria-label="Up">▲</button>
   <button class="down" data-dir="down" aria-label="Down">▼</button>
@@ -82,6 +82,11 @@ const BUILDINGS = [
   { col: 7,  row: 6,  w: 2, h: 2, label: 'Sanctuary', color: 0x6b4a8a },
   { col: 12, row: 9,  w: 2, h: 2, label: 'Ruins',     color: 0x5a5a5a },
 ];
+// each building's door tile = the walkable tile just below its front-left cell.
+// stepping onto a door tile enters that building.
+BUILDINGS.forEach(function (b) { b.door = { c: b.col, r: b.row + b.h }; });
+const DOOR_AT = {};
+BUILDINGS.forEach(function (b) { DOOR_AT[b.door.c + ',' + b.door.r] = b; });
 
 const DIRS = {
   up:    { dx: 0,  dy: -1 },
@@ -345,8 +350,37 @@ class IslandScene extends Phaser.Scene {
         self.playerSprite.y = self.tileToPx(self.player.gridY);
         self.player.state = 'IDLE';
         self.syncFacer();
+        // building entry: did we land on a door tile?
+        const b = DOOR_AT[self.player.gridX + ',' + self.player.gridY];
+        if (b) self.enterBuilding(b);
       },
     });
+  }
+
+  // FADE OUT -> launch interior scene -> (interior fades in). Movement state preserved on return.
+  enterBuilding(b) {
+    if (this._entering) return;
+    this._entering = true;
+    this.player.state = 'MOVING'; // lock input during transition
+    const cam = this.cameras.main;
+    cam.fadeOut(280, 16, 12, 9);
+    const self = this;
+    cam.once('camerafadeoutcomplete', function () {
+      // remember where to put the player when they come back (on the door tile)
+      self.scene.launch('interior', { building: b, returnTo: { c: self.player.gridX, r: self.player.gridY } });
+      self.scene.pause();
+    });
+  }
+
+  // called by the interior scene when the player exits
+  resumeFromInterior(returnTo) {
+    this._entering = false;
+    this.player.gridX = returnTo.c; this.player.gridY = returnTo.r;
+    this.playerSprite.x = this.tileToPx(returnTo.c);
+    this.playerSprite.y = this.tileToPx(returnTo.r);
+    this.syncFacer();
+    this.player.state = 'IDLE';
+    this.cameras.main.fadeIn(280, 16, 12, 9);
   }
 
   bump(dir) {
@@ -388,6 +422,11 @@ class IslandScene extends Phaser.Scene {
   // ---- GUARDIAN STEP: random direction, validate, tween one tile ----
   guardianStep() {
     if (this.guardian.state !== 'IDLE') return;
+    // REACTIVE LAYER (visual only): if the player is near, the dragon tends to pause and notice.
+    // This biases the pause chance but does NOT alter the movement algorithm itself.
+    const near = (Math.abs(this.player.gridX - this.guardian.gridX) + Math.abs(this.player.gridY - this.guardian.gridY)) <= 2;
+    if (near) { this.reactToPlayer(true); if (Math.random() < 0.7) return; }
+    else { this.reactToPlayer(false); }
     // architect spec: random directional AI, one tile, collision-aware, tween-based.
     // ~70% of the time it actually moves; otherwise it pauses a beat (feels natural).
     if (Math.random() < 0.3) return;
@@ -399,6 +438,24 @@ class IslandScene extends Phaser.Scene {
       if (isWalkable(tc, tr) && !(tc === this.player.gridX && tr === this.player.gridY)) {
         return this.guardianMoveTo(tc, tr);
       }
+    }
+  }
+
+  // VISUAL reaction to player proximity — glow brightens, dragon does a little perk-up.
+  // Touches nothing in the grid/AI; purely cosmetic feedback.
+  reactToPlayer(isNear) {
+    if (isNear === this._wasNear) return; // only react on change
+    this._wasNear = isNear;
+    if (!this.dragonVisual) return;
+    if (isNear) {
+      if (this.guardianGlow) this.guardianGlow.setFillStyle(0xffd066, 0.5);
+      // a quick perk-up hop (visual only)
+      this.tweens.add({ targets: this.dragonVisual, y: this.dragonVisual.y - 5, duration: 160,
+        yoyo: true, ease: 'Quad.easeOut' });
+      if (this.hud) this.hud.textContent = '🐉 the dragon noticed you!';
+    } else {
+      if (this.guardianGlow) this.guardianGlow.setFillStyle(0xe8853d, 0.3);
+      if (this.hud) this.hud.textContent = 'Hearth Island';
     }
   }
 
@@ -454,6 +511,97 @@ class IslandScene extends Phaser.Scene {
   }
 }
 
+// ---- INTERIOR SCENE (simple single room; entered via building doors) -------
+class InteriorScene extends Phaser.Scene {
+  constructor() { super('interior'); }
+
+  init(data) { this.building = data.building; this.returnTo = data.returnTo; }
+
+  create() {
+    const T = CONFIG.TILE;
+    const W = this.scale.width, H = this.scale.height;
+    const b = this.building;
+    this.cameras.main.setBackgroundColor('#1a1410');
+
+    // room dimensions (a cozy interior, centered)
+    const roomW = Math.min(W * 0.82, 360), roomH = Math.min(H * 0.6, 360);
+    const rx = (W - roomW) / 2, ry = (H - roomH) / 2;
+
+    const g = this.add.graphics();
+    // floor (wood plank look via stripes, tinted by building color)
+    const floorBase = Phaser.Display.Color.IntegerToColor(b.color).darken(40).color;
+    g.fillStyle(floorBase, 1);
+    g.fillRect(rx, ry, roomW, roomH);
+    g.fillStyle(0x000000, 0.12);
+    for (let y = ry; y < ry + roomH; y += 22) { g.fillRect(rx, y, roomW, 2); }
+    // back wall (upper third, lighter)
+    const wallCol = Phaser.Display.Color.IntegerToColor(b.color).darken(20).color;
+    g.fillStyle(wallCol, 1);
+    g.fillRect(rx, ry, roomW, roomH * 0.3);
+    // wall trim
+    g.fillStyle(Phaser.Display.Color.IntegerToColor(b.color).lighten(10).color, 1);
+    g.fillRect(rx, ry + roomH * 0.3 - 4, roomW, 4);
+    // room border
+    g.lineStyle(3, 0x000000, 0.4);
+    g.strokeRect(rx, ry, roomW, roomH);
+    // a rug
+    g.fillStyle(Phaser.Display.Color.IntegerToColor(b.color).lighten(14).color, 0.5);
+    g.fillEllipse(W / 2, ry + roomH * 0.62, roomW * 0.5, roomH * 0.3);
+    // a door at the bottom (exit marker)
+    g.fillStyle(0x2a1c12, 1);
+    g.fillRect(W / 2 - 16, ry + roomH - 30, 32, 30);
+    g.fillStyle(0xE8C56A, 0.9);
+    g.fillCircle(W / 2 + 8, ry + roomH - 15, 2);
+
+    // title
+    this.add.text(W / 2, ry - 18, b.label, { fontFamily: 'system-ui', fontSize: '20px',
+      color: '#EDE3D2', stroke: '#000000', strokeThickness: 4, fontStyle: 'bold' }).setOrigin(0.5);
+    this.add.text(W / 2, ry + 18, 'Inside the ' + b.label, { fontFamily: 'system-ui', fontSize: '13px',
+      color: '#C9BCA6' }).setOrigin(0.5);
+
+    // player avatar inside (near the door, facing up into the room)
+    const pSh = this.add.ellipse(W / 2, ry + roomH - 44 + T * 0.28, T * 0.5, T * 0.22, 0x000000, 0.3);
+    this.add.container(W / 2, ry + roomH - 44, [
+      this.add.circle(0, 2, T * 0.31, 0x1e4a9e),
+      this.add.circle(0, 0, T * 0.27, 0x3a72d8).setStrokeStyle(2.5, 0xffffff),
+      this.add.text(0, -1, '🧒', { fontSize: '22px' }).setOrigin(0.5),
+    ]);
+
+    // exit prompt
+    this.add.text(W / 2, ry + roomH + 24, 'Press E or ESC to leave  ·  or tap here',
+      { fontFamily: 'system-ui', fontSize: '13px', color: '#E8853D' }).setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', function () { this.exit(); }, this);
+
+    // keys
+    this.input.keyboard.on('keydown-E', function () { this.exit(); }, this);
+    this.input.keyboard.on('keydown-ESC', function () { this.exit(); }, this);
+    // tap anywhere on the door also exits
+    this.input.on('pointerdown', function (p) {
+      if (p.y > ry + roomH - 40 && Math.abs(p.x - W / 2) < 40) this.exit();
+    }, this);
+
+    this.cameras.main.fadeIn(280, 16, 12, 9);
+    this._exiting = false;
+    // update HUD
+    const hud = document.getElementById('hud'); if (hud) hud.textContent = '🚪 ' + b.label;
+  }
+
+  exit() {
+    if (this._exiting) return;
+    this._exiting = true;
+    const self = this;
+    this.cameras.main.fadeOut(280, 16, 12, 9);
+    this.cameras.main.once('camerafadeoutcomplete', function () {
+      const island = self.scene.get('island');
+      self.scene.resume('island');
+      if (island && island.resumeFromInterior) island.resumeFromInterior(self.returnTo);
+      const hud = document.getElementById('hud'); if (hud) hud.textContent = 'Hearth Island';
+      self.scene.stop();
+    });
+  }
+}
+
 // ---- BOOT -----------------------------------------------------------------
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -462,7 +610,7 @@ const game = new Phaser.Game({
   scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH,
     width: window.innerWidth, height: window.innerHeight },
   pixelArt: false,
-  scene: [IslandScene],
+  scene: [IslandScene, InteriorScene],
 });
 
 // ---- lightweight self-test (logged to console; proves grid logic) ---------

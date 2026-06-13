@@ -5988,6 +5988,12 @@ function VoicePicker(props) {
 function ChildShell(props) {
   const state = props.state;
   const store = props.store;
+  const [showCoach, setShowCoach] = useState(function () {
+    try {
+      const kids = S.selectChildren(state);
+      return solTutorialDone() && !coachDone() && kids.length <= 1;
+    } catch (e) { return false; }
+  });
   const [holding, setHolding] = useState(false);
   const pressTimer = useRef(null);
   const [soundOn, setSoundOn] = useState(Sfx.isOn());

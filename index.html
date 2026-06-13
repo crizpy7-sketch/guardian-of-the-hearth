@@ -354,7 +354,7 @@
   .rlog li.new { animation: logIn 0.45s ease both; color: var(--ink); }
   @keyframes logIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
   /* ---------- battle arena ---------- */
-  .battle { position: fixed; inset: 0; z-index: 49; display: flex; flex-direction: column;
+  .battle { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column;
     background: #14100C; animation: veilIn 250ms ease both; }
   .battle .bd { position: absolute; inset: 0; }
   .battle .bd img { width: 100%; height: 100%; object-fit: cover; opacity: 0.55; }
@@ -375,8 +375,8 @@
     0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-7px, 3px); }
     50% { transform: translate(6px, -4px); } 75% { transform: translate(-4px, 2px); }
   }
-  .b-foe { position: absolute; right: 7%; top: 16%; width: 46%; max-width: 250px;
-    display: flex; align-items: center; justify-content: center;
+  .b-foe { position: absolute; right: 9%; bottom: 32%; width: 38%; max-width: 210px;
+    display: flex; align-items: center; justify-content: center; transform-origin: center bottom;
     animation: menace 2.6s ease-in-out infinite; }
   @keyframes menace { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-9px) rotate(1.5deg); } }
   .b-foe img { width: 100%; filter: drop-shadow(0 12px 22px rgba(0,0,0,0.6)); }
@@ -395,17 +395,30 @@
     35% { transform: scale(1.15); filter: brightness(3); }
     100% { transform: scale(0.1) rotate(220deg); opacity: 0; }
   }
-  .b-me { position: absolute; left: 7%; bottom: 14%; width: 96px; height: 96px;
+  .b-me { position: absolute; left: 9%; bottom: 32%; width: 124px; height: 124px;
     border-radius: 24px; overflow: hidden; border: 3px solid var(--ember);
     box-shadow: 0 0 22px rgba(232,133,61,0.7); background: #1C1510;
-    animation: marchBob 1.6s ease-in-out infinite; }
+    transform-origin: center bottom; animation: idleBattle 2.2s ease-in-out infinite; }
+  @keyframes idleBattle { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-5px) rotate(1deg); } }
   .b-me img { width: 100%; height: 100%; object-fit: cover; }
   .b-me .fallback { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 50px; }
-  .b-me.has-fire { width: 150px; height: 110px; border-radius: 16px; overflow: visible;
+  .b-me.has-fire { width: 190px; height: 150px; border-radius: 0; overflow: visible;
     background: none; border: none; box-shadow: none; }
   .b-me.has-fire .anim-frame { object-fit: contain; overflow: visible; }
-  .b-me.lunge { animation: lunge 0.45s cubic-bezier(.3,1.2,.5,1); }
-  @keyframes lunge { 0%, 100% { transform: translate(0, 0); } 45% { transform: translate(130%, -36%) rotate(8deg) scale(1.08); } }
+  .b-me.has-fire .anim-stack { animation: battleBreath 1.8s ease-in-out infinite; transform-origin: center bottom; }
+  @keyframes battleBreath { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.02); } }
+  .fr-fire.flicker { animation: fireFlicker 0.12s steps(2) infinite; }
+  @keyframes fireFlicker { 0% { filter: brightness(1) saturate(1.1); } 100% { filter: brightness(1.4) saturate(1.35); } }
+  .b-me.has-fire .anim-frame { filter: drop-shadow(0 6px 14px rgba(0,0,0,0.5)); }
+  .clash { position: absolute; z-index: 5; font-size: 56px; pointer-events: none;
+    transform: translate(50%, 50%); animation: clashPop 0.42s cubic-bezier(.2,1.6,.4,1) both; }
+  @keyframes clashPop { 0% { transform: translate(50%,50%) scale(0.2); opacity: 0; }
+    35% { transform: translate(50%,50%) scale(1.3); opacity: 1; }
+    100% { transform: translate(50%,50%) scale(1); opacity: 0; } }
+  .b-me.lunge { animation: lunge 0.5s cubic-bezier(.3,1.1,.5,1); z-index: 3; }
+  @keyframes lunge { 0% { transform: translate(0,0); } 50% { transform: translate(150%, 0) scale(1.12); } 100% { transform: translate(0,0); } }
+  .b-me.has-fire.lunge { animation: lungeFire 0.5s cubic-bezier(.3,1.1,.5,1); z-index: 3; }
+  @keyframes lungeFire { 0% { transform: translate(0,0); } 50% { transform: translate(110%, 0) scale(1.12); } 100% { transform: translate(0,0); } }
   .b-me.hop2 { animation: petHop 0.45s ease; }
   .dmgnum { position: absolute; z-index: 4; font-family: var(--mono); font-weight: 800; font-size: 30px;
     color: #FF8A7A; text-shadow: 0 2px 6px rgba(0,0,0,0.8); pointer-events: none;
@@ -430,10 +443,10 @@
   .victory-text { font-family: var(--display); font-size: 44px; font-weight: 700; color: var(--gold);
     text-shadow: 0 0 30px rgba(224,180,92,0.8), 0 4px 12px rgba(0,0,0,0.8);
     animation: pop 0.5s cubic-bezier(.2,1.5,.4,1) both; }
-  .b-controls { position: relative; z-index: 8; flex: 0 0 auto;
-    padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
-    display: flex; gap: 10px; background: linear-gradient(180deg, transparent, rgba(16,12,9,0.85) 40%); }
-  .b-controls .btn { flex: 1; min-height: 60px; font-size: 18px; touch-action: manipulation; }
+  .b-controls { position: relative; z-index: 12; flex: 0 0 auto;
+    padding: 14px 16px calc(24px + env(safe-area-inset-bottom));
+    display: flex; gap: 10px; background: linear-gradient(180deg, transparent, rgba(16,12,9,0.92) 35%); }
+  .b-controls .btn { flex: 1; min-height: 64px; font-size: 19px; touch-action: manipulation; }
   button.btn.pulse { animation: btnPulse 1.4s ease-in-out infinite; }
   @keyframes btnPulse {
     0%, 100% { box-shadow: 0 0 0 rgba(232,133,61,0); }
@@ -836,6 +849,8 @@
     body:not(.motion-force) .pet-token.march, body:not(.motion-force) .pet-token.home,
     body:not(.motion-force) .rlog li.new, body:not(.motion-force) button.btn.pulse,
     body:not(.motion-force) .flame-orb .fl, body:not(.motion-force) .island-shrine,
+    body:not(.motion-force) .fr-fire.flicker, body:not(.motion-force) .b-me.has-fire .anim-stack,
+    body:not(.motion-force) .b-me, body:not(.motion-force) .b-foe,
     body:not(.motion-force) .star, body:not(.motion-force) .hearth-halo, body:not(.motion-force) .celestial,
     body:not(.motion-force) .t-spark, body:not(.motion-force) .bag-empty-icon,
     body:not(.motion-force) .treasure.r-legendary .t-gem, body:not(.motion-force) .treasure.r-mythic .t-gem,
@@ -4924,6 +4939,26 @@ const Sfx = (function () {
     o.start(t0);
     o.stop(t0 + dur + 0.05);
   }
+  // filtered noise burst — for fire, impacts, whooshes
+  function noise(dur, peak, when, freq, q, type) {
+    if (!on) return;
+    const c = ensure();
+    if (!c) return;
+    const t0 = c.currentTime + (when || 0);
+    const n = Math.floor(c.sampleRate * dur);
+    const buf = c.createBuffer(1, n, c.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const s = c.createBufferSource(); s.buffer = buf;
+    const f = c.createBiquadFilter(); f.type = type || 'bandpass';
+    f.frequency.setValueAtTime(freq || 1200, t0); f.Q.value = q || 1;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak || 0.1, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    s.connect(f); f.connect(g); g.connect(c.destination);
+    s.start(t0); s.stop(t0 + dur + 0.02);
+  }
   return {
     unlock: function () { ensure(); Music.sync(); },
     setOn: function (v) { on = !!v; Music.sync(); },
@@ -4942,6 +4977,15 @@ const Sfx = (function () {
     hit: function () { blip(150, 0.1, 'square', 0.2, 0, 70); blip(620, 0.05, 'square', 0.1, 0.01); },
     swish: function () { blip(700, 0.09, 'sine', 0.06, 0, 1500); },
     build: function () { blip(196, 0.05, 'square', 0.1); blip(196, 0.05, 'square', 0.1, 0.09); blip(523, 0.2, 'triangle', 0.09, 0.2); },
+    crit: function () { noise(0.18, 0.22, 0, 900, 0.7, 'lowpass'); blip(180, 0.14, 'square', 0.18, 0, 60); blip(1318, 0.1, 'square', 0.1, 0.02); },
+    fire: function () { noise(0.34, 0.16, 0, 1100, 0.8, 'bandpass'); noise(0.34, 0.1, 0.04, 600, 1.2, 'lowpass'); blip(220, 0.3, 'sawtooth', 0.06, 0, 90); },
+    defeat: function () { blip(440, 0.5, 'sawtooth', 0.12, 0, 70); noise(0.4, 0.08, 0.1, 800, 0.6, 'lowpass'); blip(1046, 0.16, 'sine', 0.08, 0.06, 300); },
+    victory: function () { var s = [523, 659, 784, 1046, 1318]; for (var i = 0; i < s.length; i++) blip(s[i], 0.26, 'triangle', 0.12, i * 0.11); blip(1568, 0.5, 'triangle', 0.12, 0.55); },
+    sparkle: function () { blip(1568, 0.08, 'sine', 0.06); blip(2093, 0.1, 'sine', 0.05, 0.06); blip(2637, 0.14, 'sine', 0.05, 0.12); },
+    flame: function () { blip(330, 0.3, 'sine', 0.08, 0, 660); noise(0.3, 0.06, 0, 1400, 0.9, 'bandpass'); blip(880, 0.4, 'triangle', 0.07, 0.1); },
+    magic: function () { blip(523, 0.3, 'sine', 0.07, 0, 1046); blip(784, 0.3, 'sine', 0.06, 0.08, 1568); blip(1318, 0.3, 'sine', 0.05, 0.16, 2637); },
+    whoosh: function () { noise(0.26, 0.12, 0, 800, 0.6, 'bandpass'); }, 
+    dodge: function () { blip(880, 0.12, 'sine', 0.07, 0, 1760); noise(0.1, 0.05, 0, 2000, 1, 'highpass'); },
     _ctx: function () { return ensure(); },
   };
 })();
@@ -5287,7 +5331,7 @@ function ProudMoment(props) {
     if (J.tick === 0 || !g) return;
     const line = PROUD_LINES[J.tick % PROUD_LINES.length].split('{n}').join(g.name);
     setShow({ line: line });
-    Sfx.pet();
+    Sfx.pet(); Sfx.sparkle();
     Voice.say(line + '! Sent to the Keeper!');
     const id = setTimeout(function () { setShow(null); }, 1600);
     return function () { clearTimeout(id); };
@@ -5620,6 +5664,7 @@ function App() {
     if (!c) return;
     if (c.type === 'levelUp') Sfx.levelUp();
     else if (c.type === 'achievement') Sfx.achieve();
+    else if (c.type === 'flame') Sfx.flame();
     else Sfx.chest();
   }, [state && state.ui.celebration]);
   useEffect(function () {
@@ -6348,11 +6393,10 @@ function BattleOverlay(props) {
     const i = idx;
     function strike() {
       setFx({ lunge: true });
-      Sfx.swish();
+      if (hasAtk) Sfx.fire(); else Sfx.swish();
       setTimeout(function () {
         const crit = i === P.crit;
-        Sfx.hit();
-        if (crit) Sfx.hit();
+        if (crit) Sfx.crit(); else Sfx.hit();
         setFx({ hurt: true, shake: true, atkName: P.names[i], crit: crit });
         popNum(P.dmgs[i], crit);
         const nhp = Math.max(0, hp - P.dmgs[i]);
@@ -6361,8 +6405,8 @@ function BattleOverlay(props) {
         setTimeout(function () {
           if (nhp <= 0) {
             setFx({ defeat: true });
-            Sfx.levelUp();
-            setTimeout(function () { setPhase('win'); }, 750);
+            Sfx.defeat();
+            setTimeout(function () { setPhase('win'); Sfx.victory(); }, 750);
           } else {
             setFx({});
           }
@@ -6372,7 +6416,7 @@ function BattleOverlay(props) {
     }
     if (P.dodges[i]) {
       setFx({ swipe: true, atkName: g.name + ' dodged!', dodgeTag: true });
-      Sfx.growl();
+      Sfx.dodge();
       setTimeout(function () {
         setFx({ hop2: true });
         Sfx.swish();
@@ -6410,6 +6454,7 @@ function BattleOverlay(props) {
             {fx.crit ? 'CRITICAL! ' : ''}{fx.atkName}{fx.crit || fx.dodgeTag ? '' : '!'}
           </div>
         )}
+        {fx.hurt && <span className="clash" style={{ right: '20%', bottom: '40%' }}>💥</span>}
         <div className={'b-foe' + (fx.hurt ? ' hurt' : '') + (fx.swipe ? ' swipe' : '') + (fx.defeat || phase === 'win' ? ' defeat' : '')}>
           {!foeFail ? (
             <img src={'./' + foeFile} alt={foe.name} onError={function () { setFoeFail(true); }} />
@@ -6420,10 +6465,10 @@ function BattleOverlay(props) {
         <div className={'b-me' + (fx.lunge ? ' lunge' : '') + (fx.hop2 ? ' hop2' : '') + (hasAtk ? ' has-fire' : '')}>
           {hasAtk ? (
             <div className="anim-stack">
-              <img className="anim-frame" alt={g.name} src={'./' + atkFrames[0]}
-                style={{ opacity: fx.lunge ? 0 : 1, transition: 'opacity 90ms ease-out' }} />
-              <img className="anim-frame" alt="" src={'./' + atkFrames[1]}
-                style={{ opacity: fx.lunge ? 1 : 0, transition: 'opacity 90ms ease-out' }} />
+              <img className="anim-frame fr-calm" alt={g.name} src={'./' + atkFrames[0]}
+                style={{ opacity: fx.lunge ? 0 : 1, transition: 'opacity 80ms ease-out' }} />
+              <img className={'anim-frame fr-fire' + (fx.lunge ? ' flicker' : '')} alt="" src={'./' + atkFrames[1]}
+                style={{ opacity: fx.lunge ? 1 : 0, transition: 'opacity 80ms ease-out' }} />
             </div>
           ) : (
             <Art srcs={stageArt(g.species, g.level)} emoji={speciesOf(g.species).emoji} alt={g.name} />
@@ -6777,7 +6822,7 @@ function TreasureCell(props) {
   const rank = RARITY_RANK[rar] || 0;
   const [pop, setPop] = useState(false);
   function tap() {
-    Sfx.coin();
+    if (rank >= 2) Sfx.sparkle(); else Sfx.coin();
     Voice.say((r.item ? r.item.name : 'treasure') + '. ' + RARITY_LABEL[rar]);
     setPop(true);
     setTimeout(function () { setPop(false); }, 650);
@@ -7279,7 +7324,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W1 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W1.2 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

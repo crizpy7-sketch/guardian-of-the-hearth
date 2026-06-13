@@ -42,12 +42,97 @@
   .dialogue-text { color: #EDE3D2; font-size: 17px; line-height: 1.5; min-height: 52px; }
   .dialogue-more { position: absolute; right: 16px; bottom: 8px; color: rgba(232,133,61,0.8); font-size: 12px; animation: bobMore 1s ease-in-out infinite; }
   @keyframes bobMore { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+
+  /* ===== HERO SELECT + CREATOR ===== */
+  .hero-overlay { position: fixed; inset: 0; z-index: 100; overflow-y: auto;
+    background: radial-gradient(circle at 50% 30%, #3a2418, #1a1410 70%);
+    display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; }
+  .hero-panel { width: 100%; max-width: 520px; }
+  .hero-crest { font-size: 56px; text-align: center; filter: drop-shadow(0 0 18px rgba(232,133,61,0.7)); animation: crestPulse 2.4s ease-in-out infinite; }
+  @keyframes crestPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+  .hero-h1 { font-family: 'Georgia', serif; font-size: 26px; color: #ffd98a; text-align: center; margin: 8px 0 4px;
+    text-shadow: 0 2px 12px rgba(232,133,61,0.5); }
+  .hero-sub { color: #c9bca6; text-align: center; font-size: 14px; margin: 0 0 20px; }
+  .hero-slots { display: flex; flex-direction: column; gap: 12px; }
+  .hero-slot { display: flex; align-items: center; gap: 14px; background: rgba(40,30,22,0.9);
+    border: 2px solid rgba(232,133,61,0.35); border-radius: 16px; padding: 14px 16px; cursor: pointer;
+    transition: transform 120ms ease, border-color 120ms ease; }
+  .hero-slot:active { transform: scale(0.98); }
+  .hero-slot.filled:hover { border-color: rgba(232,133,61,0.8); }
+  .hero-slot.empty { border-style: dashed; justify-content: center; color: #e8853d; font-weight: 700; }
+  .hero-slot-portrait { width: 56px; height: 56px; border-radius: 50%; background: #2a1c12; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center; border: 2px solid rgba(232,133,61,0.4); overflow: hidden; }
+  .hero-slot-info { flex: 1; min-width: 0; }
+  .hero-slot-name { font-family: 'Georgia', serif; font-weight: 700; color: #ede3d2; font-size: 18px; }
+  .hero-slot-title { color: #c9bca6; font-size: 13px; }
+  .hero-slot-guardian { font-size: 22px; flex: 0 0 auto; }
+  .hero-slot-del { background: rgba(0,0,0,0.3); border: none; color: #b88; width: 28px; height: 28px; border-radius: 8px; font-size: 14px; flex: 0 0 auto; }
+  /* creator */
+  .creator-row { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 14px; }
+  .creator-preview { width: 130px; height: 150px; flex: 0 0 auto; background: rgba(20,16,12,0.6);
+    border: 2px solid rgba(232,133,61,0.35); border-radius: 14px; }
+  .creator-controls { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .creator-ctl { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: rgba(40,30,22,0.8); border-radius: 10px; padding: 6px 8px; }
+  .creator-ctl-label { color: #c9bca6; font-size: 12px; flex: 0 0 auto; width: 52px; }
+  .creator-ctl-val { color: #ede3d2; font-size: 13px; flex: 1; text-align: center; text-transform: capitalize; }
+  .creator-arrow { background: rgba(232,133,61,0.25); border: none; color: #ffd98a; width: 30px; height: 30px;
+    border-radius: 8px; font-size: 16px; font-weight: 800; flex: 0 0 auto; }
+  .creator-arrow:active { background: rgba(232,133,61,0.5); }
+  .creator-name-row { margin-bottom: 14px; }
+  .hero-input { width: 100%; box-sizing: border-box; background: rgba(20,16,12,0.8); border: 2px solid rgba(232,133,61,0.4);
+    border-radius: 12px; padding: 12px 14px; color: #ede3d2; font-size: 17px; text-align: center; font-family: 'Georgia', serif; }
+  .creator-label { color: #c9bca6; font-size: 13px; margin-bottom: 8px; text-align: center; }
+  .guardian-pick { display: flex; gap: 8px; justify-content: center; }
+  .guardian-opt { width: 60px; height: 60px; border-radius: 14px; background: rgba(40,30,22,0.8);
+    border: 2px solid transparent; font-size: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .guardian-opt.sel { border-color: #e8853d; background: rgba(232,133,61,0.25); }
+  .guardian-blurb { color: #c9bca6; font-size: 13px; text-align: center; margin-top: 10px; min-height: 34px; }
+  .creator-guardian { margin-bottom: 18px; }
+  .creator-buttons { display: flex; gap: 12px; }
+  .hero-btn { flex: 1; border: none; border-radius: 14px; padding: 14px; font-size: 16px; font-weight: 800; cursor: pointer; }
+  .hero-btn.primary { background: #e8853d; color: #1a1410; }
+  .hero-btn.ghost { background: rgba(60,45,33,0.8); color: #ede3d2; }
 </style>
 </head>
 <body>
 <div id="game"></div>
+
+<!-- ===== HERO SELECT + CREATOR OVERLAY (shown before the island) ===== -->
+<div id="heroOverlay" class="hero-overlay">
+  <div class="hero-panel">
+    <!-- SELECT SCREEN -->
+    <div id="heroSelect">
+      <div class="hero-crest">🔥</div>
+      <h1 class="hero-h1">Guardian of the Hearth</h1>
+      <p class="hero-sub">Choose your hero, or create a new one</p>
+      <div id="heroSlots" class="hero-slots"></div>
+    </div>
+    <!-- CREATOR SCREEN -->
+    <div id="heroCreate" style="display:none;">
+      <h1 class="hero-h1">Create Your Hero</h1>
+      <div class="creator-row">
+        <div class="creator-preview" id="creatorPreview"></div>
+        <div class="creator-controls" id="creatorControls"></div>
+      </div>
+      <div class="creator-name-row">
+        <input id="heroNameInput" class="hero-input" maxlength="14" placeholder="Hero name" />
+      </div>
+      <div class="creator-guardian">
+        <div class="creator-label">Choose your first guardian</div>
+        <div id="guardianPick" class="guardian-pick"></div>
+        <div id="guardianBlurb" class="guardian-blurb"></div>
+      </div>
+      <div class="creator-buttons">
+        <button id="creatorBack" class="hero-btn ghost">Back</button>
+        <button id="creatorDone" class="hero-btn primary">Begin Adventure ✦</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="hud" id="hud">Hearth Island</div>
-<div style="position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:20;background:#e8853d;color:#1a1410;font-weight:800;font-size:13px;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">v11 🌎</div>
+<button id="soundBtn" style="position:fixed;top:calc(12px + env(safe-area-inset-top));left:calc(12px + env(safe-area-inset-left));z-index:20;background:rgba(36,27,20,0.86);color:#EDE3D2;border:1px solid rgba(232,133,61,0.4);border-radius:10px;width:40px;height:40px;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,0.5);">🔊</button>
+<div style="position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:20;background:#e8853d;color:#1a1410;font-weight:800;font-size:13px;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">v13 👧</div>
 <div class="pad">
   <button class="up" data-dir="up" aria-label="Up">▲</button>
   <button class="down" data-dir="down" aria-label="Down">▼</button>
@@ -113,8 +198,94 @@ BUILDINGS.forEach(function (b) { DOOR_AT[b.door.c + ',' + b.door.r] = b; });
 const EXIT_GATE = { col: 7, row: 15 }; // bottom edge, walkable
 const EXIT_URL = './index.html';       // back to the main game
 
+// ---- DAY / NIGHT CYCLE (cosmetic; never touches gameplay) ----
+const DAYNIGHT = {
+  CYCLE_MS: 720000, // 12 real minutes = one full island day (slow + peaceful)
+  // phase by fraction of the cycle [0..1): dawn, day, dusk, night
+  PHASES: [
+    { id: 'dawn',  from: 0.0,  to: 0.18, name: 'Dawn',    tint: 0xffd0a0, dark: 0.18 },
+    { id: 'day',   from: 0.18, to: 0.55, name: 'Day',     tint: 0xffffff, dark: 0.0 },
+    { id: 'dusk',  from: 0.55, to: 0.72, name: 'Dusk',    tint: 0xff9a6a, dark: 0.22 },
+    { id: 'night', from: 0.72, to: 1.0,  name: 'Night',   tint: 0x2a3a6e, dark: 0.55 },
+  ],
+};
+const TimeOfDay = {
+  phaseAt: function (frac) {
+    for (let i = 0; i < DAYNIGHT.PHASES.length; i++) {
+      const p = DAYNIGHT.PHASES[i];
+      if (frac >= p.from && frac < p.to) return p;
+    }
+    return DAYNIGHT.PHASES[DAYNIGHT.PHASES.length - 1];
+  },
+};
+
 // ---- DRAGON PERSONALITIES -------------------------------------------------
 // the roaming guardian is Ember (young, playful). Sol is the elder at the Hearth.
+// ---- HERO APPEARANCE OPTIONS ----------------------------------------------
+const HERO_OPTS = {
+  skin:  [0xffe0bd, 0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524],
+  hairColor: [0x2c1b10, 0x6b3a1f, 0xc8a24a, 0xe8853d, 0xd94f6e, 0x6e5fd8, 0xededed],
+  hairStyle: ['short', 'long', 'ponytail', 'bun', 'spiky'],
+  eyes:  [0x4a3526, 0x2c6e49, 0x2a5fd0, 0x6e5fd8],
+  outfit: [0x3a72d8, 0xd94f6e, 0x2c9e6e, 0xe8853d, 0x8a5fd8, 0x444c5e],
+  emblem: [0xffd98a, 0xff6b3d, 0x7ed0ff, 0xb8ff7e, 0xff7eda],
+};
+
+// guardian options shown in the creator (Sol/Ember exist in-world; Thorn/Luna are story companions)
+const GUARDIAN_CHOICES = {
+  sol:   { name: 'Sol',   emoji: '🔥', blurb: 'Ancient Hearth Guardian — wise, protective, calm.' },
+  ember: { name: 'Ember', emoji: '🐉', blurb: 'Young Flame Dragon — playful, energetic, curious.' },
+  thorn: { name: 'Thorn', emoji: '🌿', blurb: 'Forest Guardian — quiet, gentle, patient.' },
+  luna:  { name: 'Luna',  emoji: '🌙', blurb: 'Moon Guardian — mysterious, thoughtful, magical.' },
+};
+
+// Build a hero avatar as layered shapes inside a Phaser container (scene, x, y, look, tileSize).
+// Returns the container. Used for BOTH the in-world avatar and the creator preview.
+function buildHeroAvatar(scene, x, y, look, T) {
+  const skin = HERO_OPTS.skin[look.skin % HERO_OPTS.skin.length];
+  const hair = HERO_OPTS.hairColor[look.hairColor % HERO_OPTS.hairColor.length];
+  const outfit = HERO_OPTS.outfit[look.outfit % HERO_OPTS.outfit.length];
+  const emblem = HERO_OPTS.emblem[look.emblem % HERO_OPTS.emblem.length];
+  const eyes = HERO_OPTS.eyes[look.eyes % HERO_OPTS.eyes.length];
+  const style = HERO_OPTS.hairStyle[look.hairStyle % HERO_OPTS.hairStyle.length];
+  const R = T * 0.30;
+  const parts = [];
+  // body / outfit (rounded torso)
+  parts.push(scene.add.ellipse(0, R * 0.95, R * 1.5, R * 1.5, outfit));
+  // emblem on chest
+  parts.push(scene.add.circle(0, R * 0.95, R * 0.28, emblem));
+  // head
+  parts.push(scene.add.circle(0, -R * 0.35, R, skin).setStrokeStyle(2, 0x000000, 0.25));
+  // eyes
+  parts.push(scene.add.circle(-R * 0.32, -R * 0.4, R * 0.14, eyes));
+  parts.push(scene.add.circle(R * 0.32, -R * 0.4, R * 0.14, eyes));
+  // hair by style (drawn over the head)
+  if (style === 'short') {
+    parts.push(scene.add.ellipse(0, -R * 0.85, R * 2.05, R * 1.2, hair));
+  } else if (style === 'long') {
+    parts.push(scene.add.ellipse(0, -R * 0.6, R * 2.2, R * 2.0, hair));
+    parts.push(scene.add.circle(0, -R * 0.35, R, skin)); // face front again
+    parts.push(scene.add.ellipse(0, -R * 0.9, R * 2.05, R * 1.1, hair));
+  } else if (style === 'ponytail') {
+    parts.push(scene.add.ellipse(R * 0.9, -R * 0.2, R * 0.7, R * 1.4, hair));
+    parts.push(scene.add.ellipse(0, -R * 0.9, R * 2.05, R * 1.1, hair));
+  } else if (style === 'bun') {
+    parts.push(scene.add.circle(0, -R * 1.35, R * 0.55, hair));
+    parts.push(scene.add.ellipse(0, -R * 0.9, R * 2.05, R * 1.1, hair));
+  } else { // spiky
+    for (let i = -2; i <= 2; i++) {
+      parts.push(scene.add.triangle(i * R * 0.45, -R * 1.1, 0, -R * 0.7, -R * 0.25, 0, R * 0.25, 0, hair));
+    }
+    parts.push(scene.add.ellipse(0, -R * 0.85, R * 2.0, R * 0.9, hair));
+  }
+  // smile
+  const mouth = scene.add.arc(0, -R * 0.05, R * 0.3, 20, 160, false, 0x000000, 0.4);
+  mouth.setStrokeStyle(2, 0x000000, 0.4);
+  parts.push(mouth);
+  const cont = scene.add.container(x, y, parts);
+  return cont;
+}
+
 const DRAGONS = {
   ember: {
     name: 'Ember', emoji: '🐉', title: 'young fire dragon',
@@ -170,25 +341,67 @@ function buildingWelcome(label) {
 }
 
 // ---- SAVE / LOAD (localStorage) -------------------------------------------
-const SAVE_KEY = 'goth_island_save_v1';
-const Save = {
-  data: { px: 7, py: 10, talks: 0, unlocked: START_UNLOCKED.slice(), flags: {},
-    quests: {}, friendship: {}, villageLevel: {} },
+// ---- HERO ROSTER + PER-HERO SAVES -----------------------------------------
+// The roster (which slots exist + the currently active hero) is stored once.
+// Each hero's adventure is stored under its own key, so switching heroes loads
+// a completely independent world. ALL existing game systems read Save.data, so
+// making Save.data per-hero makes the whole game per-hero with no logic changes.
+const ROSTER_KEY = 'goth_island_roster_v1';
+const HERO_KEY = function (id) { return 'goth_island_hero_' + id + '_v1'; };
+function freshHeroData() {
+  return { px: 7, py: 10, talks: 0, unlocked: START_UNLOCKED.slice(), flags: {},
+    quests: {}, friendship: {}, villageLevel: {}, dayStart: 0 };
+}
+const Roster = {
+  data: { heroes: [], activeId: null }, // heroes: [{id,name,title,look,guardian}]
   load: function () {
+    try { const raw = localStorage.getItem(ROSTER_KEY); if (raw) { const d = JSON.parse(raw); if (d && Array.isArray(d.heroes)) this.data = d; } } catch (e) {}
+    return this.data;
+  },
+  save: function () { try { localStorage.setItem(ROSTER_KEY, JSON.stringify(this.data)); } catch (e) {} },
+  list: function () { return this.data.heroes; },
+  get: function (id) { return this.data.heroes.find(function (h) { return h.id === id; }) || null; },
+  active: function () { return this.get(this.data.activeId); },
+  setActive: function (id) { this.data.activeId = id; this.save(); },
+  add: function (hero) {
+    hero.id = 'h' + Date.now() + Math.floor(Math.random() * 1000);
+    this.data.heroes.push(hero); this.data.activeId = hero.id; this.save();
+    // seed a fresh adventure save for this hero
+    try { localStorage.setItem(HERO_KEY(hero.id), JSON.stringify(freshHeroData())); } catch (e) {}
+    return hero;
+  },
+  remove: function (id) {
+    this.data.heroes = this.data.heroes.filter(function (h) { return h.id !== id; });
+    if (this.data.activeId === id) this.data.activeId = this.data.heroes.length ? this.data.heroes[0].id : null;
+    try { localStorage.removeItem(HERO_KEY(id)); } catch (e) {}
+    this.save();
+  },
+};
+
+const Save = {
+  data: freshHeroData(),
+  heroId: null,
+  load: function (heroId) {
+    // load a specific hero's adventure into Save.data
+    if (heroId) this.heroId = heroId;
+    const id = this.heroId;
+    this.data = freshHeroData();
+    if (!id) return this.data;
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
+      const raw = localStorage.getItem(HERO_KEY(id));
       if (raw) {
         const d = JSON.parse(raw);
         if (d && typeof d.px === 'number') {
-          Save.data = Object.assign(Save.data, d);
-          if (!Array.isArray(Save.data.unlocked)) Save.data.unlocked = START_UNLOCKED.slice();
+          this.data = Object.assign(freshHeroData(), d);
+          if (!Array.isArray(this.data.unlocked)) this.data.unlocked = START_UNLOCKED.slice();
         }
       }
     } catch (e) {}
-    return Save.data;
+    return this.data;
   },
   save: function () {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(Save.data)); } catch (e) {}
+    if (!this.heroId) return;
+    try { localStorage.setItem(HERO_KEY(this.heroId), JSON.stringify(this.data)); } catch (e) {}
   },
   isUnlocked: function (label) { return Save.data.unlocked.indexOf(label) !== -1; },
   unlock: function (label) {
@@ -222,6 +435,54 @@ function isWalkable(c, r) {
   if (WORLD.blocked[key(c, r)]) return false;
   return true;
 }
+
+// ---- AMBIENT SOUND (synthesized; no files; gentle, time-aware) ------------
+const Ambient = {
+  ctx: null, on: true, nodes: [], phase: null,
+  ensure: function () {
+    if (this.ctx) return this.ctx;
+    try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.ctx = null; }
+    return this.ctx;
+  },
+  // a soft wind bed (filtered noise) that's always present, quieter at night
+  startBed: function () {
+    const c = this.ensure(); if (!c || this._bed) return;
+    const n = c.createBufferSource();
+    const buf = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    n.buffer = buf; n.loop = true;
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 420;
+    const g = c.createGain(); g.gain.value = 0.0;
+    n.connect(f); f.connect(g); g.connect(c.destination);
+    n.start();
+    this._bed = { gain: g, filter: f };
+  },
+  setPhase: function (phaseId) {
+    if (this.phase === phaseId) return;
+    this.phase = phaseId;
+    const c = this.ensure(); if (!c || !this._bed) return;
+    // wind louder/cooler at night, soft and warm by day
+    const target = (phaseId === 'night') ? 0.05 : (phaseId === 'dusk' || phaseId === 'dawn') ? 0.035 : 0.025;
+    this._bed.gain.gain.setTargetAtTime(this.on ? target : 0, c.currentTime, 1.5);
+    this._bed.filter.frequency.setTargetAtTime(phaseId === 'night' ? 320 : 520, c.currentTime, 1.5);
+    // a gentle chime cluster on phase change (magical tone)
+    if (this.on) this.chime(phaseId === 'night' ? [392, 523, 659] : [523, 659, 784]);
+  },
+  chime: function (freqs) {
+    const c = this.ensure(); if (!c) return;
+    freqs.forEach(function (fr, i) {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = fr;
+      g.gain.setValueAtTime(0.0001, c.currentTime + i * 0.12);
+      g.gain.exponentialRampToValueAtTime(0.04, c.currentTime + i * 0.12 + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + i * 0.12 + 1.2);
+      o.connect(g); g.connect(c.destination);
+      o.start(c.currentTime + i * 0.12); o.stop(c.currentTime + i * 0.12 + 1.3);
+    });
+  },
+  toggle: function () { this.on = !this.on; if (!this.on && this._bed) this._bed.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3); else this.setPhase(this.phase || 'day'); return this.on; },
+};
 
 // ---- SCENE ----------------------------------------------------------------
 class IslandScene extends Phaser.Scene {
@@ -384,12 +645,10 @@ class IslandScene extends Phaser.Scene {
     const px = this.tileToPx(this.player.gridX), py = this.tileToPx(this.player.gridY);
     // soft shadow that lives just under the player (its own depth, follows in sync)
     this.playerShadow = this.add.ellipse(px, py + T * 0.28, T * 0.5, T * 0.22, 0x000000, 0.3).setDepth(9);
-    // character body: a rounded token with a subtle gradient ring + the avatar
-    this.playerSprite = this.add.container(px, py, [
-      this.add.circle(0, 2, T * 0.31, 0x1e4a9e),                       // outer ring (darker)
-      this.add.circle(0, 0, T * 0.27, 0x3a72d8).setStrokeStyle(2.5, 0xffffff), // body
-      this.add.text(0, -1, '🧒', { fontSize: '22px' }).setOrigin(0.5),
-    ]).setDepth(10);
+    // custom HERO avatar built from the active hero's appearance choices
+    const hero = Roster.active();
+    const look = (hero && hero.look) ? hero.look : { skin:0, hairColor:0, hairStyle:0, eyes:0, outfit:0, emblem:0 };
+    this.playerSprite = buildHeroAvatar(this, px, py, look, T).setDepth(10);
     // directional notch shows which way the player faces
     this.facer = this.add.triangle(px, py, 0, -7, -6, 5, 6, 5, 0xffffff, 0.95).setDepth(11);
     // gentle idle breathing (visual only — never moves the grid position)
@@ -449,8 +708,84 @@ class IslandScene extends Phaser.Scene {
     this.hud = document.getElementById('hud');
     if (this.hud) this.hud.textContent = 'Hearth Island';
 
+    // sound toggle
+    const sndBtn = document.getElementById('soundBtn');
+    if (sndBtn) {
+      const self2 = this;
+      const tog = function (e) { if (e) e.preventDefault(); const on = Ambient.toggle(); sndBtn.textContent = on ? '\uD83D\uDD0A' : '\uD83D\uDD07'; };
+      sndBtn.addEventListener('touchstart', tog, { passive: false });
+      sndBtn.addEventListener('click', tog);
+    }
+
     // ---- restore saved player position (grid truth) ----
     Save.load();
+
+    // ==== LIVING WORLD: atmosphere layers (all cosmetic, camera-fixed where needed) ====
+    const worldW = CONFIG.COLS * T, worldH = CONFIG.ROWS * T;
+    // sky tint overlay — covers the world, color/alpha set each frame by time of day
+    this.skyTint = this.add.rectangle(worldW / 2, worldH / 2, worldW + 200, worldH + 200, 0x2a3a6e, 0)
+      .setDepth(30).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    // a second screen layer for warm/cool wash
+    this.skyWash = this.add.rectangle(worldW / 2, worldH / 2, worldW + 200, worldH + 200, 0xffffff, 0)
+      .setDepth(31).setBlendMode(Phaser.BlendModes.OVERLAY);
+
+    // FIREFLIES (night only) — gentle drifting motes
+    this.fireflies = [];
+    for (let i = 0; i < 18; i++) {
+      const fx = Math.random() * worldW, fy = Math.random() * worldH;
+      const f = this.add.circle(fx, fy, 2.2, 0xffe9a0, 0).setDepth(15);
+      this.fireflies.push(f);
+      this.tweens.add({ targets: f, x: fx + (Math.random() * 60 - 30), y: fy + (Math.random() * 60 - 30),
+        duration: 3000 + Math.random() * 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.tweens.add({ targets: f, scale: 1.6, duration: 1200 + Math.random() * 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+
+    // DRIFTING CLOUDS (soft shadows that cross the island)
+    this.clouds = [];
+    for (let i = 0; i < 4; i++) {
+      const cy = Math.random() * worldH;
+      const cloud = this.add.ellipse(Math.random() * worldW, cy, 120 + Math.random() * 80, 50 + Math.random() * 30, 0xffffff, 0.08).setDepth(28);
+      this.clouds.push(cloud);
+      this.tweens.add({ targets: cloud, x: worldW + 150, duration: 28000 + Math.random() * 18000,
+        repeat: -1, onRepeat: function () { cloud.x = -150; cloud.y = Math.random() * worldH; }, ease: 'Linear' });
+    }
+
+    // FALLING LEAVES (wind) — a few drifting down + sideways
+    this.leaves = [];
+    for (let i = 0; i < 10; i++) {
+      const lf = this.add.text(Math.random() * worldW, Math.random() * worldH, '🍃',
+        { fontSize: '13px' }).setOrigin(0.5).setAlpha(0.7).setDepth(16);
+      this.leaves.push(lf);
+      const startY = Math.random() * worldH;
+      this.tweens.add({ targets: lf, y: startY + worldH, x: '+=' + (40 + Math.random() * 60),
+        angle: 360, duration: 9000 + Math.random() * 6000, repeat: -1,
+        onRepeat: function () { lf.y = -20; lf.x = Math.random() * worldW; }, ease: 'Sine.easeInOut' });
+    }
+
+    // chimney smoke from each building (rises softly, denser look in morning)
+    this.smoke = [];
+    BUILDINGS.forEach(function (b) {
+      const sx = b.col * T + b.w * T * 0.5, sy = b.row * T - 4;
+      for (let s = 0; s < 2; s++) {
+        const puff = this.add.circle(sx + (s * 4 - 2), sy, 4, 0xcccccc, 0).setDepth(19);
+        this.smoke.push(puff);
+        this.tweens.add({ targets: puff, y: sy - 30, alpha: { from: 0.25, to: 0 }, scale: 1.8,
+          duration: 3000, delay: s * 1500, repeat: -1, ease: 'Sine.easeOut' });
+      }
+    }, this);
+
+    // window glow per building (night) — warm light
+    this.windowGlows = [];
+    BUILDINGS.forEach(function (b) {
+      const wx = b.col * T + b.w * T * 0.5, wy = b.row * T + b.h * T * 0.55;
+      const glow = this.add.circle(wx, wy, b.w * T * 0.4, 0xffce6b, 0).setDepth(18);
+      this.windowGlows.push(glow);
+    }, this);
+
+    // initialize / restore the cycle clock
+    if (!Save.data.dayStart) { Save.data.dayStart = Date.now(); Save.save(); }
+    this.dayFrac = 0;
+    this.lastPhase = null;
     if (isWalkable(Save.data.px, Save.data.py)) {
       this.player.gridX = Save.data.px; this.player.gridY = Save.data.py;
       this.playerSprite.x = this.tileToPx(Save.data.px);
@@ -775,7 +1110,69 @@ class IslandScene extends Phaser.Scene {
     });
   }
 
+  // ==== DAY/NIGHT TICK (cosmetic only — drives tint, fireflies, glows, dragon shimmer) ====
+  tickDayNight() {
+    // lazily start ambient audio once (after user gesture it will actually sound)
+    if (!this._ambientInit) { Ambient.startBed(); this._ambientInit = true; }
+    const elapsed = (Date.now() - (Save.data.dayStart || Date.now())) % DAYNIGHT.CYCLE_MS;
+    const frac = elapsed / DAYNIGHT.CYCLE_MS;
+    this.dayFrac = frac;
+    const phase = TimeOfDay.phaseAt(frac);
+    Ambient.setPhase(phase.id);
+
+    // smoothly interpolate darkness within the phase for a gentle transition
+    const span = phase.to - phase.from;
+    const t = span > 0 ? (frac - phase.from) / span : 0;
+    // ease darkness up toward night, down toward day
+    let darkness = phase.dark;
+    // blend toward the next phase's darkness for smoothness
+    const idx = DAYNIGHT.PHASES.indexOf(phase);
+    const next = DAYNIGHT.PHASES[(idx + 1) % DAYNIGHT.PHASES.length];
+    darkness = phase.dark + (next.dark - phase.dark) * (t * t);
+
+    // sky tint (multiply) deepens at night/dusk
+    if (this.skyTint) {
+      this.skyTint.setFillStyle(phase.tint);
+      this.skyTint.setAlpha(darkness);
+    }
+    // warm wash at dawn/dusk
+    if (this.skyWash) {
+      const warm = (phase.id === 'dawn' || phase.id === 'dusk') ? 0.25 * (1 - Math.abs(t - 0.5) * 2) : 0;
+      this.skyWash.setFillStyle(phase.id === 'dawn' ? 0xffd9a0 : 0xff8a5a);
+      this.skyWash.setAlpha(Math.max(0, warm));
+    }
+
+    const isNight = phase.id === 'night';
+    const nightAmt = isNight ? Math.min(1, 0.4 + t) : (phase.id === 'dusk' ? t * 0.6 : 0);
+
+    // fireflies fade in at night
+    if (this.fireflies) {
+      for (let i = 0; i < this.fireflies.length; i++) this.fireflies[i].setAlpha(nightAmt * 0.9);
+    }
+    // window glows warm up in evening/night
+    if (this.windowGlows) {
+      for (let i = 0; i < this.windowGlows.length; i++) {
+        // only lit if the building is unlocked
+        const b = BUILDINGS[i];
+        const lit = Save.isUnlocked(b.label) ? nightAmt * 0.6 : 0;
+        this.windowGlows[i].setAlpha(lit);
+      }
+    }
+    // dragons get a soft magical glow at night
+    if (this.guardianGlow) this.guardianGlow.setAlpha(0.3 + nightAmt * 0.4);
+    if (this.solGlow) this.solGlow.setAlpha(0.32 + nightAmt * 0.4);
+
+    // update HUD with the time of day (only when not showing something else)
+    if (this.hud && !this.dialogue.active && !this._leaving &&
+        (this.hud.textContent === 'Hearth Island' || this._lastTodLabel === this.hud.textContent)) {
+      const icon = { dawn: '\uD83C\uDF05', day: '\u2600\uFE0F', dusk: '\uD83C\uDF07', night: '\uD83C\uDF19' }[phase.id];
+      this._lastTodLabel = 'Hearth Island  ' + icon + ' ' + phase.name;
+      this.hud.textContent = this._lastTodLabel;
+    }
+  }
+
   update() {
+    this.tickDayNight();
     // context-aware prompt: exit gate / Sol / Ember (UI only, no logic change)
     if (this.talkBtn) {
       const free = this.player.state === 'IDLE' && !this.dialogue.active && !this._entering && !this._leaving;
@@ -872,13 +1269,11 @@ class InteriorScene extends Phaser.Scene {
     this.add.text(W / 2, ry + 18, 'Inside the ' + b.label, { fontFamily: 'system-ui', fontSize: '13px',
       color: '#C9BCA6' }).setOrigin(0.5);
 
-    // player avatar inside (near the door, facing up into the room)
+    // player avatar inside (near the door) — matches the chosen hero
     const pSh = this.add.ellipse(W / 2, ry + roomH - 44 + T * 0.28, T * 0.5, T * 0.22, 0x000000, 0.3);
-    this.add.container(W / 2, ry + roomH - 44, [
-      this.add.circle(0, 2, T * 0.31, 0x1e4a9e),
-      this.add.circle(0, 0, T * 0.27, 0x3a72d8).setStrokeStyle(2.5, 0xffffff),
-      this.add.text(0, -1, '🧒', { fontSize: '22px' }).setOrigin(0.5),
-    ]);
+    const hero = Roster.active();
+    const look = (hero && hero.look) ? hero.look : { skin:0, hairColor:0, hairStyle:0, eyes:0, outfit:0, emblem:0 };
+    buildHeroAvatar(this, W / 2, ry + roomH - 44, look, T);
 
     // exit prompt
     this.add.text(W / 2, ry + roomH + 24, 'Press E or ESC to leave  ·  or tap here',
@@ -915,16 +1310,196 @@ class InteriorScene extends Phaser.Scene {
   }
 }
 
-// ---- BOOT -----------------------------------------------------------------
-const game = new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: 'game',
-  backgroundColor: '#1a1410',
-  scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: window.innerWidth, height: window.innerHeight },
-  pixelArt: false,
-  scene: [IslandScene, InteriorScene],
-});
+// ---- HERO SCREENS CONTROLLER ----------------------------------------------
+let game = null;
+function startGameWithHero(heroId) {
+  Roster.setActive(heroId);
+  Save.load(heroId); // load this hero's adventure
+  document.getElementById('heroOverlay').style.display = 'none';
+  if (game) return; // already running
+  game = new Phaser.Game({
+    type: Phaser.AUTO, parent: 'game', backgroundColor: '#1a1410',
+    scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: window.innerWidth, height: window.innerHeight },
+    pixelArt: false, scene: [IslandScene, InteriorScene],
+  });
+}
+
+const HeroUI = {
+  MAX_SLOTS: 4,
+  draft: null,
+  init: function () {
+    Roster.load();
+    this.renderSelect();
+    document.getElementById('creatorBack').addEventListener('click', this.showSelect.bind(this));
+    document.getElementById('creatorDone').addEventListener('click', this.finishCreate.bind(this));
+  },
+  showSelect: function () {
+    document.getElementById('heroCreate').style.display = 'none';
+    document.getElementById('heroSelect').style.display = 'block';
+    this.renderSelect();
+  },
+  renderSelect: function () {
+    const wrap = document.getElementById('heroSlots');
+    wrap.innerHTML = '';
+    const heroes = Roster.list();
+    heroes.forEach(function (h) {
+      const slot = document.createElement('div');
+      slot.className = 'hero-slot filled';
+      const g = GUARDIAN_CHOICES[h.guardian] || GUARDIAN_CHOICES.ember;
+      slot.innerHTML = '<div class="hero-slot-portrait" id="port-' + h.id + '"></div>' +
+        '<div class="hero-slot-info"><div class="hero-slot-name">' + escapeHtml(h.name) + '</div>' +
+        '<div class="hero-slot-title">' + escapeHtml(h.title || 'Hearth Keeper') + '</div></div>' +
+        '<div class="hero-slot-guardian">' + g.emoji + '</div>' +
+        '<button class="hero-slot-del" data-del="' + h.id + '">🗑</button>';
+      slot.addEventListener('click', function (e) {
+        if (e.target.getAttribute('data-del')) return;
+        startGameWithHero(h.id);
+      });
+      wrap.appendChild(slot);
+      // draw a tiny avatar portrait via canvas (cheap, no Phaser needed)
+      drawHeroPortrait(document.getElementById('port-' + h.id), h.look);
+    });
+    // delete buttons
+    wrap.querySelectorAll('[data-del]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (confirm('Delete this hero and their adventure?')) { Roster.remove(btn.getAttribute('data-del')); HeroUI.renderSelect(); }
+      });
+    });
+    // empty slots / create button
+    if (heroes.length < this.MAX_SLOTS) {
+      const add = document.createElement('div');
+      add.className = 'hero-slot empty';
+      add.textContent = '＋ Create a new hero';
+      add.addEventListener('click', this.showCreate.bind(this));
+      wrap.appendChild(add);
+    }
+  },
+  showCreate: function () {
+    this.draft = { name: '', title: 'Hearth Keeper', guardian: 'ember',
+      look: { skin: 0, hairColor: 0, hairStyle: 0, eyes: 0, outfit: 0, emblem: 0 } };
+    document.getElementById('heroSelect').style.display = 'none';
+    document.getElementById('heroCreate').style.display = 'block';
+    document.getElementById('heroNameInput').value = '';
+    this.renderControls();
+    this.renderGuardianPick();
+    this.renderPreview();
+  },
+  renderControls: function () {
+    const defs = [
+      { key: 'skin', label: 'Skin' }, { key: 'hairStyle', label: 'Hair' },
+      { key: 'hairColor', label: 'Color' }, { key: 'eyes', label: 'Eyes' },
+      { key: 'outfit', label: 'Outfit' }, { key: 'emblem', label: 'Emblem' },
+    ];
+    const wrap = document.getElementById('creatorControls');
+    wrap.innerHTML = '';
+    const self = this;
+    defs.forEach(function (d) {
+      const opts = HERO_OPTS[d.key];
+      const row = document.createElement('div');
+      row.className = 'creator-ctl';
+      const valText = (d.key === 'hairStyle') ? HERO_OPTS.hairStyle[self.draft.look[d.key]] : ('' + (self.draft.look[d.key] + 1));
+      row.innerHTML = '<span class="creator-ctl-label">' + d.label + '</span>' +
+        '<button class="creator-arrow" data-dir="-1">‹</button>' +
+        '<span class="creator-ctl-val" id="val-' + d.key + '">' + valText + '</span>' +
+        '<button class="creator-arrow" data-dir="1">›</button>';
+      row.querySelectorAll('.creator-arrow').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const dir = parseInt(btn.getAttribute('data-dir'), 10);
+          const n = opts.length;
+          self.draft.look[d.key] = (self.draft.look[d.key] + dir + n) % n;
+          document.getElementById('val-' + d.key).textContent = (d.key === 'hairStyle') ? HERO_OPTS.hairStyle[self.draft.look[d.key]] : ('' + (self.draft.look[d.key] + 1));
+          self.renderPreview();
+        });
+      });
+      wrap.appendChild(row);
+    });
+  },
+  renderGuardianPick: function () {
+    const wrap = document.getElementById('guardianPick');
+    wrap.innerHTML = '';
+    const self = this;
+    Object.keys(GUARDIAN_CHOICES).forEach(function (gid) {
+      const g = GUARDIAN_CHOICES[gid];
+      const el = document.createElement('div');
+      el.className = 'guardian-opt' + (self.draft.guardian === gid ? ' sel' : '');
+      el.textContent = g.emoji;
+      el.addEventListener('click', function () {
+        self.draft.guardian = gid;
+        self.renderGuardianPick();
+        document.getElementById('guardianBlurb').textContent = g.name + ' — ' + g.blurb;
+      });
+      wrap.appendChild(el);
+    });
+    document.getElementById('guardianBlurb').textContent = GUARDIAN_CHOICES[self.draft.guardian].name + ' — ' + GUARDIAN_CHOICES[self.draft.guardian].blurb;
+  },
+  renderPreview: function () {
+    drawHeroPortrait(document.getElementById('creatorPreview'), this.draft.look, true);
+  },
+  finishCreate: function () {
+    const name = (document.getElementById('heroNameInput').value || '').trim() || 'Hero';
+    this.draft.name = name;
+    // title by guardian flavor
+    const titles = { sol: 'Hearth Keeper', ember: 'Dragon Friend', thorn: 'Forest Friend', luna: 'Moon Keeper' };
+    this.draft.title = titles[this.draft.guardian] || 'Hearth Keeper';
+    const hero = Roster.add(this.draft);
+    startGameWithHero(hero.id);
+  },
+};
+
+function escapeHtml(s) { return ('' + s).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+
+// Draw a hero portrait onto a DOM element using a small canvas (matches buildHeroAvatar palette).
+function drawHeroPortrait(el, look, big) {
+  if (!el) return;
+  const size = big ? 130 : 56;
+  let cv = el.querySelector('canvas');
+  if (!cv) { cv = document.createElement('canvas'); el.appendChild(cv); }
+  cv.width = size; cv.height = size;
+  const x = cv.getContext('2d');
+  const HC = ['#ffe0bd','#f1c27d','#e0ac69','#c68642','#8d5524'];
+  const HAIR = ['#2c1b10','#6b3a1f','#c8a24a','#e8853d','#d94f6e','#6e5fd8','#ededed'];
+  const OUT = ['#3a72d8','#d94f6e','#2c9e6e','#e8853d','#8a5fd8','#444c5e'];
+  const EYE = ['#4a3526','#2c6e49','#2a5fd0','#6e5fd8'];
+  const EMB = ['#ffd98a','#ff6b3d','#7ed0ff','#b8ff7e','#ff7eda'];
+  const styles = ['short','long','ponytail','bun','spiky'];
+  const cx = size/2, cy = size*0.42, R = size*0.22;
+  x.clearRect(0,0,size,size);
+  // body
+  x.fillStyle = OUT[look.outfit % OUT.length];
+  x.beginPath(); x.ellipse(cx, cy + R*1.5, R*1.3, R*1.4, 0, 0, Math.PI*2); x.fill();
+  // emblem
+  x.fillStyle = EMB[look.emblem % EMB.length];
+  x.beginPath(); x.arc(cx, cy + R*1.4, R*0.32, 0, Math.PI*2); x.fill();
+  // hair back (long/ponytail/bun)
+  const style = styles[look.hairStyle % styles.length];
+  x.fillStyle = HAIR[look.hairColor % HAIR.length];
+  if (style==='long'){ x.beginPath(); x.ellipse(cx, cy, R*1.5, R*1.7, 0,0,Math.PI*2); x.fill(); }
+  // head
+  x.fillStyle = HC[look.skin % HC.length];
+  x.beginPath(); x.arc(cx, cy, R, 0, Math.PI*2); x.fill();
+  // eyes
+  x.fillStyle = EYE[look.eyes % EYE.length];
+  x.beginPath(); x.arc(cx - R*0.35, cy, R*0.14, 0, Math.PI*2); x.fill();
+  x.beginPath(); x.arc(cx + R*0.35, cy, R*0.14, 0, Math.PI*2); x.fill();
+  // hair front
+  x.fillStyle = HAIR[look.hairColor % HAIR.length];
+  if (style==='spiky'){
+    for(let i=-2;i<=2;i++){ x.beginPath(); x.moveTo(cx+i*R*0.4, cy-R*0.9); x.lineTo(cx+i*R*0.4-R*0.2, cy-R*0.3); x.lineTo(cx+i*R*0.4+R*0.2, cy-R*0.3); x.fill(); }
+    x.beginPath(); x.ellipse(cx, cy-R*0.6, R*0.95, R*0.5, 0,0,Math.PI*2); x.fill();
+  } else if (style==='bun'){
+    x.beginPath(); x.arc(cx, cy-R*1.2, R*0.45, 0, Math.PI*2); x.fill();
+    x.beginPath(); x.ellipse(cx, cy-R*0.6, R*0.95, R*0.55, 0,0,Math.PI*2); x.fill();
+  } else if (style==='ponytail'){
+    x.beginPath(); x.ellipse(cx+R*0.85, cy, R*0.35, R*0.7, 0,0,Math.PI*2); x.fill();
+    x.beginPath(); x.ellipse(cx, cy-R*0.6, R*0.95, R*0.55, 0,0,Math.PI*2); x.fill();
+  } else { // short / long front
+    x.beginPath(); x.ellipse(cx, cy-R*0.55, R*0.98, R*0.6, 0,0,Math.PI*2); x.fill();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function () { HeroUI.init(); });
 
 // ---- lightweight self-test (logged to console; proves grid logic) ---------
 (function selfTest() {

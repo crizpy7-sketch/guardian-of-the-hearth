@@ -596,8 +596,11 @@
   @keyframes petTilt { 0%, 100% { transform: rotate(0) scale(1); } 40% { transform: rotate(3deg) scale(1.03); } }
   .pet-stage.shine img { filter: brightness(1.28) saturate(1.18); }
   /* animated multi-frame guardian (when frame PNGs exist) */
-  .anim-frame { width: 100%; height: 100%; object-fit: contain; image-rendering: auto; }
+  .anim-stack { position: relative; width: 100%; height: 100%; }
+  .anim-stack .anim-frame { position: absolute; inset: 0; }
+  .anim-frame { width: 100%; height: 100%; object-fit: contain; image-rendering: auto; will-change: opacity; }
   .pet-stage .anim-frame { object-fit: cover; }
+  .duo-pet .anim-stack, .pet-token .anim-stack { width: 100%; height: 100%; }
   /* mood motions for the SINGLE-image fallback — every guardian moves, frames or not */
   .pet-stage.m-walk img { animation: kenburns 16s ease-in-out infinite alternate, walkWag 0.7s ease-in-out infinite; }
   .pet-stage.m-cheer { animation: cheerBounce 0.6s ease-in-out infinite; }
@@ -5240,18 +5243,27 @@ function AnimArt(props) {
   const [frame, setFrame] = useState(0);
   const probedFor = useRef('');
   const key = frames.join('|');
+  // Probe + PRELOAD every frame before animating, so nothing flickers blank mid-loop.
   useEffect(function () {
     if (frames.length === 0) { setReady('none'); return; }
     if (probedFor.current === key) return;
     probedFor.current = key;
     setReady('probe');
     let alive = true;
-    const im = new Image();
-    im.onload = function () { if (alive) setReady('anim'); };
-    im.onerror = function () { if (alive) setReady('none'); };
-    im.src = './' + frames[0];
+    let loaded = 0;
+    let failed = false;
+    frames.forEach(function (f) {
+      const im = new Image();
+      im.onload = function () {
+        loaded += 1;
+        if (alive && loaded === frames.length && !failed) setReady('anim');
+      };
+      im.onerror = function () { if (alive && !failed) { failed = true; setReady('none'); } };
+      im.src = './' + f;
+    });
     return function () { alive = false; };
   }, [key]);
+  // Advance frames on an eased cadence; opacity cross-fade (CSS) smooths the swap.
   useEffect(function () {
     if (ready !== 'anim' || frames.length < 2) return;
     var reduce = false;
@@ -5260,14 +5272,26 @@ function AnimArt(props) {
         && !document.body.classList.contains('motion-force');
     } catch (e) {}
     if (reduce) { setFrame(0); return; }
-    const fps = props.fps || 6;
+    const hold = Math.max(220, Math.round(1000 / (props.fps || 4)));
     const id = setInterval(function () {
       setFrame(function (f) { return (f + 1) % frames.length; });
-    }, Math.round(1000 / fps));
+    }, hold);
     return function () { clearInterval(id); };
   }, [ready, key]);
   if (ready === 'anim') {
-    return <img src={'./' + frames[frame]} alt={props.alt || ''} className="anim-frame" />;
+    // Stack all frames; cross-fade opacity to the active one. No hard src swap = no pop.
+    const fade = (props.fade != null) ? props.fade : 420;
+    return (
+      <div className="anim-stack" aria-label={props.alt || ''}>
+        {frames.map(function (f, i) {
+          return (
+            <img key={f} src={'./' + f} alt=""
+              className="anim-frame"
+              style={{ opacity: i === frame ? 1 : 0, transition: 'opacity ' + fade + 'ms ease-in-out' }} />
+          );
+        })}
+      </div>
+    );
   }
   // fallback: the proven static portrait (with its own onError chain) + CSS motion class
   return <Art srcs={props.fallback} emoji={props.emoji} alt={props.alt} />;
@@ -5276,12 +5300,12 @@ function AnimArt(props) {
 // Picks the right motion for the guardian's current situation.
 function guardianMotion(species, level, mood) {
   const base = stageArt(species, level);
-  if (mood === 'walk') return { frames: frameSet(species, 'walk', 4), fallback: base, fps: 7, cls: 'm-walk' };
-  if (mood === 'celebrate') return { frames: frameSet(species, 'cheer', 3), fallback: base, fps: 8, cls: 'm-cheer' };
-  if (mood === 'sleep') return { frames: frameSet(species, 'sleep', 2), fallback: base, fps: 2, cls: 'm-sleep' };
-  if (mood === 'play') return { frames: frameSet(species, 'play', 3), fallback: base, fps: 8, cls: 'm-play' };
-  // idle: a gentle wing-flap loop if cheer frames exist (slowed right down), else the static portrait breathing.
-  return { frames: frameSet(species, 'cheer', 2), fallback: base, fps: 2.5, cls: '' };
+  if (mood === 'walk') return { frames: frameSet(species, 'walk', 2), fallback: base, fps: 2.4, fade: 380, cls: 'm-walk' };
+  if (mood === 'celebrate') return { frames: frameSet(species, 'cheer', 2), fallback: base, fps: 3.5, fade: 240, cls: 'm-cheer' };
+  if (mood === 'sleep') return { frames: frameSet(species, 'sleep', 2), fallback: base, fps: 1.4, fade: 900, cls: 'm-sleep' };
+  if (mood === 'play') return { frames: frameSet(species, 'play', 2), fallback: base, fps: 4, fade: 220, cls: 'm-play' };
+  // idle: a gentle, slow wing-flap if cheer frames exist; long fade = soft breathing, no blink.
+  return { frames: frameSet(species, 'cheer', 2), fallback: base, fps: 1.6, fade: 850, cls: '' };
 }
 const RARITY_COLOR = {
   COMMON: 'var(--r-common)', UNCOMMON: 'var(--r-uncommon)', RARE: 'var(--r-rare)',
@@ -5888,7 +5912,7 @@ function HomeScreen(props) {
       <div className="card hero">
         <div className="hero-art" onClick={petTap}>
           <div className={'pet-stage' + (hop ? ' hop' : '') + (idle ? ' ' + idle : '') + ' ' + homeMotion.cls}>
-            <AnimArt frames={homeMotion.frames} fallback={homeMotion.fallback} fps={homeMotion.fps} emoji={sp.emoji} alt={sp.name} />
+            <AnimArt frames={homeMotion.frames} fallback={homeMotion.fallback} fps={homeMotion.fps} fade={homeMotion.fade} emoji={sp.emoji} alt={sp.name} />
           </div>
           {emotes.map(function (e) {
             return <span key={e.id} className="emote" style={{ left: e.x + '%' }}>{e.icon}</span>;
@@ -6214,8 +6238,12 @@ function BattleOverlay(props) {
         </div>
         <div className={'b-me' + (fx.lunge ? ' lunge' : '') + (fx.hop2 ? ' hop2' : '') + (hasAtk ? ' has-fire' : '')}>
           {hasAtk ? (
-            <img className="anim-frame" alt={g.name}
-              src={'./' + (fx.lunge ? atkFrames[1] : atkFrames[0])} />
+            <div className="anim-stack">
+              <img className="anim-frame" alt={g.name} src={'./' + atkFrames[0]}
+                style={{ opacity: fx.lunge ? 0 : 1, transition: 'opacity 90ms ease-out' }} />
+              <img className="anim-frame" alt="" src={'./' + atkFrames[1]}
+                style={{ opacity: fx.lunge ? 1 : 0, transition: 'opacity 90ms ease-out' }} />
+            </div>
           ) : (
             <Art srcs={stageArt(g.species, g.level)} emoji={speciesOf(g.species).emoji} alt={g.name} />
           )}
@@ -6280,7 +6308,7 @@ function RaidsScreen(props) {
               style={active.claimable ? null : { left: (6 + prog * 76) + '%' }}>
               {(function () {
                 const rm = guardianMotion(g.species, g.level, active.claimable ? 'celebrate' : 'walk');
-                return <AnimArt frames={rm.frames} fallback={rm.fallback} fps={rm.fps} emoji={speciesOf(g.species).emoji} alt="" />;
+                return <AnimArt frames={rm.frames} fallback={rm.fallback} fps={rm.fps} fade={rm.fade} emoji={speciesOf(g.species).emoji} alt="" />;
               })()}
             </div>
             <div className="raid-head">
@@ -6473,11 +6501,14 @@ function IslandScreen(props) {
             <span style={{ fontSize: 34, display: 'block', textAlign: 'center' }}>{child ? child.avatar : '🧒'}</span>
           )}
         </div>
-        {g && (
-          <span className="duo-pet" style={{ left: '53%', top: '49.5%' }}>
-            <Art srcs={stageArt(g.species, g.level)} emoji={speciesOf(g.species).emoji} alt={g.name} />
-          </span>
-        )}
+        {g && (function () {
+          const im = guardianMotion(g.species, g.level, 'idle');
+          return (
+            <span className="duo-pet" style={{ left: '53%', top: '49.5%' }}>
+              <AnimArt frames={im.frames} fallback={im.fallback} fps={im.fps} fade={im.fade} emoji={speciesOf(g.species).emoji} alt={g.name} />
+            </span>
+          );
+        })()}
       </div>
       {open && (
         <div className="veil" onClick={function () { setOpenType(null); }}>
@@ -6979,7 +7010,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-F1.6 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-F1.7 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

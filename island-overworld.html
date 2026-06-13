@@ -34,7 +34,7 @@
 <body>
 <div id="game"></div>
 <div class="hud" id="hud">Hearth Island</div>
-<div style="position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:20;background:#e8853d;color:#1a1410;font-weight:800;font-size:13px;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">BUILD v6 ✓</div>
+<div style="position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:20;background:#e8853d;color:#1a1410;font-weight:800;font-size:13px;padding:4px 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">v8 🐉</div>
 <div class="pad">
   <button class="up" data-dir="up" aria-label="Up">▲</button>
   <button class="down" data-dir="down" aria-label="Down">▼</button>
@@ -65,9 +65,11 @@ const CONFIG = {
   GUARDIAN_MOVE_MS: 220,
   FOLLOW_LERP: 0.12,   // camera smoothing
   COLORS: {
-    grassA: 0x3f7d4a, grassB: 0x478a52, path: 0xb79a6a, pathEdge: 0x9c7f54,
-    water: 0x3a6ea5, building: 0x6b4a2e, buildingRoof: 0x8a3b2e, buildingDoor: 0x2a1c12,
-    shrine: 0xe8853d,
+    grassA: 0x4a8c52, grassB: 0x428049, grassC: 0x55995d, grassDark: 0x3a7044,
+    path: 0xc2a86e, pathB: 0xb79a60, pathEdge: 0x9c7f54, pathSpeck: 0xa88f5a,
+    water: 0x3a6ea5, waterB: 0x4279b0, waterHi: 0x5b97cf,
+    building: 0x6b4a2e, buildingRoof: 0x8a3b2e, buildingDoor: 0x2a1c12,
+    shrine: 0xe8853d, shadow: 0x000000,
   },
 };
 
@@ -111,70 +113,169 @@ function isWalkable(c, r) {
 class IslandScene extends Phaser.Scene {
   constructor() { super('island'); }
 
+  preload() {
+    // load the real dragon sprite; if it 404s we fall back to the emoji token (world never breaks)
+    this.dragonLoaded = false;
+    this.load.image('dragon', './guardian-dragon-cheer2.png');
+    this.load.on('filecomplete-image-dragon', function () { this.dragonLoaded = true; }, this);
+    this.load.on('loaderror', function () { this.dragonLoaded = false; }, this);
+  }
+
   create() {
     const T = CONFIG.TILE;
     this.cameras.main.setBackgroundColor('#1a1410');
     this.cameras.main.setBounds(0, 0, CONFIG.COLS * T, CONFIG.ROWS * T);
 
-    // --- draw the tile map (grass + a cross path) ---
+    // --- draw the tile map: layered grass + dirt path (VISUAL ONLY, grid unchanged) ---
+    const C = CONFIG.COLORS;
     const g = this.add.graphics();
+    // deterministic per-tile noise so it never flickers between frames
+    function tileRand(c, r) { let n = (c * 73856093) ^ (r * 19349663); n = (n << 13) ^ n; return ((n * (n * n * 15731 + 789221) + 1376312589) & 0x7fffffff) / 0x7fffffff; }
     for (let c = 0; c < CONFIG.COLS; c++) {
       for (let r = 0; r < CONFIG.ROWS; r++) {
         const onPath = (c === 7 || c === 8 || r === 7 || r === 8);
-        let col = ((c + r) % 2 === 0) ? CONFIG.COLORS.grassA : CONFIG.COLORS.grassB;
-        if (onPath) col = CONFIG.COLORS.path;
-        g.fillStyle(col, 1);
-        g.fillRect(c * T, r * T, T, T);
-        // subtle tile grid line
-        g.lineStyle(1, 0x000000, 0.06);
-        g.strokeRect(c * T, r * T, T, T);
+        const x = c * T, y = r * T, rnd = tileRand(c, r);
+        if (onPath) {
+          // dirt path with subtle tone variation + speckles
+          g.fillStyle(rnd > 0.5 ? C.path : C.pathB, 1);
+          g.fillRect(x, y, T, T);
+          g.fillStyle(C.pathSpeck, 0.5);
+          for (let s = 0; s < 3; s++) {
+            const sx = x + 4 + tileRand(c + s * 7, r) * (T - 8);
+            const sy = y + 4 + tileRand(c, r + s * 7) * (T - 8);
+            g.fillRect(sx, sy, 3, 3);
+          }
+        } else {
+          // grass: pick one of several greens by noise, then add lighter blades
+          let base = C.grassA;
+          if (rnd < 0.25) base = C.grassB; else if (rnd < 0.5) base = C.grassC; else if (rnd < 0.62) base = C.grassDark;
+          g.fillStyle(base, 1);
+          g.fillRect(x, y, T, T);
+          // a few lighter grass blades for texture
+          g.fillStyle(C.grassC, 0.4);
+          for (let b = 0; b < 4; b++) {
+            const bx = x + 5 + tileRand(c + b * 3, r * 2) * (T - 10);
+            const by = y + 6 + tileRand(c * 2, r + b * 3) * (T - 12);
+            g.fillRect(bx, by, 2, 5);
+          }
+        }
+        // very subtle tile separation
+        g.lineStyle(1, 0x000000, 0.05);
+        g.strokeRect(x, y, T, T);
       }
     }
 
-    // --- draw buildings as solid tiles with a roof + door ---
+    // --- buildings: real structures with shadow, walls, and a ROOF layer above the player ---
+    // (collision logic untouched; this is purely how they're drawn + depth-sorted)
     this.buildingLabels = [];
+    // depth layers: ground=0, shadows=1, walls=2, entities=10, roofs=20 (above player), labels=22
+    const wallG = this.add.graphics().setDepth(2);
+    const shadowG = this.add.graphics().setDepth(1);
+    const roofG = this.add.graphics().setDepth(20); // ABOVE entities → player walks "behind" roofs
     BUILDINGS.forEach(function (b) {
       const x = b.col * T, y = b.row * T, w = b.w * T, h = b.h * T;
-      g.fillStyle(b.color, 1);
-      g.fillRect(x + 3, y + 3, w - 6, h - 6);
-      g.fillStyle(0x000000, 0.25);
-      g.fillRect(x + 3, y + 3, w - 6, h * 0.34);
-      g.fillStyle(CONFIG.COLORS.buildingDoor, 1);
-      g.fillRect(x + w * 0.4, y + h * 0.55, w * 0.2, h * 0.42);
-      g.lineStyle(2, 0x000000, 0.35);
-      g.strokeRect(x + 3, y + 3, w - 6, h - 6);
-      const lbl = this.add.text(x + w / 2, y - 6, b.label, {
+      // soft drop shadow on the ground
+      shadowG.fillStyle(C.shadow, 0.28);
+      shadowG.fillEllipse(x + w / 2, y + h - 4, w * 0.92, h * 0.42);
+      // wall body (lower 60%)
+      const wallTop = y + h * 0.4;
+      const wallShade = Phaser.Display.Color.IntegerToColor(b.color).darken(18).color;
+      wallG.fillStyle(wallShade, 1);
+      wallG.fillRect(x + 4, wallTop, w - 8, h - (wallTop - y) - 4);
+      // wall highlight stripe
+      wallG.fillStyle(Phaser.Display.Color.IntegerToColor(b.color).lighten(8).color, 1);
+      wallG.fillRect(x + 4, wallTop, w - 8, 4);
+      // door
+      wallG.fillStyle(C.buildingDoor, 1);
+      wallG.fillRect(x + w * 0.42, y + h - h * 0.32, w * 0.16, h * 0.28);
+      wallG.fillStyle(0xE8C56A, 0.9); // doorknob
+      wallG.fillCircle(x + w * 0.52, y + h - h * 0.18, 1.6);
+      // windows
+      wallG.fillStyle(0xFFE0A0, 0.85);
+      wallG.fillRect(x + w * 0.18, wallTop + 8, w * 0.14, h * 0.14);
+      wallG.fillRect(x + w * 0.68, wallTop + 8, w * 0.14, h * 0.14);
+      // wall outline
+      wallG.lineStyle(2, 0x000000, 0.3);
+      wallG.strokeRect(x + 4, wallTop, w - 8, h - (wallTop - y) - 4);
+
+      // ROOF (upper 50%, peaked) — drawn ABOVE the player so they pass behind it
+      const roofColor = Phaser.Display.Color.IntegerToColor(b.color).lighten(6).color;
+      roofG.fillStyle(roofColor, 1);
+      roofG.beginPath();
+      roofG.moveTo(x + 2, wallTop + 4);
+      roofG.lineTo(x + w / 2, y - h * 0.12);
+      roofG.lineTo(x + w - 2, wallTop + 4);
+      roofG.closePath();
+      roofG.fillPath();
+      // roof shade underside
+      roofG.fillStyle(0x000000, 0.18);
+      roofG.fillRect(x + 2, wallTop, w - 4, 5);
+      // roof ridge highlight
+      roofG.lineStyle(2, Phaser.Display.Color.IntegerToColor(b.color).lighten(22).color, 0.8);
+      roofG.beginPath();
+      roofG.moveTo(x + w / 2, y - h * 0.12);
+      roofG.lineTo(x + w / 2, wallTop + 4);
+      roofG.strokePath();
+
+      const lbl = this.add.text(x + w / 2, y - h * 0.16, b.label, {
         fontFamily: 'system-ui', fontSize: '12px', color: '#EDE3D2',
         stroke: '#000000', strokeThickness: 4,
-      }).setOrigin(0.5, 1).setDepth(5);
+      }).setOrigin(0.5, 1).setDepth(22);
       this.buildingLabels.push(lbl);
     }, this);
 
-    // --- the Hearth shrine at center (glowing, walkable-adjacent landmark) ---
+    // --- the Hearth: the glowing soul of the island ---
     const hx = 7.5 * T, hy = 7.5 * T;
-    this.shrine = this.add.circle(hx, hy, 10, CONFIG.COLORS.shrine).setDepth(4);
-    this.tweens.add({ targets: this.shrine, scale: 1.5, alpha: 0.7, duration: 900,
-      yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.add.circle(hx, hy + 6, 16, 0x000000, 0.25).setDepth(1); // shadow
+    this.add.circle(hx, hy, 13, 0x4a3526).setStrokeStyle(2, 0x2a1c12).setDepth(4); // stone ring
+    this.shrineGlow = this.add.circle(hx, hy, 22, 0xe8853d, 0.35).setDepth(4);
+    this.shrine = this.add.circle(hx, hy, 7, 0xFFD98A).setDepth(5);
+    this.tweens.add({ targets: this.shrineGlow, scale: 1.4, alpha: 0.18, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: this.shrine, scale: 1.25, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     // --- PLAYER (grid is truth) ---
     this.player = {
       gridX: 7, gridY: 10, state: 'IDLE', facing: 'up',
     };
     const px = this.tileToPx(this.player.gridX), py = this.tileToPx(this.player.gridY);
+    // soft shadow that lives just under the player (its own depth, follows in sync)
+    this.playerShadow = this.add.ellipse(px, py + T * 0.28, T * 0.5, T * 0.22, 0x000000, 0.3).setDepth(9);
+    // character body: a rounded token with a subtle gradient ring + the avatar
     this.playerSprite = this.add.container(px, py, [
-      this.add.circle(0, 0, T * 0.30, 0x2a5fd0).setStrokeStyle(3, 0xffffff),
-      this.add.text(0, 0, '🧒', { fontSize: '20px' }).setOrigin(0.5),
+      this.add.circle(0, 2, T * 0.31, 0x1e4a9e),                       // outer ring (darker)
+      this.add.circle(0, 0, T * 0.27, 0x3a72d8).setStrokeStyle(2.5, 0xffffff), // body
+      this.add.text(0, -1, '🧒', { fontSize: '22px' }).setOrigin(0.5),
     ]).setDepth(10);
-    // facing indicator (a small notch)
-    this.facer = this.add.triangle(px, py, 0, -6, -5, 4, 5, 4, 0xffffff).setDepth(11);
+    // directional notch shows which way the player faces
+    this.facer = this.add.triangle(px, py, 0, -7, -6, 5, 6, 5, 0xffffff, 0.95).setDepth(11);
+    // gentle idle breathing (visual only — never moves the grid position)
+    this.tweens.add({ targets: this.playerSprite, scaleX: 1.05, scaleY: 0.95, duration: 1300,
+      yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     // --- GUARDIAN (also grid-based, wanders on a timer) ---
     this.guardian = { gridX: 7, gridY: 11, state: 'IDLE' };
     const gx = this.tileToPx(this.guardian.gridX), gy = this.tileToPx(this.guardian.gridY);
-    this.guardianSprite = this.add.container(gx, gy, [
-      this.add.circle(0, 0, T * 0.28, 0xe8853d).setStrokeStyle(3, 0xffd98a),
-      this.add.text(0, 0, '🐲', { fontSize: '18px' }).setOrigin(0.5),
-    ]).setDepth(9);
+    this.guardianShadow = this.add.ellipse(gx, gy + T * 0.26, T * 0.46, T * 0.2, 0x000000, 0.28).setDepth(8);
+    this.guardianGlow = this.add.circle(gx, gy, T * 0.34, 0xe8853d, 0.3).setDepth(8);
+    // dragon token: real sprite if it loaded, otherwise the styled emoji fallback
+    let dragonVisual;
+    if (this.dragonLoaded && this.textures.exists('dragon')) {
+      dragonVisual = this.add.image(0, -2, 'dragon');
+      const ds = (T * 1.5) / Math.max(dragonVisual.width, dragonVisual.height); // fit to ~1.5 tiles
+      dragonVisual.setScale(ds);
+    } else {
+      dragonVisual = this.add.text(0, -1, '🐲', { fontSize: '20px' }).setOrigin(0.5);
+    }
+    this.guardianSprite = this.add.container(gx, gy, [dragonVisual]).setDepth(9);
+    this.dragonVisual = dragonVisual;
+    // idle LIFE (visual only — never affects the grid target the wander AI sets):
+    // gentle breathing pulse on the dragon itself + a soft vertical float + glow pulse.
+    this.tweens.add({ targets: this.dragonVisual, scaleX: this.dragonVisual.scaleX * 1.04,
+      scaleY: this.dragonVisual.scaleY * 1.04, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: this.dragonVisual, y: this.dragonVisual.y - 2.5, duration: 1900,
+      yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: this.guardianGlow, alpha: 0.12, scale: 1.2, duration: 1400,
+      yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     // --- camera follows player, smooth + grid stable ---
     this.cameras.main.startFollow(this.playerSprite, true, CONFIG.FOLLOW_LERP, CONFIG.FOLLOW_LERP);
@@ -202,7 +303,7 @@ class IslandScene extends Phaser.Scene {
     });
 
     this.hud = document.getElementById('hud');
-    if (this.hud) this.hud.textContent = 'start ' + this.player.gridX + ',' + this.player.gridY + ' walkable=' + isWalkable(this.player.gridX, this.player.gridY);
+    if (this.hud) this.hud.textContent = 'Hearth Island';
   }
 
   computeZoom() {
@@ -231,7 +332,7 @@ class IslandScene extends Phaser.Scene {
     }
     this.player.state = 'MOVING';
     this.player.gridX = tc; this.player.gridY = tr;     // grid updates AFTER validation
-    if (this.hud) this.hud.textContent = 'tile ' + tc + ',' + tr + ' walkable=' + isWalkable(tc, tr) + ' onBld=' + (WORLD.blocked[key(tc,tr)] ? WORLD.blocked[key(tc,tr)].label : 'no');
+    if (this.hud) this.hud.textContent = 'Hearth Island';
     const nx = this.tileToPx(tc), ny = this.tileToPx(tr);
     const self = this;
     this.tweens.add({
@@ -318,6 +419,11 @@ class IslandScene extends Phaser.Scene {
   }
 
   update() {
+    // visual sync: keep shadows + glows under their entities (does NOT touch grid/movement)
+    if (this.playerShadow) { this.playerShadow.x = this.playerSprite.x; this.playerShadow.y = this.playerSprite.y + CONFIG.TILE * 0.28; }
+    if (this.guardianShadow) { this.guardianShadow.x = this.guardianSprite.x; this.guardianShadow.y = this.guardianSprite.y + CONFIG.TILE * 0.26; }
+    if (this.guardianGlow) { this.guardianGlow.x = this.guardianSprite.x; this.guardianGlow.y = this.guardianSprite.y; }
+
     // SAFETY: the player must NEVER occupy a blocked tile. If they do, snap to a safe tile.
     if (!isWalkable(this.player.gridX, this.player.gridY)) {
       console.warn('[BUG] player on blocked tile', this.player.gridX, this.player.gridY,

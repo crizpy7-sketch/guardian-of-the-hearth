@@ -6109,6 +6109,7 @@ function App() {
           <ChildShell
             store={store} state={state} tab={tab} setTab={setTab} storeCtx={storeCtx}
             openSwitcher={function () { setShowSwitcher(true); }}
+            onDevTap={devLogoTap}
           />
         )
       ) : null}
@@ -6461,6 +6462,7 @@ function ChildShell(props) {
           <div className="hdr-title"
             onPointerDown={pressStart} onPointerUp={pressEnd}
             onPointerLeave={pressEnd} onPointerCancel={pressEnd}
+            onClick={function () { if (props.onDevTap) props.onDevTap(); }}
             onContextMenu={function (e) { e.preventDefault(); }}>
             <span className={'ember' + (holding ? ' holding' : '')} aria-hidden="true" />
             Guardian of the Hearth
@@ -8113,7 +8115,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W2.9 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W2.9b · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

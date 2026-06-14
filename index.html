@@ -445,6 +445,27 @@
   /* guardian departing: march in, then stride into the portal */
   .rr-guardian.mood-depart { animation: rrArrive 0.6s ease both, dcDepart 1.4s ease-in 0.3s forwards; }
   @keyframes dcDepart { 0% { transform: translateX(0) scale(1); opacity: 1; } 100% { transform: translateX(0) scale(0.3); opacity: 0; } }
+
+  /* ===== DEVELOPER MENU (debug — removable) ===== */
+  .dev-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(8,6,4,0.8);
+    display: flex; align-items: flex-start; justify-content: center; padding: 24px 14px; overflow-y: auto; }
+  .dev-panel { width: 100%; max-width: 380px; background: #1a1410; border: 2px solid #5a4a3a;
+    border-radius: 16px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+  .dev-head { display: flex; align-items: center; justify-content: space-between; font-weight: 800;
+    color: #ffd98a; font-size: 17px; margin-bottom: 12px; }
+  .dev-x { background: rgba(255,255,255,0.1); border: none; color: #ede3d2; width: 30px; height: 30px; border-radius: 8px; font-size: 14px; }
+  .dev-msg { background: rgba(60,120,60,0.3); border: 1px solid rgba(120,200,120,0.5); color: #cfe3cf;
+    border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 12px; }
+  .dev-section { background: rgba(40,30,22,0.6); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+  .dev-s-title { color: #c9bca6; font-size: 12px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .dev-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dev-btn { flex: 1; min-width: 90px; background: rgba(70,55,40,0.9); color: #ede3d2; border: 1px solid rgba(232,133,61,0.3);
+    border-radius: 10px; padding: 10px 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .dev-btn:active { background: rgba(90,70,50,0.9); }
+  .dev-btn.danger { background: rgba(150,50,40,0.85); border-color: rgba(220,90,70,0.6); color: #ffdcd2; width: 100%; flex-basis: 100%; }
+  .dev-confirm { color: #ffdcd2; font-size: 14px; line-height: 1.5; }
+  .dev-confirm-btns { display: flex; gap: 8px; margin-top: 10px; }
+  .dev-info { color: #c9bca6; font-size: 13px; line-height: 1.7; font-family: monospace; }
   .explore-btn { display: flex; align-items: center; gap: 12px; text-decoration: none;
     background: linear-gradient(135deg, #2a4a6e, #1e3450); border: 1px solid rgba(120,170,220,0.4);
     border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; color: var(--ink);
@@ -2387,6 +2408,13 @@
     };
 
     const DungeonRepo = {
+      // DEV ONLY: fast-forward a run so it's immediately claimable (used by the dev menu).
+      devSetEndsAt: function (runId, ts) {
+        return db.atomic(['dungeonRuns'], async function (c) {
+          const r = await c.get('dungeonRuns', runId);
+          if (r) await c.put('dungeonRuns', Object.assign({}, r, { endsAt: ts }));
+        });
+      },
       createRun: function (fields) {
         const run = {
           id: Ids.uuid(), guardianId: fields.guardianId, dungeonId: fields.dungeonId,
@@ -5810,10 +5838,167 @@ function Art(props) {
 const noopSubscribe = function () { return function () {}; };
 const nullSnapshot = function () { return null; };
 
+/* ================= DEVELOPER MENU (debug tool — removable before launch) =================
+   Activation: tap the splash logo 5x within 3s. Reset uses the REAL save systems:
+   the 'guardian_hearth' IndexedDB + the two tutorial localStorage flags. No fake state. */
+const DEV_DB_NAME = 'guardian_hearth';
+const DEV_LS_KEYS = ['goth.tutorial.sol.v1', 'goth.coach.firstmission.v1'];
+
+function DevMenu(props) {
+  // props: store, state, onClose
+  var state = props.state;
+  var store = props.store;
+  var g = state && state.guardian;
+  var _c = useState(null); var confirm = _c[0]; var setConfirm = _c[1];
+  var _m = useState(''); var msg = _m[0]; var setMsg = _m[1];
+
+  function flash(t) { setMsg(t); setTimeout(function () { setMsg(''); }, 2200); }
+
+  // THE BIG ONE: wipe all progress -> fresh install -> reload into first-time experience.
+  async function resetToNewPlayer() {
+    try {
+      // 1) remove the tutorial flags (so Sol's welcome + guidance play again)
+      DEV_LS_KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+      // 2) delete the entire game database (guardians, quests, raids, inventory, unlocks, flags)
+      await new Promise(function (resolve) {
+        try {
+          var req = indexedDB.deleteDatabase(DEV_DB_NAME);
+          req.onsuccess = resolve; req.onerror = resolve; req.onblocked = resolve;
+          setTimeout(resolve, 1500); // safety: never hang
+        } catch (e) { resolve(); }
+      });
+      // 3) reload — the game boots exactly like a brand-new install
+      window.location.reload();
+    } catch (e) { flash('Reset failed: ' + (e && e.message)); }
+  }
+
+  // Tutorial flag controls (only touch flags, nothing else)
+  function replayTutorial() {
+    DEV_LS_KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+    window.location.reload();
+  }
+  function skipTutorial() {
+    DEV_LS_KEYS.forEach(function (k) { try { localStorage.setItem(k, '1'); } catch (e) {} });
+    flash('Tutorial flags set to done.');
+  }
+
+  // Raid tools — use the REAL actions/services (no mechanic changes)
+  async function finishActiveRaid() {
+    try {
+      var run = S.selectActiveRun(state);
+      if (!run) { flash('No active raid.'); return; }
+      // fast-forward this run's end time in the DB, then refresh
+      await props.storeCtx.current.repos.dungeons.devSetEndsAt(run.id, Date.now() - 1000);
+      await store.dispatch(A.refreshChild());
+      flash('Active raid is now ready to claim!');
+    } catch (e) { flash('Could not finish raid: ' + (e && e.message)); }
+  }
+  async function startTestRaid() {
+    try {
+      var view = S.selectDungeonView(state);
+      var avail = view.find(function (d) { return !d.isActive && d.unlocked && !d.blocked; });
+      if (!avail) { flash('No raid available to start.'); return; }
+      var r = await store.dispatch(A.startDungeon(avail.def.id));
+      flash(r && r.ok ? ('Started: ' + avail.def.name) : 'Could not start (energy?).');
+    } catch (e) { flash('Error: ' + (e && e.message)); }
+  }
+
+  // Reward tools — use the REAL bundle pipeline (no fake currencies)
+  async function grant(kind) {
+    try {
+      var id = state.activeChildId;
+      if (!id) { flash('No active child.'); return; }
+      var bundle = { coins: 0, energy: 0, xp: 0, affection: 0, materials: [], lootCrates: 0 };
+      if (kind === 'xp') bundle.xp = 100;
+      if (kind === 'coins') bundle.coins = 500;
+      if (kind === 'loot') bundle.lootCrates = 1;
+      await props.storeCtx.current.repos.guardians.applyBundle(id, bundle);
+      await store.dispatch(A.refreshChild());
+      flash('Granted ' + (kind === 'xp' ? '+100 XP' : kind === 'coins' ? '+500 gold' : '1 loot crate') + '.');
+    } catch (e) { flash('Grant failed: ' + (e && e.message)); }
+  }
+
+  var pendingCount = state && state.pending ? state.pending.length : 0;
+  var activeRun = S.selectActiveRun(state);
+
+  return (
+    <div className="dev-overlay" onClick={props.onClose}>
+      <div className="dev-panel" onClick={function (e) { e.stopPropagation(); }}>
+        <div className="dev-head">
+          <span>🛠 Developer Mode</span>
+          <button className="dev-x" onClick={props.onClose}>✕</button>
+        </div>
+        {msg && <div className="dev-msg">{msg}</div>}
+
+        <div className="dev-section">
+          <div className="dev-s-title">⚠️ Reset</div>
+          {confirm === 'reset' ? (
+            <div className="dev-confirm">
+              <div>This will erase ALL progress and restart from the beginning.</div>
+              <div className="dev-confirm-btns">
+                <button className="dev-btn danger" onClick={resetToNewPlayer}>Yes, erase everything</button>
+                <button className="dev-btn" onClick={function () { setConfirm(null); }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button className="dev-btn danger" onClick={function () { setConfirm('reset'); }}>🔄 Reset to New Player</button>
+          )}
+        </div>
+
+        <div className="dev-section">
+          <div className="dev-s-title">Tutorial</div>
+          <div className="dev-row">
+            <button className="dev-btn" onClick={replayTutorial}>▶️ Replay</button>
+            <button className="dev-btn" onClick={skipTutorial}>⏭ Skip</button>
+          </div>
+        </div>
+
+        <div className="dev-section">
+          <div className="dev-s-title">Raids</div>
+          <div className="dev-row">
+            <button className="dev-btn" onClick={finishActiveRaid}>⚡ Finish active</button>
+            <button className="dev-btn" onClick={startTestRaid}>🗺 Start test</button>
+          </div>
+        </div>
+
+        <div className="dev-section">
+          <div className="dev-s-title">Rewards</div>
+          <div className="dev-row">
+            <button className="dev-btn" onClick={function () { grant('xp'); }}>+100 XP</button>
+            <button className="dev-btn" onClick={function () { grant('coins'); }}>+500 Gold</button>
+            <button className="dev-btn" onClick={function () { grant('loot'); }}>+ Loot crate</button>
+          </div>
+        </div>
+
+        <div className="dev-section">
+          <div className="dev-s-title">Save Info</div>
+          <div className="dev-info">
+            <div>Guardian: {g ? g.name : '—'} · Lv {g ? g.level : '—'}</div>
+            <div>XP: {g ? g.xp : '—'} · Energy: {g ? g.energy : '—'}/{g ? g.maxEnergy : '—'}</div>
+            <div>Gold: {g ? g.gold : '—'} · Affection: {g ? g.affection : '—'}</div>
+            <div>Pending quests: {pendingCount}</div>
+            <div>Active raid: {activeRun ? 'yes' : 'no'}</div>
+            <div>Tutorial done: {(function () { try { return localStorage.getItem('goth.tutorial.sol.v1') === '1' ? 'yes' : 'no'; } catch (e) { return '?'; } })()}</div>
+            <div>Save: IndexedDB “guardian_hearth” v1</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [store, setStore] = useState(null);
   const [fatal, setFatal] = useState(null);
   const [splashDone, setSplashDone] = useState(false);
+  const [devOpen, setDevOpen] = useState(false);
+  const devTaps = useRef([]);
+  function devLogoTap() {
+    var now = Date.now();
+    devTaps.current = devTaps.current.filter(function (t) { return now - t < 3000; });
+    devTaps.current.push(now);
+    if (devTaps.current.length >= 5) { devTaps.current = []; Sfx.achieve && Sfx.achieve(); setDevOpen(true); }
+  }
   const [tab, setTab] = useState('home');
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [showOnboard, setShowOnboard] = useState(false);
@@ -5909,6 +6094,7 @@ function App() {
 
   return (
     <React.Fragment>
+      {devOpen && <DevMenu store={store} state={state} storeCtx={storeCtx} onClose={function () { setDevOpen(false); }} />}
       {solIntro && <SolWelcome onDone={function () { setSolIntro(false); }} />}
       {state && state.boot === 'READY' && state.mode === 'PARENT_MODE' && state.session ? (
         <ParentShell store={store} state={state} storeCtx={storeCtx} />
@@ -5963,7 +6149,9 @@ function App() {
 
       {!fatal && (
         <div className={'splash' + (booting ? '' : ' bye')} aria-hidden={!booting}>
-          <Art srcs={['logo.jpg']} emoji="🛡️" alt="Guardian of the Hearth" />
+          <div onClick={devLogoTap} style={{ cursor: 'default' }}>
+            <Art srcs={['logo.jpg']} emoji="🛡️" alt="Guardian of the Hearth" />
+          </div>
           <div>
             <div className="eyebrow" style={{ textAlign: 'center', marginBottom: 6 }}>A family quest game</div>
             <div className="display">Guardian of the Hearth</div>
@@ -7925,7 +8113,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W2.8 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W2.9 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

@@ -418,6 +418,33 @@
   .rr-memory-title { color: #c9a8ff; font-size: 13px; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.5px; }
   .rr-memory-text { color: #ede3d2; font-size: 16px; line-height: 1.5; font-family: var(--display); }
   .rr-done { margin-top: 10px; }
+
+  /* ===== W2.7 DEPARTURE PREVIEW + CEREMONY ===== */
+  .depart-preview .dp-art, .dc-scene { text-align: center; }
+  .dp-art { width: 150px; height: 110px; margin: 0 auto 10px; border-radius: 14px; overflow: hidden;
+    border: 2px solid rgba(232,133,61,0.5); }
+  .dp-art img, .dp-art .artfallback { width: 100%; height: 100%; object-fit: cover; }
+  .dp-title { font-family: var(--display); font-size: 24px; color: #ffd98a; text-align: center; margin-bottom: 4px;
+    text-shadow: 0 2px 12px rgba(232,133,61,0.5); }
+  .dp-stars { text-align: center; font-size: 18px; margin-bottom: 12px; letter-spacing: 2px; }
+  .dp-row { text-align: center; color: #f5ead6; font-size: 15px; margin: 3px 0; }
+  .dp-discoveries { background: rgba(20,16,12,0.85); border: 1px solid rgba(232,133,61,0.4); border-radius: 14px;
+    padding: 12px 16px; margin: 14px auto; max-width: 300px; }
+  .dp-d-title { color: #ffd98a; font-size: 13px; font-weight: 700; margin-bottom: 8px; text-align: center; }
+  .dp-d-item { color: #ede3d2; font-size: 15px; margin: 5px 0; }
+  .dp-advice { color: #c9bca6; font-size: 15px; font-style: italic; text-align: center; max-width: 340px; margin: 0 auto 18px; line-height: 1.5; }
+  .dp-go { width: auto; }
+  /* ceremony */
+  .dc-scene { font-family: var(--display); font-size: 22px; color: #ffd98a; margin-bottom: 10px;
+    text-shadow: 0 2px 12px rgba(232,133,61,0.5); }
+  .dc-line { color: #f5ead6; font-size: 18px; font-family: var(--display); text-align: center; margin: 10px 0; }
+  .dc-line.pop { animation: rrPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+  .dc-pack { display: flex; gap: 16px; justify-content: center; margin: 8px 0; }
+  .dc-item { font-size: 34px; display: inline-block; }
+  .dc-item.pop { animation: rrPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+  /* guardian departing: march in, then stride into the portal */
+  .rr-guardian.mood-depart { animation: rrArrive 0.6s ease both, dcDepart 1.4s ease-in 0.3s forwards; }
+  @keyframes dcDepart { 0% { transform: translateX(0) scale(1); opacity: 1; } 100% { transform: translateX(0) scale(0.3); opacity: 0; } }
   .explore-btn { display: flex; align-items: center; gap: 12px; text-decoration: none;
     background: linear-gradient(135deg, #2a4a6e, #1e3450); border: 1px solid rgba(120,170,220,0.4);
     border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; color: var(--ink);
@@ -6947,6 +6974,98 @@ function BattleOverlay(props) {
 /* ---------------- raid return celebration (W2.6) ---------------- */
 // A magical 5-10s reveal of the rewards the guardian ACTUALLY earned. No combat replay —
 // it celebrates real raid data (gold/xp/drops) with the real guardian art. Fully skippable.
+// ==== W2.7 DEPARTURE CEREMONY DATA ====
+// Per-dungeon flavor for the send-off (Sol's call + difficulty + what might be found).
+// Difficulty/loot ranges are derived from the REAL dungeon def — no fake numbers.
+const RAID_FLAVOR = {
+  dgn_glade:  { scene: 'the Whispering Glade', call: 'A whisper from the Whispering Glade has reached us. Something gentle waits among the ferns…', advice: 'The glade is calm today. A brave Guardian may find a quiet treasure.', stars: 1 },
+  dgn_tide:   { scene: 'the Tide Caverns', call: 'The tide has pulled back, revealing the Tide Caverns. Secrets glimmer in the dark…', advice: 'The waters are kind right now. Step carefully and the sea may share its gifts.', stars: 2 },
+  dgn_ember:  { scene: 'Ember Hollow', call: 'A warm glow rises from Ember Hollow. The embers are whispering of treasure…', advice: 'The Hollow is restless but rewarding. A bold heart will be rewarded.', stars: 3 },
+  dgn_sky:    { scene: 'the Sky Bastion', call: 'High above the clouds, the Sky Bastion calls. The winds carry a promise…', advice: 'The skies favor the patient. This is a long and wondrous journey.', stars: 4 },
+  dgn_void:   { scene: 'the Voidwalk Ruins', call: 'From the deepest dark, the Voidwalk Ruins stir. Ancient power sleeps there…', advice: 'The Ruins are not for the faint of heart, but the bravest find legends.', stars: 5 },
+};
+function flavorOf(defId) {
+  return RAID_FLAVOR[defId] || { scene: 'a faraway land', call: 'A distant land is calling your Guardian on an adventure…', advice: 'A brave Guardian may find wonderful things.', stars: 2 };
+}
+
+// PREVIEW: shown when the child taps "Set out" — they choose an adventure, not press a timer.
+function DeparturePreview(props) {
+  var def = props.def, fl = flavorOf(def.id);
+  var stars = '';
+  for (var i = 0; i < 5; i++) stars += (i < fl.stars) ? '\u2B50' : '\u2606';
+  return (
+    <div className="raid-return depart-preview">
+      <button className="rr-skip" onClick={props.onCancel}>Back</button>
+      <div className="dp-art">
+        <Art srcs={[def.id.replace('dgn_', 'dungeon-') + '.jpg']} emoji="🗺️" alt={def.name} />
+      </div>
+      <div className="dp-title">{def.name}</div>
+      <div className="dp-stars">{stars}</div>
+      <div className="dp-row">⏳ Journey time: {def.durationMin} minutes</div>
+      <div className="dp-row">⚡ Energy: {props.energyCost}</div>
+      <div className="dp-discoveries">
+        <div className="dp-d-title">✨ Possible Discoveries</div>
+        <div className="dp-d-item">💰 {def.gold[0]}–{def.gold[1]} Gold</div>
+        <div className="dp-d-item">⭐ {def.xp[0]}–{def.xp[1]} Guardian XP</div>
+        <div className="dp-d-item">🎁 Hidden treasures await</div>
+      </div>
+      <div className="dp-advice">🔥 “{fl.advice}”</div>
+      <button className="sol-cta dp-go" onClick={props.onBegin}>Begin the Journey ✦</button>
+    </div>
+  );
+}
+
+// CEREMONY: the 3-5s send-off scene, then the real raid starts.
+function DepartureCeremony(props) {
+  var def = props.def, fl = flavorOf(def.id);
+  var STAGES = ['call', 'ready', 'pack', 'depart', 'done'];
+  var _a = useState(0); var idx = _a[0]; var setIdx = _a[1];
+  var stage = STAGES[idx];
+
+  useEffect(function () {
+    if (stage === 'call') Voice.speak(fl.call);
+    if (stage === 'ready') { Sfx.sparkle && Sfx.sparkle(); Voice.speak('Your Guardian is ready for the journey.'); }
+    if (stage === 'pack') { Sfx.coin && Sfx.coin(); }
+    if (stage === 'depart') { Sfx.gate && Sfx.gate(); }
+    if (stage === 'done') { props.onComplete(); return; } // hand off to the real raid start
+    var dur = stage === 'call' ? 2400 : stage === 'depart' ? 1600 : 1300;
+    var id = setTimeout(function () { setIdx(function (s) { return Math.min(s + 1, STAGES.length - 1); }); }, dur);
+    return function () { clearTimeout(id); };
+  }, [idx]);
+
+  function skip() { Voice.stop(); props.onComplete(); }
+  var passed = function (n) { return STAGES.indexOf(n) <= idx; };
+
+  return (
+    <div className="raid-return depart-cere">
+      <button className="rr-skip" onClick={skip}>Skip ›</button>
+      <div className="dc-scene">{def.name}</div>
+
+      {/* portal + guardian, marching in then walking through */}
+      <div className="rr-portal">
+        <div className="rr-portal-glow" />
+        <div className={'rr-guardian ' + (passed('depart') ? 'mood-depart' : 'mood-happy')}>
+          <Art srcs={stageArt(props.g.species, props.g.level)} emoji={speciesOf(props.g.species).emoji} alt={props.g.name} />
+        </div>
+      </div>
+
+      <div className="rr-sol">🔥 {fl.call}</div>
+
+      {passed('ready') && <div className="dc-line pop">🛡 {props.g.name} is ready for the journey!</div>}
+
+      {passed('pack') && (
+        <div className="dc-pack">
+          <span className="dc-item pop" style={{ animationDelay: '0s' }}>🍎</span>
+          <span className="dc-item pop" style={{ animationDelay: '0.15s' }}>🧭</span>
+          <span className="dc-item pop" style={{ animationDelay: '0.3s' }}>💎</span>
+        </div>
+      )}
+
+      {passed('depart') && <div className="dc-line pop">✨ Into {fl.scene} they go…</div>}
+    </div>
+  );
+}
+
 const RAID_MEMORIES = [
   'The Guardian crossed misty hills and found a hidden crystal cave.',
   'A friendly forest spirit guided the Guardian to ancient treasures.',
@@ -7067,6 +7186,7 @@ function RaidsScreen(props) {
   const g = state.guardian;
   const [battle, setBattle] = useState(null);
   const [celebrate, setCelebrate] = useState(null); // {def, result, leveledUp} for the return party
+  const [depart, setDepart] = useState(null); // {def, energyCost, phase:'preview'|'ceremony'} send-off
   const view = S.selectDungeonView(state);
   const active = view.find(function (d) { return d.isActive; });
   const run = S.selectActiveRun(state);
@@ -7138,7 +7258,7 @@ function RaidsScreen(props) {
                 </div>
                 {!d.isActive && d.unlocked && !d.blocked && (
                   <button className="mini go" disabled={!canStart}
-                    onClick={async function () { const r = await props.store.dispatch(A.startDungeon(d.def.id)); if (r.ok) Sfx.raid(); }}>
+                    onClick={function () { if (canStart) setDepart({ def: d.def, energyCost: d.energyCost, phase: 'preview' }); }}>
                     {g && g.energy < d.energyCost ? 'Need ' + d.energyCost + '⚡' : 'Set out'}
                   </button>
                 )}
@@ -7160,6 +7280,20 @@ function RaidsScreen(props) {
       {celebrate && g && (
         <RaidReturn g={g} def={celebrate.def} result={celebrate.result} leveledUp={celebrate.leveledUp}
           itemsById={state.itemsById} onClose={function () { setCelebrate(null); }} />
+      )}
+      {depart && depart.phase === 'preview' && g && (
+        <DeparturePreview def={depart.def} energyCost={depart.energyCost}
+          onCancel={function () { setDepart(null); }}
+          onBegin={function () { setDepart({ def: depart.def, energyCost: depart.energyCost, phase: 'ceremony' }); }} />
+      )}
+      {depart && depart.phase === 'ceremony' && g && (
+        <DepartureCeremony g={g} def={depart.def}
+          onComplete={async function () {
+            var defId = depart.def.id;
+            setDepart(null);
+            var r = await props.store.dispatch(A.startDungeon(defId));
+            if (r && r.ok) Sfx.raid();
+          }} />
       )}
     </React.Fragment>
   );
@@ -7903,7 +8037,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W2.6 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W2.7 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

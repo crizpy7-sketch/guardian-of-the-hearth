@@ -501,14 +501,14 @@
 
   /* ===== W3.1 BIG VOICE BUTTON (non-reader discoverability) ===== */
   .talk-to-guardian { display: flex; align-items: center; justify-content: center; gap: 10px;
-    margin: 4px auto 12px; padding: 14px 26px; border: none; border-radius: 999px; cursor: pointer;
-    background: linear-gradient(135deg, #ffb14e, #e8853d); color: #1a1410; font-weight: 800;
-    font-family: var(--display); font-size: 19px; box-shadow: 0 5px 20px rgba(232,133,61,0.6);
-    animation: ttgPulse 1.5s ease-in-out infinite; }
+    margin: 4px auto 12px; padding: 13px 24px; border: none; border-radius: 999px; cursor: pointer;
+    background: linear-gradient(135deg, #f0a04a, #d97b35); color: #1a1410; font-weight: 800;
+    font-family: var(--display); font-size: 18px; box-shadow: 0 3px 12px rgba(232,133,61,0.35);
+    animation: ttgPulse 2.6s ease-in-out infinite; }
   .talk-to-guardian:active { transform: scale(0.97); }
   @keyframes ttgPulse {
-    0%,100% { transform: scale(1); box-shadow: 0 5px 20px rgba(232,133,61,0.55); }
-    50% { transform: scale(1.05); box-shadow: 0 7px 28px rgba(255,180,80,0.9); }
+    0%,100% { transform: scale(1); box-shadow: 0 3px 12px rgba(232,133,61,0.3); }
+    50% { transform: scale(1.025); box-shadow: 0 4px 16px rgba(255,180,80,0.5); }
   }
   .ttg-icon { font-size: 24px; animation: ttgWiggle 2s ease-in-out infinite; }
   @keyframes ttgWiggle { 0%,90%,100% { transform: rotate(0deg); } 93% { transform: rotate(-12deg); } 96% { transform: rotate(12deg); } }
@@ -6384,7 +6384,7 @@ function ChildShell(props) {
   const state = props.state;
   const store = props.store;
   // LIVE GUIDANCE: what should glow right now for a brand-new player (null once they've acted)
-  const guide = guideStep(state, props.tab);
+  const guide = priorityGlow(state, props.tab); // single source: only ONE thing glows, by priority
 
   // W2.5 IDLE NUDGE: if the child pauses during guidance, gently wiggle the glowing target.
   // Repeats every few seconds while idle so a distracted child is re-invited to tap.
@@ -6549,15 +6549,15 @@ function ChildShell(props) {
         <main className="shell-main" key={props.tab + (state.activeChildId || '')}>
           {props.tab === 'home' && <HomeScreen store={store} state={state} setTab={props.setTab} guide={guide} />}
           {props.tab === 'quests' && <QuestsScreen store={store} state={state} guide={guide} />}
-          {props.tab === 'raids' && <RaidsScreen store={store} state={state} />}
+          {props.tab === 'raids' && <RaidsScreen store={store} state={state} guide={guide} />}
           {props.tab === 'island' && <IslandScreen store={store} state={state} />}
-          {props.tab === 'bag' && <BagScreen store={store} state={state} />}
+          {props.tab === 'bag' && <BagScreen store={store} state={state} guide={guide} />}
         </main>
       </div>
       <nav className="tabbar">
         {TABS.map(function (t) {
           return (
-            <button key={t.id} className={'tab' + (props.tab === t.id ? ' on' : '') + ((guide === 'quests-tab' && t.id === 'quests') ? ' guide-glow' : '') + ((guide === 'home-tab' && t.id === 'home') ? ' guide-glow' : '')}
+            <button key={t.id} className={'tab' + (props.tab === t.id ? ' on' : '') + (((guide === 'quests-tab' && t.id === 'quests') || (guide === 'home-tab' && t.id === 'home') || (guide === 'raids-tab' && t.id === 'raids') || (guide === 'bag-tab' && t.id === 'bag')) ? ' guide-glow' : '')}
               onClick={function () { props.setTab(t.id); }}>
               <span className="ti">{t.ti}</span>{t.label}
               {t.id === 'quests' && pendingCount > 0 && <span className="dot">{pendingCount}</span>}
@@ -6588,27 +6588,50 @@ const BOND_TAPS_NEEDED = 3;
 function getBondTaps() { try { return parseInt(localStorage.getItem(BOND_TAPS_KEY) || '0', 10) || 0; } catch (e) { return 0; } }
 function addBondTap() { try { localStorage.setItem(BOND_TAPS_KEY, String(getBondTaps() + 1)); } catch (e) {} }
 
+// ===== W3.3 SINGLE PRIORITY RESOLVER =====
+// The ONE brain that decides what (if anything) should glow right now. Returns a single
+// target so only ONE thing is ever highlighted. Strict priority order (spec):
+//   1) Raid ready to claim  2) Crate ready to open  3) Mission flow (onboarding)  4) bond/play
+// LEVEL 1 things (guardian, voice button) are always soft and never returned here.
+function priorityGlow(state, tab) {
+  if (!state) return null;
+  // --- LEVEL 3 URGENT: a raid has returned and is waiting to be claimed (highest priority) ---
+  try {
+    var run = S.selectActiveRun(state);
+    if (run && state.now >= run.endsAt) {
+      // raid is claimable — point to the Raids tab (or its claim button if already there)
+      return (tab === 'raids') ? 'raid-claim' : 'raids-tab';
+    }
+  } catch (e) {}
+  // --- LEVEL 3 URGENT: a loot crate is waiting to be opened ---
+  if (state.crates && state.crates > 0) {
+    return (tab === 'bag') ? 'crate-open' : 'bag-tab';
+  }
+  // --- LEVEL 2: onboarding mission flow (only for the very first, not-yet-engaged hero) ---
+  return guideStep(state, tab);
+}
+
+// Onboarding mission guidance (play-first → mission → transition). Only fires for a brand-new
+// hero; once they've engaged it returns null and the priority resolver falls through to nothing.
 function guideStep(state, tab) {
   if (!state || coachDone()) return null;
   const kids = (state.users || []).filter(function (u) { return u.role === 'CHILD'; });
   if (kids.length > 1) return null; // only guide the very first hero
-  // "I DID IT" TRANSITION: right after a mission, bridge the child BACK to their guardian
-  // (a continuation, never a dead-end). The flag clears once they're home with the guardian.
+  // "I DID IT" TRANSITION: right after a mission, bridge the child BACK to their guardian.
   try {
     if (sessionStorage.getItem('goth.justDidMission.v1') === '1') {
       if (tab === 'home') { sessionStorage.removeItem('goth.justDidMission.v1'); return 'pet-guardian'; }
       return 'home-tab';
     }
   } catch (e) {}
-  // already acted on a mission (and past the transition)? guidance is fully done.
   const submittedEver = (state.pending && state.pending.length > 0);
   const anyDone = state.questBoard && state.questBoard.some(function (b) { return b.remainingToday < b.quest.maxPerDay; });
   if (submittedEver || anyDone) return null;
-  // PLAY FIRST: until the child has bonded with the guardian, guide them to the guardian.
+  // PLAY FIRST: until bonded, guide to the guardian.
   if (getBondTaps() < BOND_TAPS_NEEDED) {
     return (tab === 'home') ? 'pet-guardian' : 'home-tab';
   }
-  // bonded! NOW gently introduce the first mission.
+  // bonded! introduce the first mission.
   if (tab !== 'quests') return 'quests-tab';
   return 'first-quest';
 }
@@ -7201,7 +7224,7 @@ function DepartureCeremony(props) {
 
   useEffect(function () {
     if (stage === 'call') Voice.speak(fl.call);
-    if (stage === 'ready') { Sfx.sparkle && Sfx.sparkle(); Voice.speak('Your Guardian is ready for the journey.'); }
+    if (stage === 'ready') { Sfx.sparkle && Sfx.sparkle(); Voice.speak((props.g ? props.g.name : 'Your Guardian') + ' says: I am going on an adventure to gather materials to build our home!'); }
     if (stage === 'pack') { Sfx.coin && Sfx.coin(); }
     if (stage === 'depart') { Sfx.gate && Sfx.gate(); }
     if (stage === 'done') { props.onComplete(); return; } // hand off to the real raid start
@@ -7296,7 +7319,7 @@ function RaidReturn(props) {
     if (stage === 'gold' && result.gold) { Sfx.coin && Sfx.coin(); }
     if (stage === 'xp' && result.xp) { Sfx.magic && Sfx.magic(); }
     if (stage && stage.indexOf('drop') === 0) { Sfx.chest && Sfx.chest(); }
-    if (stage === 'reaction') { Sfx.victory && Sfx.victory(); }
+    if (stage === 'reaction') { Sfx.victory && Sfx.victory(); Voice.speak('We are building our home together! Thank you!'); }
     if (stage === 'done') return; // wait for the button
     var dur = stage === 'arrival' ? 1900 : stage === 'memory' ? 2600 : 1300;
     var id = setTimeout(function () { setStageIdx(function (s) { return Math.min(s + 1, STAGES.length - 1); }); }, dur);
@@ -7412,7 +7435,7 @@ function RaidsScreen(props) {
             {active.claimable && (
               <React.Fragment>
                 <p className="note" style={{ margin: '0 0 10px' }}>The satchel is heavy with treasure…</p>
-                <button className="btn primary pulse" style={{ width: '100%' }}
+                <button className={"btn primary pulse" + (props.guide === "raid-claim" ? " guide-glow" : "")} style={{ width: '100%' }}
                   onClick={function () { setBattle({ def: active.def, runId: active.runId }); }}>
                   ⚔️ Fight for the haul!
                 </button>
@@ -7600,7 +7623,7 @@ function IslandScreen(props) {
             <div style={{ fontWeight: 600 }}>Mystery Loot Crates</div>
             <div className="note" style={{ margin: 0 }}>{state.crates} waiting to be opened</div>
           </div>
-          <button className="mini go" disabled={state.crates === 0}
+          <button className={"mini go" + (props.guide === "crate-open" ? " guide-glow" : "")} disabled={state.crates === 0}
             onClick={function () { props.store.dispatch(A.openCrate()); }}>
             Open one
           </button>
@@ -8279,7 +8302,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W3.2 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W3.3 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

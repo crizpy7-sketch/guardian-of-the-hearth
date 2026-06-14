@@ -330,6 +330,55 @@
   .tut-coach .tc-check { color: #cfe3cf; font-size: 14px; margin: 3px 0; }
   .tut-coach .tc-waiting { margin-top: 10px; color: #ffd98a; font-size: 15px; font-weight: 700; animation: tcBob 1s ease-in-out infinite; }
   @keyframes tcBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+  /* ===== live guidance glow (plan B): draws a kid's eye to the next tap ===== */
+  .guide-glow { position: relative; animation: guideGlow 1.25s ease-in-out infinite; z-index: 5; }
+  @keyframes guideGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(232,133,61,0.0), 0 0 10px 2px rgba(255,180,70,0.55); transform: scale(1); }
+    50% { box-shadow: 0 0 0 5px rgba(255,200,90,0.55), 0 0 22px 6px rgba(255,180,70,0.95); transform: scale(1.05); }
+  }
+  .tab.guide-glow { border-radius: 14px; }
+
+  /* ===== W2.5 FOCUS LOCK: while guiding, dim + disable everything except the glowing target ===== */
+  /* dim interactive controls inside the focused shell... */
+  .shell.focus-mode button,
+  .shell.focus-mode .q-card,
+  .shell.focus-mode input,
+  .shell.focus-mode .hdr-kid {
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity 280ms ease;
+  }
+  /* ...but the glowing target (and its row/card) stays fully bright + clickable */
+  .shell.focus-mode .guide-glow,
+  .shell.focus-mode .guide-glow * {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  /* keep the whole quest card of the glowing button readable + tappable */
+  .shell.focus-mode .q-card:has(.guide-glow) {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  /* the tab bar stays usable so the child can still reach the glowing tab */
+  .shell.focus-mode .tabbar,
+  .shell.focus-mode .tabbar .tab {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  /* non-target tabs are gently dimmed (but still tappable) to pull the eye to the glow */
+  .shell.focus-mode .tabbar .tab:not(.guide-glow) {
+    opacity: 0.55;
+  }
+
+  /* ===== W2.5 IDLE NUDGE: a gentle wiggle on the glowing target when the child pauses ===== */
+  .guide-glow.idle-nudge {
+    animation: guideGlow 1.25s ease-in-out infinite, idleWiggle 0.6s ease-in-out 2;
+  }
+  @keyframes idleWiggle {
+    0%, 100% { transform: rotate(0deg) scale(1.05); }
+    25% { transform: rotate(-4deg) scale(1.08); }
+    75% { transform: rotate(4deg) scale(1.08); }
+  }
   .explore-btn { display: flex; align-items: center; gap: 12px; text-decoration: none;
     background: linear-gradient(135deg, #2a4a6e, #1e3450); border: 1px solid rgba(120,170,220,0.4);
     border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; color: var(--ink);
@@ -5868,10 +5917,7 @@ function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'
 function SolWelcome(props) {
   // a sequence of "beats" — Sol speaks each, child taps the glowing button to continue.
   const BEATS = [
-    { text: 'Hello, little Guardian. I have been waiting for you.', btn: 'Hello! \uD83D\uDC4B' },
-    { text: 'A magical world needs your kindness and your courage.', btn: 'Okay! \u2728' },
-    { text: 'My name is Sol. I am the Guardian of the Hearth, and I will be your friend.', btn: 'Hi Sol! \uD83D\uDD25' },
-    { text: 'Together we will light the First Flame and care for the dragons. Are you ready?', btn: 'Yes! Let\'s go! \uD83C\uDF1F' },
+    { text: 'Hi! I\'m Sol. Let\'s build your hero and start your adventure!', btn: 'Yes! Let\'s go! \uD83C\uDF1F' },
   ];
   const [beat, setBeat] = useState(0);
   const [shown, setShown] = useState(0);
@@ -6024,12 +6070,46 @@ function VoicePicker(props) {
 function ChildShell(props) {
   const state = props.state;
   const store = props.store;
-  const [showCoach, setShowCoach] = useState(function () {
+  // LIVE GUIDANCE: what should glow right now for a brand-new player (null once they've acted)
+  const guide = guideStep(state, props.tab);
+
+  // W2.5 IDLE NUDGE: if the child pauses during guidance, gently wiggle the glowing target.
+  useEffect(function () {
+    if (!guide) return; // only while actively guiding
+    var timer = null;
+    function wiggle() {
+      var el = document.querySelector('.guide-glow');
+      if (!el) return;
+      el.classList.add('idle-nudge');
+      setTimeout(function () { if (el) el.classList.remove('idle-nudge'); }, 1300);
+    }
+    function arm() {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(wiggle, 4000); // 4s of stillness -> one gentle nudge
+    }
+    function onAny() { arm(); } // any interaction resets the idle timer
+    arm();
+    document.addEventListener('pointerdown', onAny, true);
+    document.addEventListener('keydown', onAny, true);
+    return function () {
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('pointerdown', onAny, true);
+      document.removeEventListener('keydown', onAny, true);
+      var el = document.querySelector('.guide-glow.idle-nudge');
+      if (el) el.classList.remove('idle-nudge');
+    };
+  }, [guide, props.tab]);
+  // once the child has engaged (guidance resolves to null because they submitted a quest),
+  // permanently mark guidance done so the glow never returns.
+  useEffect(function () {
     try {
-      const kids = S.selectChildren(state);
-      return solTutorialDone() && !coachDone() && kids.length <= 1;
-    } catch (e) { return false; }
-  });
+      if (!coachDone() && solTutorialDone()) {
+        const submitted = (state.pending && state.pending.length > 0);
+        const anyDone = state.questBoard && state.questBoard.some(function (b) { return b.remainingToday < b.quest.maxPerDay; });
+        if (submitted || anyDone) markCoachDone();
+      }
+    } catch (e) {}
+  }, [state.pending && state.pending.length]);
   const [holding, setHolding] = useState(false);
   const pressTimer = useRef(null);
   const [soundOn, setSoundOn] = useState(Sfx.isOn());
@@ -6119,7 +6199,7 @@ function ChildShell(props) {
       <div className={'screen-bg ' + (props.tab === 'raids' ? 'raids' : 'home')} />
       <div className="flicker" aria-hidden="true" />
       <div className="sparks" aria-hidden="true">{SPARKS}</div>
-      <div className="shell">
+      <div className={'shell' + (guide ? ' focus-mode' : '')}>
         <header className="hdr">
           <div className="hdr-title"
             onPointerDown={pressStart} onPointerUp={pressEnd}
@@ -6151,7 +6231,7 @@ function ChildShell(props) {
         </header>
         <main className="shell-main" key={props.tab + (state.activeChildId || '')}>
           {props.tab === 'home' && <HomeScreen store={store} state={state} setTab={props.setTab} />}
-          {props.tab === 'quests' && <QuestsScreen store={store} state={state} />}
+          {props.tab === 'quests' && <QuestsScreen store={store} state={state} guide={guide} />}
           {props.tab === 'raids' && <RaidsScreen store={store} state={state} />}
           {props.tab === 'island' && <IslandScreen store={store} state={state} />}
           {props.tab === 'bag' && <BagScreen store={store} state={state} />}
@@ -6160,7 +6240,7 @@ function ChildShell(props) {
       <nav className="tabbar">
         {TABS.map(function (t) {
           return (
-            <button key={t.id} className={'tab' + (props.tab === t.id ? ' on' : '')}
+            <button key={t.id} className={'tab' + (props.tab === t.id ? ' on' : '') + ((guide === 'quests-tab' && t.id === 'quests') ? ' guide-glow' : '')}
               onClick={function () { props.setTab(t.id); }}>
               <span className="ti">{t.ti}</span>{t.label}
               {t.id === 'quests' && pendingCount > 0 && <span className="dot">{pendingCount}</span>}
@@ -6171,7 +6251,6 @@ function ChildShell(props) {
       {state.ui.gateRevealed && !state.session && <GateModal store={store} state={state} />}
       {state.ui.celebration && <Celebration store={store} state={state} />}
       {state.ui.toast && <div className={'toast ' + (state.ui.toast.kind === 'ok' ? 'ok' : 'bad')}>{state.ui.toast.text}</div>}
-      {showCoach && <TutorialCoach tab={props.tab} setTab={props.setTab} state={state} onDone={function () { setShowCoach(false); }} />}
     </React.Fragment>
   );
 }
@@ -6180,6 +6259,22 @@ function ChildShell(props) {
 const COACH_KEY = 'goth.coach.firstmission.v1';
 function coachDone() { try { return localStorage.getItem(COACH_KEY) === '1'; } catch (e) { return false; } }
 function markCoachDone() { try { localStorage.setItem(COACH_KEY, '1'); } catch (e) {} }
+
+// ---- LIVE GUIDANCE (plan B): glow the next thing to tap, inside the real game ----
+// Returns what to highlight RIGHT NOW for a brand-new player, or null once they've engaged.
+// A kid follows a glowing button instinctively — no overlay, no reading required.
+function guideStep(state, tab) {
+  if (!state || coachDone()) return null;
+  const kids = (state.users || []).filter(function (u) { return u.role === 'CHILD'; });
+  if (kids.length > 1) return null; // only guide the very first hero
+  // has the child ever submitted a quest? (pending now OR any progress today)
+  const submittedEver = (state.pending && state.pending.length > 0);
+  const anyDone = state.questBoard && state.questBoard.some(function (b) { return b.remainingToday < b.quest.maxPerDay; });
+  if (submittedEver || anyDone) return null; // they've acted — guidance done, mark it
+  // not on quests yet? glow the Quests tab. On quests? glow the first "I did it!".
+  if (tab !== 'quests') return 'quests-tab';
+  return 'first-quest';
+}
 
 function TutorialCoach(props) {
   // INTERACTIVE, action-first onboarding. Sol gives ONE instruction at a time, the child
@@ -6525,6 +6620,13 @@ function QuestsScreen(props) {
     if (!groups[c]) groups[c] = [];
     groups[c].push(b);
   });
+  // GUIDANCE: when guiding a new player, find the first quest they can tap so we can glow it.
+  var firstAvailQ = null;
+  if (props.guide === 'first-quest') {
+    for (var gi = 0; gi < state.questBoard.length; gi++) {
+      if (state.questBoard[gi].remainingToday > 0) { firstAvailQ = state.questBoard[gi].quest.id; break; }
+    }
+  }
   return (
     <React.Fragment>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
@@ -6575,7 +6677,7 @@ function QuestsScreen(props) {
                       {pc > 0 && <span className="sent-chip">✉️ {pc} with the Keeper</span>}
                     </div>
                   </span>
-                  <button className={'mini ' + (J.ok[b.quest.id] ? 'sentok' : 'go')}
+                  <button className={'mini ' + (J.ok[b.quest.id] ? 'sentok' : 'go') + ((firstAvailQ === b.quest.id && !J.ok[b.quest.id]) ? ' guide-glow' : '')}
                     style={spent ? { opacity: 0.65 } : null}
                     onClick={function (e) {
                       if (spent) {
@@ -7634,7 +7736,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W2.3 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W2.5 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

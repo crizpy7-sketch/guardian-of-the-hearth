@@ -6230,7 +6230,7 @@ function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'
 function SolWelcome(props) {
   // a sequence of "beats" — Sol speaks each, child taps the glowing button to continue.
   const BEATS = [
-    { text: 'Hi! I\'m Sol. Let\'s build your hero and start your adventure!', btn: 'Yes! Let\'s go! \uD83C\uDF1F' },
+    { text: 'Welcome, little Guardian! Let\'s create your hero and choose your magical friend!', btn: 'Yes! Let\'s go! \uD83C\uDF1F' },
   ];
   const [beat, setBeat] = useState(0);
   const [shown, setShown] = useState(0);
@@ -6286,7 +6286,11 @@ function Onboarding(props) {
     setBusy(true);
     const r = await props.store.dispatch(A.createChild(name.trim(), avatar, petName.trim() || speciesOf(species).pet, species));
     setBusy(false);
-    if (r.ok) props.onDone();
+    if (r.ok) {
+      // STEP 3: emotional first meeting — the guardian and child are now friends.
+      try { Voice.speak('You and your ' + (petName.trim() || speciesOf(species).pet) + ' are now friends! Let\'s go play together!'); } catch (e) {}
+      props.onDone();
+    }
   }
   return (
     <React.Fragment>
@@ -6595,11 +6599,18 @@ function addBondTap() { try { localStorage.setItem(BOND_TAPS_KEY, String(getBond
 // LEVEL 1 things (guardian, voice button) are always soft and never returned here.
 function priorityGlow(state, tab) {
   if (!state) return null;
+  // === FIRST-TIME PLAYER OVERRIDE ===
+  // A brand-new child must bond with their guardian FIRST. While onboarding guidance is
+  // active, it OVERRIDES the normal raid/crate priority — so the satchel never glows before
+  // the child has met and played with their guardian. (Starter grant gives crates, which
+  // previously lit the satchel on the very first screen — exactly the bug to prevent.)
+  var onboarding = guideStep(state, tab);
+  if (onboarding) return onboarding;
+  // === NORMAL GAMEPLAY PRIORITY (only once the child has bonded + done a first mission) ===
   // --- LEVEL 3 URGENT: a raid has returned and is waiting to be claimed (highest priority) ---
   try {
     var run = S.selectActiveRun(state);
     if (run && state.now >= run.endsAt) {
-      // raid is claimable — point to the Raids tab (or its claim button if already there)
       return (tab === 'raids') ? 'raid-claim' : 'raids-tab';
     }
   } catch (e) {}
@@ -6607,8 +6618,7 @@ function priorityGlow(state, tab) {
   if (state.crates && state.crates > 0) {
     return (tab === 'bag') ? 'crate-open' : 'bag-tab';
   }
-  // --- LEVEL 2: onboarding mission flow (only for the very first, not-yet-engaged hero) ---
-  return guideStep(state, tab);
+  return null;
 }
 
 // Onboarding mission guidance (play-first → mission → transition). Only fires for a brand-new
@@ -8302,7 +8312,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W3.3 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W3.4 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

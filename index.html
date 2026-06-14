@@ -5579,6 +5579,12 @@ function useQuestJuice(store) {
     const r = await store.dispatch(A.submitQuest(q.id));
     if (!r.ok) return;
     setTick(function (t) { return t + 1; });
+    // "I did it" is a BRIDGE, not a stop: guardian celebrates aloud + we mark a continuation
+    // so the glow returns to the guardian instead of leaving the child on a dead screen.
+    try {
+      Voice.speak('Yay! You did it! Thank you for helping me!');
+      sessionStorage.setItem('goth.justDidMission.v1', '1');
+    } catch (e) {}
     if (from) {
       const f = {
         id: Date.now() + Math.random(), x: from.x, y: from.y,
@@ -6541,7 +6547,7 @@ function ChildShell(props) {
           </span>
         </header>
         <main className="shell-main" key={props.tab + (state.activeChildId || '')}>
-          {props.tab === 'home' && <HomeScreen store={store} state={state} setTab={props.setTab} />}
+          {props.tab === 'home' && <HomeScreen store={store} state={state} setTab={props.setTab} guide={guide} />}
           {props.tab === 'quests' && <QuestsScreen store={store} state={state} guide={guide} />}
           {props.tab === 'raids' && <RaidsScreen store={store} state={state} />}
           {props.tab === 'island' && <IslandScreen store={store} state={state} />}
@@ -6551,7 +6557,7 @@ function ChildShell(props) {
       <nav className="tabbar">
         {TABS.map(function (t) {
           return (
-            <button key={t.id} className={'tab' + (props.tab === t.id ? ' on' : '') + ((guide === 'quests-tab' && t.id === 'quests') ? ' guide-glow' : '')}
+            <button key={t.id} className={'tab' + (props.tab === t.id ? ' on' : '') + ((guide === 'quests-tab' && t.id === 'quests') ? ' guide-glow' : '') + ((guide === 'home-tab' && t.id === 'home') ? ' guide-glow' : '')}
               onClick={function () { props.setTab(t.id); }}>
               <span className="ti">{t.ti}</span>{t.label}
               {t.id === 'quests' && pendingCount > 0 && <span className="dot">{pendingCount}</span>}
@@ -6574,15 +6580,35 @@ function markCoachDone() { try { localStorage.setItem(COACH_KEY, '1'); } catch (
 // ---- LIVE GUIDANCE (plan B): glow the next thing to tap, inside the real game ----
 // Returns what to highlight RIGHT NOW for a brand-new player, or null once they've engaged.
 // A kid follows a glowing button instinctively — no overlay, no reading required.
+// PLAY-FIRST bonding gate: a non-reader should bond with the guardian BEFORE any mission
+// is suggested. We count guardian taps; until they've played a few times, guidance points
+// at the GUARDIAN (not missions). Only after bonding does the mission-glow appear.
+const BOND_TAPS_KEY = 'goth.bondTaps.v1';
+const BOND_TAPS_NEEDED = 3;
+function getBondTaps() { try { return parseInt(localStorage.getItem(BOND_TAPS_KEY) || '0', 10) || 0; } catch (e) { return 0; } }
+function addBondTap() { try { localStorage.setItem(BOND_TAPS_KEY, String(getBondTaps() + 1)); } catch (e) {} }
+
 function guideStep(state, tab) {
   if (!state || coachDone()) return null;
   const kids = (state.users || []).filter(function (u) { return u.role === 'CHILD'; });
   if (kids.length > 1) return null; // only guide the very first hero
-  // has the child ever submitted a quest? (pending now OR any progress today)
+  // "I DID IT" TRANSITION: right after a mission, bridge the child BACK to their guardian
+  // (a continuation, never a dead-end). The flag clears once they're home with the guardian.
+  try {
+    if (sessionStorage.getItem('goth.justDidMission.v1') === '1') {
+      if (tab === 'home') { sessionStorage.removeItem('goth.justDidMission.v1'); return 'pet-guardian'; }
+      return 'home-tab';
+    }
+  } catch (e) {}
+  // already acted on a mission (and past the transition)? guidance is fully done.
   const submittedEver = (state.pending && state.pending.length > 0);
   const anyDone = state.questBoard && state.questBoard.some(function (b) { return b.remainingToday < b.quest.maxPerDay; });
-  if (submittedEver || anyDone) return null; // they've acted — guidance done, mark it
-  // not on quests yet? glow the Quests tab. On quests? glow the first "I did it!".
+  if (submittedEver || anyDone) return null;
+  // PLAY FIRST: until the child has bonded with the guardian, guide them to the guardian.
+  if (getBondTaps() < BOND_TAPS_NEEDED) {
+    return (tab === 'home') ? 'pet-guardian' : 'home-tab';
+  }
+  // bonded! NOW gently introduce the first mission.
   if (tab !== 'quests') return 'quests-tab';
   return 'first-quest';
 }
@@ -6710,6 +6736,7 @@ function HomeScreen(props) {
     Voice.speak((g ? g.name : 'Your friend') + ' says: ' + line);
   }
   function petTap() {
+    addBondTap(); // play-first: each tap builds the bond that unlocks mission guidance
     guardianSpeak(); // ALWAYS talk back — this is how a non-reader learns the dragon is alive
     if (hop || idle) return;
     const kind = reactRef.current % 3;
@@ -6735,7 +6762,7 @@ function HomeScreen(props) {
   return (
     <React.Fragment>
       <div className="card hero">
-        <div className="hero-art" onClick={petTap}>
+        <div className={"hero-art" + (props.guide === "pet-guardian" ? " guide-glow" : "")} onClick={petTap}>
           <div className={'pet-stage' + (hop ? ' hop' : '') + (idle ? ' ' + idle : '') + ' ' + homeMotion.cls}>
             <AnimArt frames={homeMotion.frames} fallback={homeMotion.fallback} fps={homeMotion.fps} fade={homeMotion.fade} emoji={sp.emoji} alt={sp.name} />
           </div>
@@ -8252,7 +8279,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W3.1 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W3.2 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

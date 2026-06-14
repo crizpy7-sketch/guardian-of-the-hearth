@@ -326,6 +326,10 @@
   .tut-coach .tc-text { color: #f5ead6; font-size: 17px; font-family: var(--display); margin-top: 4px; line-height: 1.4; }
   .tut-coach .tc-progress { font-size: 12px; color: rgba(232,133,61,0.85); font-weight: 700; margin-bottom: 2px; letter-spacing: 1px; }
   .tut-coach .tc-skip { display: block; margin: 10px auto 0; background: none; border: none; color: rgba(237,227,210,0.5); font-size: 13px; cursor: pointer; text-decoration: underline; }
+  .tut-coach .tc-checklist { margin: 10px 0 4px; text-align: left; display: inline-block; }
+  .tut-coach .tc-check { color: #cfe3cf; font-size: 14px; margin: 3px 0; }
+  .tut-coach .tc-waiting { margin-top: 10px; color: #ffd98a; font-size: 15px; font-weight: 700; animation: tcBob 1s ease-in-out infinite; }
+  @keyframes tcBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
   .explore-btn { display: flex; align-items: center; gap: 12px; text-decoration: none;
     background: linear-gradient(135deg, #2a4a6e, #1e3450); border: 1px solid rgba(120,170,220,0.4);
     border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; color: var(--ink);
@@ -6167,7 +6171,7 @@ function ChildShell(props) {
       {state.ui.gateRevealed && !state.session && <GateModal store={store} state={state} />}
       {state.ui.celebration && <Celebration store={store} state={state} />}
       {state.ui.toast && <div className={'toast ' + (state.ui.toast.kind === 'ok' ? 'ok' : 'bad')}>{state.ui.toast.text}</div>}
-      {showCoach && <TutorialCoach tab={props.tab} setTab={props.setTab} onDone={function () { setShowCoach(false); }} />}
+      {showCoach && <TutorialCoach tab={props.tab} setTab={props.setTab} state={state} onDone={function () { setShowCoach(false); }} />}
     </React.Fragment>
   );
 }
@@ -6178,96 +6182,120 @@ function coachDone() { try { return localStorage.getItem(COACH_KEY) === '1'; } c
 function markCoachDone() { try { localStorage.setItem(COACH_KEY, '1'); } catch (e) {} }
 
 function TutorialCoach(props) {
-  // An extensive, voice-guided tour. Sol switches to each tab and explains what it does,
-  // in simple words a 5-7 year old can follow. Child taps the big button to continue.
-  // tabIndex: which tab (1-5) to switch to + highlight for this step (null = no highlight).
+  // INTERACTIVE, action-first onboarding. Sol gives ONE instruction at a time, the child
+  // performs a REAL action (open Quests, tap "I did it!"), and the tutorial reacts to the
+  // actual game state. UX rules: one thing clickable, feedback on every action, always show
+  // the next goal, reward right after the action. Uses ONLY existing systems.
+  const state = props.state;
+  const pendingCount = state && state.pending ? state.pending.length : 0;
+
+  // Steps. Some are "talk" (tap Next), some are "do" (wait for a real action to advance).
+  // kind: 'talk' = button advances. 'goto' = waits until props.tab === want. 'act' = waits
+  // until a game condition is true (e.g. pendingCount increased).
   const STEPS = [
-    { tab: 'home', idx: 1, sol: '\uD83D\uDD25',
-      text: 'This is your Hearth — your cozy home. Your guardian friend lives here with you!',
-      speak: 'This is your Hearth. Your cozy home. Your guardian friend lives here with you!',
+    { kind: 'talk', tab: 'home', idx: 1, sol: '\uD83D\uDD25',
+      text: 'This is your Hearth. Everything you do here helps your guardian grow!',
+      speak: 'This is your Hearth! Everything you do here, helps your guardian grow.',
+      btn: 'Okay! \u2192' },
+    { kind: 'goto', want: 'quests', idx: 2, sol: '\u2B50',
+      text: 'Tap the Quests button to see your good deeds!',
+      speak: 'Tap the Quests button, to see your good deeds!' },
+    { kind: 'talk', tab: 'quests', idx: 2, sol: '\u2B50',
+      text: 'These are real-life quests — like brushing your teeth or being kind.',
+      speak: 'These are real life quests! Like brushing your teeth, or being kind.',
       btn: 'Next \u2192' },
-    { tab: 'home', idx: 1, sol: '\uD83D\uDC09',
-      text: 'Take care of your guardian and watch them grow. Tap them anytime to say hello!',
-      speak: 'Take care of your guardian, and watch them grow! Tap them any time, to say hello.',
-      btn: 'Got it! \u2192' },
-    { tab: 'quests', idx: 2, sol: '\u2B50',
-      text: 'These are your Quests — real-life good deeds! Brush your teeth, do homework, be kind.',
-      speak: 'These are your Quests. Real life good deeds! Brush your teeth, do your homework, and be kind.',
-      btn: 'Next \u2192' },
-    { tab: 'quests', idx: 2, sol: '\u2728',
-      text: 'When you finish a quest in real life, tap it here. A grown-up says yes, and you earn rewards!',
-      speak: 'When you finish a quest, in real life, tap it here! A grown up says yes, and you earn rewards.',
-      btn: 'Cool! \u2192' },
-    { tab: 'raids', idx: 3, sol: '\uD83D\uDDFA\uFE0F',
-      text: 'This is the Raids map! Send your guardian on a brave adventure to find treasure.',
-      speak: 'This is the Raids map! Send your guardian, on a brave adventure, to find treasure!',
-      btn: 'Next \u2192' },
-    { tab: 'raids', idx: 3, sol: '\uD83D\uDD25',
-      text: 'Adventures use energy. You get energy from finishing your real-life quests!',
-      speak: 'Adventures use energy. You get energy, from finishing your real life quests!',
-      btn: 'I see! \u2192' },
-    { tab: 'island', idx: 4, sol: '\uD83C\uDFDD\uFE0F',
-      text: 'This is your magical Island! Walk around and meet dragon friends who live here.',
-      speak: 'This is your magical Island! Walk around, and meet dragon friends, who live here.',
+    { kind: 'act', want: 'pending', sol: '\u2728',
+      text: 'When you do one for real, tap "I did it!" on that quest. Try one now!',
+      speak: 'When you do one, for real, tap, I did it, on that quest. Try one now!' },
+    { kind: 'talk', tab: 'quests', idx: 2, sol: '\uD83C\uDF89',
+      text: 'You did it! Now a grown-up checks it and says yes. That gives your guardian energy!',
+      speak: 'You did it! Now a grown up checks it, and says yes. That gives your guardian, energy!',
       btn: 'Wow! \u2192' },
-    { tab: 'island', idx: 4, sol: '\uD83D\uDC09',
-      text: 'Tap "Explore Island Mode" to walk around. Talk to the dragons and become best friends!',
-      speak: 'Tap, Explore Island Mode, to walk around. Talk to the dragons, and become best friends!',
-      btn: 'Yay! \u2192' },
-    { tab: 'bag', idx: 5, sol: '\uD83C\uDF92',
-      text: 'This is your Treasure Bag! All the shiny things you find are kept safe in here.',
-      speak: 'This is your Treasure Bag! All the shiny things you find, are kept safe, in here.',
+    { kind: 'talk', tab: 'home', idx: 1, sol: '\uD83D\uDC09',
+      text: 'Every quest you finish makes your guardian stronger and lights the First Flame!',
+      speak: 'Every quest you finish, makes your guardian stronger, and lights the First Flame!',
       btn: 'Next \u2192' },
-    { tab: 'home', idx: 1, sol: '\uD83D\uDD25',
-      text: 'Now you know everything! Do good deeds, grow your guardian, and explore. Have fun!',
-      speak: 'Now you know everything! Do good deeds, grow your guardian, and explore. Have fun, little Guardian!',
-      btn: 'Let\'s play! \uD83C\uDF1F' },
+    { kind: 'talk', tab: 'home', idx: 4, sol: '\uD83C\uDFDD\uFE0F',
+      text: 'And here is your Island! Walk around and meet dragon friends who live there.',
+      speak: 'And here, is your Island! Walk around, and meet dragon friends, who live there.',
+      btn: 'Cool! \u2192' },
+    { kind: 'finish', tab: 'home', idx: 1, sol: '\uD83D\uDD25',
+      text: 'Now you know how! Do good deeds, grow your guardian, and come back tomorrow. Have fun!',
+      speak: 'Now you know how! Do good deeds, grow your guardian, and come back tomorrow. Have fun!',
+      btn: 'Let\'s play! \uD83C\uDF1F',
+      checklist: ['Do real-life quests', 'Get a grown-up\'s yes', 'Grow your guardian', 'Come back tomorrow'] },
   ];
   const [step, setStep] = useState(0);
   const cur = STEPS[step];
   const [spot, setSpot] = useState(null);
+  const baselinePending = useRef(pendingCount);
 
-  // each step: switch to its tab, speak it, and highlight that tab button
+  // when a step begins: switch tab (for talk/finish steps), speak, place highlight
   useEffect(function () {
-    if (cur.tab && props.setTab) props.setTab(cur.tab);
+    if ((cur.kind === 'talk' || cur.kind === 'finish') && cur.tab && props.setTab) props.setTab(cur.tab);
     Voice.speak(cur.speak);
-    // position the highlight ring on the target tab (after the tab switch renders)
-    const id = setTimeout(function () {
-      if (cur.idx) {
-        const el = document.querySelector('.tabbar .tab:nth-child(' + cur.idx + ')');
-        if (el) {
-          const r = el.getBoundingClientRect();
-          setSpot({ left: r.left - 3, top: r.top - 3, width: r.width + 6, height: r.height + 6 });
-        } else { setSpot(null); }
-      } else { setSpot(null); }
-    }, 80);
+    if (cur.kind === 'act' && cur.want === 'pending') baselinePending.current = (props.state && props.state.pending ? props.state.pending.length : 0);
+    const id = setTimeout(function () { placeSpot(); }, 90);
     return function () { clearTimeout(id); };
   }, [step]);
 
+  function placeSpot() {
+    const idx = cur.idx;
+    if (!idx) { setSpot(null); return; }
+    const el = document.querySelector('.tabbar .tab:nth-child(' + idx + ')');
+    if (el) { const r = el.getBoundingClientRect(); setSpot({ left: r.left - 3, top: r.top - 3, width: r.width + 6, height: r.height + 6 }); }
+    else setSpot(null);
+  }
+
+  // ADVANCE on real actions:
+  // 'goto' steps complete when the child opens the wanted tab.
+  useEffect(function () {
+    if (cur.kind === 'goto' && props.tab === cur.want) { Sfx.sparkle && Sfx.sparkle(); setStep(step + 1); }
+  }, [props.tab]);
+
+  // 'act' (pending) completes when a quest is actually submitted (pending count rises).
+  useEffect(function () {
+    if (cur.kind === 'act' && cur.want === 'pending') {
+      const now = props.state && props.state.pending ? props.state.pending.length : 0;
+      if (now > baselinePending.current) { Sfx.victory && Sfx.victory(); setStep(step + 1); }
+    }
+  }, [pendingCount]);
+
+  // keep the highlight glued to the tab on re-render
+  useEffect(function () { placeSpot(); });
+
   function next() {
     Voice.stop();
+    if (cur.kind === 'finish') { Sfx.victory && Sfx.victory(); finish(); return; }
     if (step < STEPS.length - 1) { Sfx.sparkle && Sfx.sparkle(); setStep(step + 1); }
-    else { Sfx.victory && Sfx.victory(); finish(); }
+    else finish();
   }
   function finish() { Voice.stop(); markCoachDone(); props.onDone(); }
 
-  const lastStep = step === STEPS.length - 1;
+  const showButton = (cur.kind === 'talk' || cur.kind === 'finish');
+  const waiting = (cur.kind === 'goto' || cur.kind === 'act');
 
   return (
     <React.Fragment>
       {spot && <div className="tut-spot" style={{ left: spot.left, top: spot.top, width: spot.width, height: spot.height }} />}
       <div className="tut-coach" style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}>
-        <div className="tc-progress">{step + 1} / {STEPS.length}</div>
+        <div className="tc-progress">Step {step + 1} of {STEPS.length}</div>
         <div className="tc-sol">{cur.sol}</div>
         <div className="tc-text">{cur.text}</div>
-        <button className="sol-cta" style={{ marginTop: 12, padding: '12px 30px', fontSize: 18 }}
-          onClick={next}>{cur.btn}</button>
-        {!lastStep && <button className="tc-skip" onClick={finish}>Skip tour</button>}
+        {cur.checklist && (
+          <div className="tc-checklist">
+            {cur.checklist.map(function (c, i) { return <div key={i} className="tc-check">\u2705 {c}</div>; })}
+          </div>
+        )}
+        {waiting && <div className="tc-waiting">\uD83D\uDC46 Try it!</div>}
+        {showButton && (
+          <button className="sol-cta" style={{ marginTop: 12, padding: '12px 30px', fontSize: 18 }} onClick={next}>{cur.btn}</button>
+        )}
+        <button className="tc-skip" onClick={finish}>Skip tutorial</button>
       </div>
     </React.Fragment>
   );
 }
-
 /* ---------------- the First Flame ---------------- */
 function FlameOrb(props) {
   const [fail, setFail] = useState(false);
@@ -7606,7 +7634,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W2.2 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W2.3 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

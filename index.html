@@ -498,6 +498,26 @@
     text-shadow: 0 2px 14px currentColor; animation: crateFadeIn 0.5s ease 0.2s both; }
   .crate-item-name { color: #ede3d2; font-size: 18px; margin-top: 4px; animation: crateFadeIn 0.5s ease 0.35s both; }
   .crate-burst { font-size: 34px; margin-top: 8px; animation: crateFadeIn 0.5s ease 0.5s both; }
+
+  /* ===== W3.1 BIG VOICE BUTTON (non-reader discoverability) ===== */
+  .talk-to-guardian { display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin: 4px auto 12px; padding: 14px 26px; border: none; border-radius: 999px; cursor: pointer;
+    background: linear-gradient(135deg, #ffb14e, #e8853d); color: #1a1410; font-weight: 800;
+    font-family: var(--display); font-size: 19px; box-shadow: 0 5px 20px rgba(232,133,61,0.6);
+    animation: ttgPulse 1.5s ease-in-out infinite; }
+  .talk-to-guardian:active { transform: scale(0.97); }
+  @keyframes ttgPulse {
+    0%,100% { transform: scale(1); box-shadow: 0 5px 20px rgba(232,133,61,0.55); }
+    50% { transform: scale(1.05); box-shadow: 0 7px 28px rgba(255,180,80,0.9); }
+  }
+  .ttg-icon { font-size: 24px; animation: ttgWiggle 2s ease-in-out infinite; }
+  @keyframes ttgWiggle { 0%,90%,100% { transform: rotate(0deg); } 93% { transform: rotate(-12deg); } 96% { transform: rotate(12deg); } }
+  .ttg-text { white-space: nowrap; }
+  /* gentle 'tap me' affordance on the guardian itself */
+  .hero-art { position: relative; cursor: pointer; }
+  .hero-art::after { content: '👆'; position: absolute; right: 18%; bottom: 26%; font-size: 26px;
+    opacity: 0; animation: tapHint 4s ease-in-out infinite; pointer-events: none; }
+  @keyframes tapHint { 0%,70%,100% { opacity: 0; transform: translateY(0); } 80%,90% { opacity: 0.9; transform: translateY(-6px); } }
   .explore-btn { display: flex; align-items: center; gap: 12px; text-decoration: none;
     background: linear-gradient(135deg, #2a4a6e, #1e3450); border: 1px solid rgba(120,170,220,0.4);
     border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; color: var(--ink);
@@ -6675,7 +6695,22 @@ function HomeScreen(props) {
     }, 6500);
     return function () { clearInterval(id); };
   }, [g && g.energy === 0]);
+  // Friendly things the guardian 'says' when tapped — spoken aloud so a NON-READER
+  // discovers that tapping the dragon makes it talk. The guardian IS the tutorial.
+  const PET_LINES = [
+    'Hi! I\'m so happy you\'re here!',
+    'Yay! That tickles! Hehe!',
+    'I love spending time with you!',
+    'You\'re my best friend!',
+    'Let\'s go on an adventure together!',
+    'Tap my missions to help me grow!',
+  ];
+  function guardianSpeak() {
+    var line = PET_LINES[reactRef.current % PET_LINES.length];
+    Voice.speak((g ? g.name : 'Your friend') + ' says: ' + line);
+  }
   function petTap() {
+    guardianSpeak(); // ALWAYS talk back — this is how a non-reader learns the dragon is alive
     if (hop || idle) return;
     const kind = reactRef.current % 3;
     reactRef.current = reactRef.current + 1;
@@ -6712,6 +6747,11 @@ function HomeScreen(props) {
             <span className="lv-pill">Lv {g.level}</span>
           </div>
         </div>
+        <button className="talk-to-guardian" onClick={function (e) { e.stopPropagation(); guardianSpeak(); }}
+          aria-label={'Talk to ' + g.name}>
+          <span className="ttg-icon">🔊</span>
+          <span className="ttg-text">Talk to {g.name}!</span>
+        </button>
         <div className="hero-body">
           <div className="xp-bar"><span style={{ width: pct + '%' }} /></div>
           <div className="xp-row"><span>XP</span><span className="num">{g.xp} / {xpNeeded}</span></div>
@@ -8212,7 +8252,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W3.0 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W3.1 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

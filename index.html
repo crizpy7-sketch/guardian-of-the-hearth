@@ -324,6 +324,8 @@
     max-width: 320px; text-align: center; box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
   .tut-coach .tc-sol { font-size: 34px; }
   .tut-coach .tc-text { color: #f5ead6; font-size: 17px; font-family: var(--display); margin-top: 4px; line-height: 1.4; }
+  .tut-coach .tc-progress { font-size: 12px; color: rgba(232,133,61,0.85); font-weight: 700; margin-bottom: 2px; letter-spacing: 1px; }
+  .tut-coach .tc-skip { display: block; margin: 10px auto 0; background: none; border: none; color: rgba(237,227,210,0.5); font-size: 13px; cursor: pointer; text-decoration: underline; }
   .explore-btn { display: flex; align-items: center; gap: 12px; text-decoration: none;
     background: linear-gradient(135deg, #2a4a6e, #1e3450); border: 1px solid rgba(120,170,220,0.4);
     border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; color: var(--ink);
@@ -6165,7 +6167,7 @@ function ChildShell(props) {
       {state.ui.gateRevealed && !state.session && <GateModal store={store} state={state} />}
       {state.ui.celebration && <Celebration store={store} state={state} />}
       {state.ui.toast && <div className={'toast ' + (state.ui.toast.kind === 'ok' ? 'ok' : 'bad')}>{state.ui.toast.text}</div>}
-      {showCoach && <TutorialCoach tab={props.tab} onDone={function () { setShowCoach(false); }} />}
+      {showCoach && <TutorialCoach tab={props.tab} setTab={props.setTab} onDone={function () { setShowCoach(false); }} />}
     </React.Fragment>
   );
 }
@@ -6176,51 +6178,91 @@ function coachDone() { try { return localStorage.getItem(COACH_KEY) === '1'; } c
 function markCoachDone() { try { localStorage.setItem(COACH_KEY, '1'); } catch (e) {} }
 
 function TutorialCoach(props) {
-  // steps: point to Island tab -> celebrate. Minimal reading, Sol's voice leads.
+  // An extensive, voice-guided tour. Sol switches to each tab and explains what it does,
+  // in simple words a 5-7 year old can follow. Child taps the big button to continue.
+  // tabIndex: which tab (1-5) to switch to + highlight for this step (null = no highlight).
   const STEPS = [
-    { sol: '🐉', text: 'Tap the Island to meet your dragon friends!', target: 'island', speak: 'Tap the Island, to meet your dragon friends!' },
-    { sol: '🔥', text: 'You did it! You are a true Guardian of the Hearth!', target: null, speak: 'You did it! You are a true Guardian of the Hearth!' },
+    { tab: 'home', idx: 1, sol: '\uD83D\uDD25',
+      text: 'This is your Hearth — your cozy home. Your guardian friend lives here with you!',
+      speak: 'This is your Hearth. Your cozy home. Your guardian friend lives here with you!',
+      btn: 'Next \u2192' },
+    { tab: 'home', idx: 1, sol: '\uD83D\uDC09',
+      text: 'Take care of your guardian and watch them grow. Tap them anytime to say hello!',
+      speak: 'Take care of your guardian, and watch them grow! Tap them any time, to say hello.',
+      btn: 'Got it! \u2192' },
+    { tab: 'quests', idx: 2, sol: '\u2B50',
+      text: 'These are your Quests — real-life good deeds! Brush your teeth, do homework, be kind.',
+      speak: 'These are your Quests. Real life good deeds! Brush your teeth, do your homework, and be kind.',
+      btn: 'Next \u2192' },
+    { tab: 'quests', idx: 2, sol: '\u2728',
+      text: 'When you finish a quest in real life, tap it here. A grown-up says yes, and you earn rewards!',
+      speak: 'When you finish a quest, in real life, tap it here! A grown up says yes, and you earn rewards.',
+      btn: 'Cool! \u2192' },
+    { tab: 'raids', idx: 3, sol: '\uD83D\uDDFA\uFE0F',
+      text: 'This is the Raids map! Send your guardian on a brave adventure to find treasure.',
+      speak: 'This is the Raids map! Send your guardian, on a brave adventure, to find treasure!',
+      btn: 'Next \u2192' },
+    { tab: 'raids', idx: 3, sol: '\uD83D\uDD25',
+      text: 'Adventures use energy. You get energy from finishing your real-life quests!',
+      speak: 'Adventures use energy. You get energy, from finishing your real life quests!',
+      btn: 'I see! \u2192' },
+    { tab: 'island', idx: 4, sol: '\uD83C\uDFDD\uFE0F',
+      text: 'This is your magical Island! Walk around and meet dragon friends who live here.',
+      speak: 'This is your magical Island! Walk around, and meet dragon friends, who live here.',
+      btn: 'Wow! \u2192' },
+    { tab: 'island', idx: 4, sol: '\uD83D\uDC09',
+      text: 'Tap "Explore Island Mode" to walk around. Talk to the dragons and become best friends!',
+      speak: 'Tap, Explore Island Mode, to walk around. Talk to the dragons, and become best friends!',
+      btn: 'Yay! \u2192' },
+    { tab: 'bag', idx: 5, sol: '\uD83C\uDF92',
+      text: 'This is your Treasure Bag! All the shiny things you find are kept safe in here.',
+      speak: 'This is your Treasure Bag! All the shiny things you find, are kept safe, in here.',
+      btn: 'Next \u2192' },
+    { tab: 'home', idx: 1, sol: '\uD83D\uDD25',
+      text: 'Now you know everything! Do good deeds, grow your guardian, and explore. Have fun!',
+      speak: 'Now you know everything! Do good deeds, grow your guardian, and explore. Have fun, little Guardian!',
+      btn: 'Let\'s play! \uD83C\uDF1F' },
   ];
   const [step, setStep] = useState(0);
   const cur = STEPS[step];
   const [spot, setSpot] = useState(null);
 
-  // speak current step + position the highlight ring over the target tab
+  // each step: switch to its tab, speak it, and highlight that tab button
   useEffect(function () {
+    if (cur.tab && props.setTab) props.setTab(cur.tab);
     Voice.speak(cur.speak);
-    if (cur.target) {
-      const el = document.querySelector('.tabbar .tab:nth-child(' + (4) + ')'); // island is 4th tab
-      if (el) {
-        const r = el.getBoundingClientRect();
-        setSpot({ left: r.left - 4, top: r.top - 4, width: r.width + 8, height: r.height + 8 });
-      }
-      // advance when the child actually opens the island
-      if (props.tab === 'island') { /* handled by watcher below */ }
-    } else {
-      setSpot(null);
-    }
+    // position the highlight ring on the target tab (after the tab switch renders)
+    const id = setTimeout(function () {
+      if (cur.idx) {
+        const el = document.querySelector('.tabbar .tab:nth-child(' + cur.idx + ')');
+        if (el) {
+          const r = el.getBoundingClientRect();
+          setSpot({ left: r.left - 3, top: r.top - 3, width: r.width + 6, height: r.height + 6 });
+        } else { setSpot(null); }
+      } else { setSpot(null); }
+    }, 80);
+    return function () { clearTimeout(id); };
   }, [step]);
 
-  // when the child taps the island, advance to the celebration
-  useEffect(function () {
-    if (step === 0 && props.tab === 'island') {
-      Sfx.victory && Sfx.victory();
-      setStep(1);
-    }
-  }, [props.tab]);
-
+  function next() {
+    Voice.stop();
+    if (step < STEPS.length - 1) { Sfx.sparkle && Sfx.sparkle(); setStep(step + 1); }
+    else { Sfx.victory && Sfx.victory(); finish(); }
+  }
   function finish() { Voice.stop(); markCoachDone(); props.onDone(); }
+
+  const lastStep = step === STEPS.length - 1;
 
   return (
     <React.Fragment>
       {spot && <div className="tut-spot" style={{ left: spot.left, top: spot.top, width: spot.width, height: spot.height }} />}
       <div className="tut-coach" style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}>
+        <div className="tc-progress">{step + 1} / {STEPS.length}</div>
         <div className="tc-sol">{cur.sol}</div>
         <div className="tc-text">{cur.text}</div>
-        {cur.target === null && (
-          <button className="sol-cta" style={{ marginTop: 12, padding: '12px 28px', fontSize: 18 }}
-            onClick={finish}>Yay! 🌟</button>
-        )}
+        <button className="sol-cta" style={{ marginTop: 12, padding: '12px 30px', fontSize: 18 }}
+          onClick={next}>{cur.btn}</button>
+        {!lastStep && <button className="tc-skip" onClick={finish}>Skip tour</button>}
       </div>
     </React.Fragment>
   );
@@ -7564,7 +7606,7 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W2.1 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-W2.2 · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );

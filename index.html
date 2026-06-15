@@ -6226,7 +6226,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W3.8'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W3.9'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }
@@ -7241,9 +7241,9 @@ function DepartureCeremony(props) {
 
   useEffect(function () {
     if (stage === 'call') Voice.speak(fl.call);
-    if (stage === 'ready') { Sfx.sparkle && Sfx.sparkle(); Voice.speak((props.g ? props.g.name : 'Your Guardian') + ' says: I am going on an adventure to gather materials to build our home!'); }
+    if (stage === 'ready') { Sfx.sparkle && Sfx.sparkle(); Voice.speak((props.g ? props.g.name : 'Your Guardian') + ' says: Let us go on an adventure! I will bring back treasures to make our island more beautiful!'); }
     if (stage === 'pack') { Sfx.coin && Sfx.coin(); }
-    if (stage === 'depart') { Sfx.gate && Sfx.gate(); }
+    if (stage === 'depart') { Sfx.gate && Sfx.gate(); Voice.speak('I will be back with wonderful discoveries!'); }
     if (stage === 'done') { props.onComplete(); return; } // hand off to the real raid start
     var dur = stage === 'call' ? 2400 : stage === 'depart' ? 1600 : 1300;
     var id = setTimeout(function () { setIdx(function (s) { return Math.min(s + 1, STAGES.length - 1); }); }, dur);
@@ -7333,7 +7333,7 @@ function RaidReturn(props) {
   // voice + auto-advance timing per stage (kid-paced, but the whole thing is skippable)
   useEffect(function () {
     if (stage === 'arrival') Voice.speak(pickFrom(RAID_SOL_LINES, seed));
-    if (stage === 'gold' && result.gold) { Sfx.coin && Sfx.coin(); }
+    if (stage === 'gold' && result.gold) { Sfx.coin && Sfx.coin(); Voice.speak(props.g.name + ' brought home ' + result.gold + ' ancient coins for our island!'); }
     if (stage === 'xp' && result.xp) { Sfx.magic && Sfx.magic(); }
     if (stage && stage.indexOf('drop') === 0) { Sfx.chest && Sfx.chest(); }
     if (stage === 'reaction') { Sfx.victory && Sfx.victory(); Voice.speak('We are building our home together! Thank you!'); }
@@ -7365,10 +7365,10 @@ function RaidReturn(props) {
       {/* treasure reveal — one at a time */}
       <div className="rr-rewards">
         {passed('gold') && result.gold > 0 && (
-          <div className="rr-reward pop" key="g"><span className="rr-r-ico">💰</span><span className="rr-r-txt">+{result.gold} Gold</span></div>
+          <div className="rr-reward pop" key="g"><span className="rr-r-ico">💰</span><span className="rr-r-txt">{props.g.name} brought home {result.gold} Ancient Coins!</span></div>
         )}
         {passed('xp') && result.xp > 0 && (
-          <div className="rr-reward pop" key="x"><span className="rr-r-ico">⭐</span><span className="rr-r-txt">+{result.xp} Guardian XP</span></div>
+          <div className="rr-reward pop" key="x"><span className="rr-r-ico">⭐</span><span className="rr-r-txt">+{result.xp} Guardian XP — getting stronger!</span></div>
         )}
         {props.leveledUp && passed('xp') && (
           <div className="rr-reward pop levelup" key="lvl"><span className="rr-r-ico">🆙</span><span className="rr-r-txt">LEVEL UP!</span></div>
@@ -7624,7 +7624,7 @@ function IslandScreen(props) {
   return (
     <React.Fragment>
       <h1 style={{ fontSize: 24, marginBottom: 4 }}>Hearth Island</h1>
-      <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>Your island, alive. Tap a building to visit it.</p>
+      <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>Use your treasures to make your island more beautiful. Tap a building to grow it.</p>
       <a className="explore-btn" href="./island-overworld.html" target="_blank" rel="noopener">
         <span className="explore-emoji">🕹️</span>
         <span>
@@ -7722,7 +7722,7 @@ function IslandScreen(props) {
               {open.nextCost !== null ? (
                 <button className="btn primary" disabled={!g || g.gold < open.nextCost}
                   onClick={function () { upgrade(open.type); }}>
-                  {(!g || g.gold < open.nextCost) ? 'Need ' + open.nextCost + ' ✦' : 'Grow it · ' + open.nextCost + ' ✦'}
+                  {(!g || g.gold < open.nextCost) ? 'Need ' + open.nextCost + ' ✦' : 'Make it beautiful · ' + open.nextCost + ' ✦'}
                 </button>
               ) : (
                 <span className="seal" style={{ alignSelf: 'center' }}>Fully grown ✨</span>

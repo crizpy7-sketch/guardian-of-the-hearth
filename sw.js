@@ -1,4 +1,4 @@
-const CACHE = 'goth-p7-23';
+const CACHE = 'goth-p7-24';
 const ASSETS = [
  "./",
  "./apple-touch-icon.png",

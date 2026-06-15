@@ -6230,7 +6230,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W4.1'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W4.2'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }
@@ -7061,6 +7061,14 @@ function BattleOverlay(props) {
     const t = setTimeout(function () { setPhase('fight'); }, 600);
     return function () { clearTimeout(t); };
   }, []);
+  // SAFETY NET: lock should only be true briefly during an attack animation. If it ever
+  // stays true longer than that (a missed timeout, a swallowed error), force-release it so
+  // the ATTACK button can never be permanently disabled.
+  useEffect(function () {
+    if (!lock) return;
+    const safety = setTimeout(function () { setLock(false); }, 2500);
+    return function () { clearTimeout(safety); };
+  }, [lock]);
   function popNum(val, crit) {
     const n = { id: Date.now() + Math.random(), val: val, crit: crit, x: 52 + Math.random() * 22, y: 24 + Math.random() * 12 };
     setNums(function (list) { return list.concat(n); });
@@ -7185,6 +7193,9 @@ function BattleOverlay(props) {
         )}
       </div>
       <div className="b-controls">
+        <div style={{ position: 'absolute', top: '-22px', left: '8px', fontSize: '11px', color: '#ffce7a', fontFamily: 'monospace', background: 'rgba(0,0,0,0.6)', padding: '1px 6px', borderRadius: '4px', zIndex: 20 }}>
+          phase:{phase} lock:{String(lock)} busy:{String(busy)} idx:{idx}/{P.dmgs.length}
+        </div>
         {phase === 'fight' && (
           <React.Fragment>
             <button className="btn primary" disabled={lock} onClick={attack}>⚔️ ATTACK</button>

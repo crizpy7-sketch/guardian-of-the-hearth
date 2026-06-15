@@ -6226,7 +6226,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W3.7'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W3.8'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }
@@ -6612,33 +6612,35 @@ function priorityGlow(state, tab) {
   var onboarding = guideStep(state, tab);
   if (onboarding) return onboarding;
   // === NORMAL GAMEPLAY PRIORITY (only once the child has bonded + done a first mission) ===
-  // --- LEVEL 3 URGENT: a raid has returned and is waiting to be claimed (highest priority) ---
+  // --- A raid that has RETURNED and is waiting to be claimed (the child sent it; time-sensitive) ---
   try {
     var run = S.selectActiveRun(state);
     if (run && state.now >= run.endsAt) {
       return (tab === 'raids') ? 'raid-claim' : 'raids-tab';
     }
   } catch (e) {}
-  // --- LEVEL 3 URGENT: a loot crate is waiting to be opened ---
-  if (state.crates && state.crates > 0) {
-    return (tab === 'bag') ? 'crate-open' : 'bag-tab';
-  }
+  // NOTE: crates intentionally do NOT force a glow. With 3 starter crates the satchel glow
+  // became an inescapable loop (open one → still glowing → open another…) and it overrode the
+  // "celebrate with your guardian" moment after a mission. Crates are a reward to DISCOVER in
+  // the bag, not a chore the game pushes. The guardian + missions are the guided loop.
   return null;
 }
 
 // Onboarding mission guidance (play-first → mission → transition). Only fires for a brand-new
 // hero; once they've engaged it returns null and the priority resolver falls through to nothing.
 function guideStep(state, tab) {
-  if (!state || coachDone()) return null;
-  const kids = (state.users || []).filter(function (u) { return u.role === 'CHILD'; });
-  if (kids.length > 1) return null; // only guide the very first hero
-  // "I DID IT" TRANSITION: right after a mission, bridge the child BACK to their guardian.
+  if (!state) return null;
+  // "I DID IT" TRANSITION (checked BEFORE coachDone so it always runs after a mission):
+  // bridge the child BACK to their guardian to celebrate together — never a dead-end.
   try {
     if (sessionStorage.getItem('goth.justDidMission.v1') === '1') {
       if (tab === 'home') { sessionStorage.removeItem('goth.justDidMission.v1'); return 'pet-guardian'; }
       return 'home-tab';
     }
   } catch (e) {}
+  if (coachDone()) return null;
+  const kids = (state.users || []).filter(function (u) { return u.role === 'CHILD'; });
+  if (kids.length > 1) return null; // only guide the very first hero
   const submittedEver = (state.pending && state.pending.length > 0);
   const anyDone = state.questBoard && state.questBoard.some(function (b) { return b.remainingToday < b.quest.maxPerDay; });
   if (submittedEver || anyDone) return null;

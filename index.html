@@ -2467,7 +2467,11 @@
       devSetEndsAt: function (runId, ts) {
         return db.atomic(['dungeonRuns'], async function (c) {
           const r = await c.get('dungeonRuns', runId);
-          if (r) await c.put('dungeonRuns', Object.assign({}, r, { endsAt: ts }));
+          if (r) {
+            // keep startedAt <= endsAt (validation requires it); pull startedAt back if needed
+            const startedAt = Math.min(r.startedAt, ts - 1000);
+            await c.put('dungeonRuns', Object.assign({}, r, { startedAt: startedAt, endsAt: ts }));
+          }
         });
       },
       createRun: function (fields) {
@@ -6226,7 +6230,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W4.0'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W4.1'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }
@@ -7054,7 +7058,7 @@ function BattleOverlay(props) {
   const [busy, setBusy] = useState(false);
   useEffect(function () {
     try { Sfx.growl(); } catch (e) {}
-    const t = setTimeout(function () { setPhase('fight'); }, 950);
+    const t = setTimeout(function () { setPhase('fight'); }, 600);
     return function () { clearTimeout(t); };
   }, []);
   function popNum(val, crit) {
@@ -7107,7 +7111,13 @@ function BattleOverlay(props) {
   async function finish() {
     if (busy) return;
     setBusy(true);
-    var r = await props.store.dispatch(A.claimDungeon(props.runId));
+    var r = null;
+    try {
+      r = await props.store.dispatch(A.claimDungeon(props.runId));
+    } catch (e) {
+      r = null;
+    }
+    setBusy(false); // ALWAYS reset — never leave the claim button permanently disabled
     // hand the real rewards up so the Hearth can play the return celebration
     props.onClose(r && r.ok ? r : null);
   }

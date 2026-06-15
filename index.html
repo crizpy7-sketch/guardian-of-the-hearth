@@ -6230,7 +6230,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W4.2'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W4.4'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }
@@ -7056,6 +7056,8 @@ function BattleOverlay(props) {
   const [phase, setPhase] = useState('intro');
   const [foeFail, setFoeFail] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [clicks, setClicks] = useState(0);
+  function safeSfx(name) { try { if (Sfx[name]) Sfx[name](); } catch (e) {} }
   useEffect(function () {
     try { Sfx.growl(); } catch (e) {}
     const t = setTimeout(function () { setPhase('fight'); }, 600);
@@ -7077,9 +7079,38 @@ function BattleOverlay(props) {
     }, 900);
   }
   function attack() {
+    setClicks(function (c) { return c + 1; }); // proof the click registered
+    if (lock || phase !== 'fight') return;
+    const i = idx;
+    if (i >= P.dmgs.length) return;
+    setLock(true);
+    safeSfx('tap');
+    // APPLY GAME STATE IMMEDIATELY (synchronous) so a throwing animation/sound can never strand it.
+    const crit = i === P.crit;
+    const nhp = Math.max(0, hp - P.dmgs[i]);
+    setHp(nhp);
+    setIdx(i + 1);
+    popNum(P.dmgs[i], crit);
+    // animations + sound are best-effort and fully wrapped — they can never break the fight.
+    safeSfx(crit ? 'crit' : 'hit');
+    setFx({ hurt: true, shake: true, atkName: P.names[i], crit: crit, lunge: true });
+    setTimeout(function () {
+      try {
+        if (nhp <= 0) {
+          setFx({ defeat: true });
+          safeSfx('defeat');
+          setTimeout(function () { setPhase('win'); safeSfx('victory'); }, 700);
+        } else {
+          setFx({});
+        }
+      } catch (e) {}
+      setLock(false); // ALWAYS release
+    }, 500);
+  }
+  function attackOLD() {
     if (lock || phase !== 'fight') return;
     setLock(true);
-    Sfx.tap();
+    try { Sfx.tap(); } catch (e) {}
     const i = idx;
     function strike() {
       setFx({ lunge: true });
@@ -7194,11 +7225,11 @@ function BattleOverlay(props) {
       </div>
       <div className="b-controls">
         <div style={{ position: 'absolute', top: '-22px', left: '8px', fontSize: '11px', color: '#ffce7a', fontFamily: 'monospace', background: 'rgba(0,0,0,0.6)', padding: '1px 6px', borderRadius: '4px', zIndex: 20 }}>
-          phase:{phase} lock:{String(lock)} busy:{String(busy)} idx:{idx}/{P.dmgs.length}
+          phase:{phase} lock:{String(lock)} busy:{String(busy)} idx:{idx}/{P.dmgs.length} hp:{hp} clicks:{clicks}
         </div>
         {phase === 'fight' && (
           <React.Fragment>
-            <button className="btn primary" disabled={lock} onClick={attack}>⚔️ ATTACK</button>
+            <button className="btn primary" disabled={lock} onClick={attack} onPointerUp={function (e) { if (e.pointerType !== "mouse") attack(); }}>⚔️ ATTACK</button>
             <button className="btn" style={{ flex: '0 0 auto' }} disabled={busy} onClick={finish}>Skip ⏭</button>
           </React.Fragment>
         )}

@@ -6226,7 +6226,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W3.9'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W4.0'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }
@@ -7053,7 +7053,7 @@ function BattleOverlay(props) {
   const [foeFail, setFoeFail] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(function () {
-    Sfx.growl();
+    try { Sfx.growl(); } catch (e) {}
     const t = setTimeout(function () { setPhase('fight'); }, 950);
     return function () { clearTimeout(t); };
   }, []);
@@ -7181,7 +7181,7 @@ function BattleOverlay(props) {
             <button className="btn" style={{ flex: '0 0 auto' }} disabled={busy} onClick={finish}>Skip ⏭</button>
           </React.Fragment>
         )}
-        {phase === 'intro' && <button className="btn" style={{ width: '100%' }} disabled>…</button>}
+        {phase === 'intro' && <button className="btn primary" style={{ width: '100%' }} onClick={function () { setPhase('fight'); }}>⚔️ Begin!</button>}
       </div>
     </div>
   );

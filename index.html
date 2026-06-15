@@ -513,6 +513,9 @@
   .ttg-icon { font-size: 24px; animation: ttgWiggle 2s ease-in-out infinite; }
   @keyframes ttgWiggle { 0%,90%,100% { transform: rotate(0deg); } 93% { transform: rotate(-12deg); } 96% { transform: rotate(12deg); } }
   .ttg-text { white-space: nowrap; }
+  .ver-badge { position: fixed; top: 4px; right: 6px; z-index: 400; font-size: 10px; font-weight: 700;
+    color: rgba(255,255,255,0.45); background: rgba(0,0,0,0.25); padding: 1px 6px; border-radius: 6px;
+    pointer-events: none; letter-spacing: 0.5px; }
   /* gentle 'tap me' affordance on the guardian itself */
   .hero-art { position: relative; cursor: pointer; }
   .hero-art::after { content: '👆'; position: absolute; right: 18%; bottom: 26%; font-size: 26px;
@@ -5900,7 +5903,7 @@ const nullSnapshot = function () { return null; };
    Activation: tap the splash logo 5x within 3s. Reset uses the REAL save systems:
    the 'guardian_hearth' IndexedDB + the two tutorial localStorage flags. No fake state. */
 const DEV_DB_NAME = 'guardian_hearth';
-const DEV_LS_KEYS = ['goth.tutorial.sol.v1', 'goth.coach.firstmission.v1'];
+const DEV_LS_KEYS = ['goth.tutorial.sol.v1', 'goth.coach.firstmission.v1', 'goth.bondTaps.v1'];
 
 function DevMenu(props) {
   // props: store, state, onClose
@@ -6223,6 +6226,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
+const APP_VERSION = 'W3.7'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }
@@ -6516,6 +6520,7 @@ function ChildShell(props) {
 
   return (
     <React.Fragment>
+      <div className="ver-badge" aria-hidden="true">{APP_VERSION}</div>
       <div className={'screen-bg ' + (props.tab === 'raids' ? 'raids' : 'home')} />
       <div className="flicker" aria-hidden="true" />
       <div className="sparks" aria-hidden="true">{SPARKS}</div>
@@ -8312,11 +8317,35 @@ function ParentSettings(props) {
             {counts.map(function (c) { return (<tr key={c.store}><td>{c.store}</td><td>{c.count}</td></tr>); })}
           </tbody></table>
         )}
-        <p className="note">Build GOTH-3.0-W3.4 · tests run in a separate database; family data is never touched.</p>
+        <p className="note">Build GOTH-3.0-{APP_VERSION} · tests run in a separate database; family data is never touched.</p>
       </div>
     </React.Fragment>
   );
 }
+
+// DEBUG: surface any runtime error on screen (device-only bugs are otherwise invisible).
+(function () {
+  function showErr(msg) {
+    try {
+      var bar = document.getElementById('goth-errbar');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'goth-errbar';
+        bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7a1414;color:#fff;font:12px monospace;padding:8px 12px;max-height:40vh;overflow:auto;white-space:pre-wrap;border-top:2px solid #ff6b6b;';
+        bar.onclick = function () { bar.style.display = 'none'; };
+        document.body.appendChild(bar);
+      }
+      bar.style.display = 'block';
+      bar.textContent = '⚠ ' + msg + '\n(tap to dismiss)';
+    } catch (e) {}
+  }
+  window.addEventListener('error', function (e) {
+    showErr((e && e.message ? e.message : 'error') + (e && e.filename ? ' @ ' + e.filename.split('/').pop() + ':' + e.lineno : ''));
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    showErr('Promise: ' + (e && e.reason ? (e.reason.message || e.reason) : 'rejected'));
+  });
+})();
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 

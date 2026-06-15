@@ -6241,7 +6241,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W4.5'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W4.6'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }
@@ -6249,7 +6249,7 @@ function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'
 function SolWelcome(props) {
   // a sequence of "beats" — Sol speaks each, child taps the glowing button to continue.
   const BEATS = [
-    { text: 'Welcome, little Guardian! Let\'s create your hero and choose your magical friend!', btn: 'Yes! Let\'s go! \uD83C\uDF1F' },
+    { text: 'Welcome, little Guardian! To create your hero and choose your magical friend, please hand the game to a grown-up to help you!', btn: 'Okay! \uD83C\uDF1F' },
   ];
   const [beat, setBeat] = useState(0);
   const [shown, setShown] = useState(0);
@@ -7067,7 +7067,6 @@ function BattleOverlay(props) {
   const [phase, setPhase] = useState('intro');
   const [foeFail, setFoeFail] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [clicks, setClicks] = useState(0);
   function safeSfx(name) { try { if (Sfx[name]) Sfx[name](); } catch (e) {} }
   useEffect(function () {
     try { Sfx.growl(); } catch (e) {}
@@ -7090,7 +7089,6 @@ function BattleOverlay(props) {
     }, 900);
   }
   function attack() {
-    setClicks(function (c) { return c + 1; }); // proof the click registered
     if (lock || phase !== 'fight') return;
     const i = idx;
     if (i >= P.dmgs.length) return;
@@ -7117,46 +7115,6 @@ function BattleOverlay(props) {
       } catch (e) {}
       setLock(false); // ALWAYS release
     }, 500);
-  }
-  function attackOLD() {
-    if (lock || phase !== 'fight') return;
-    setLock(true);
-    try { Sfx.tap(); } catch (e) {}
-    const i = idx;
-    function strike() {
-      setFx({ lunge: true });
-      if (hasAtk) Sfx.fire(); else Sfx.swish();
-      setTimeout(function () {
-        const crit = i === P.crit;
-        if (crit) Sfx.crit(); else Sfx.hit();
-        setFx({ hurt: true, shake: true, atkName: P.names[i], crit: crit });
-        popNum(P.dmgs[i], crit);
-        const nhp = Math.max(0, hp - P.dmgs[i]);
-        setHp(nhp);
-        setIdx(i + 1);
-        setTimeout(function () {
-          if (nhp <= 0) {
-            setFx({ defeat: true });
-            Sfx.defeat();
-            setTimeout(function () { setPhase('win'); Sfx.victory(); }, 750);
-          } else {
-            setFx({});
-          }
-          setLock(false);
-        }, 460);
-      }, 240);
-    }
-    if (P.dodges[i]) {
-      setFx({ swipe: true, atkName: g.name + ' dodged!', dodgeTag: true });
-      Sfx.dodge();
-      setTimeout(function () {
-        setFx({ hop2: true });
-        Sfx.swish();
-        setTimeout(function () { setFx({}); strike(); }, 240);
-      }, 430);
-    } else {
-      strike();
-    }
   }
   async function finish() {
     if (busy) return;
@@ -7235,9 +7193,6 @@ function BattleOverlay(props) {
         )}
       </div>
       <div className="b-controls">
-        <div style={{ position: 'absolute', top: '-22px', left: '8px', fontSize: '11px', color: '#ffce7a', fontFamily: 'monospace', background: 'rgba(0,0,0,0.6)', padding: '1px 6px', borderRadius: '4px', zIndex: 20 }}>
-          phase:{phase} lock:{String(lock)} busy:{String(busy)} idx:{idx}/{P.dmgs.length} hp:{hp} clicks:{clicks}
-        </div>
         {phase === 'fight' && (
           <React.Fragment>
             <button className="btn primary" disabled={lock} onClick={attack} onPointerUp={function (e) { if (e.pointerType !== "mouse") attack(); }}>⚔️ ATTACK</button>

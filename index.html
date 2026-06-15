@@ -348,6 +348,17 @@
     pointer-events: none;
     transition: opacity 280ms ease;
   }
+  /* Full-screen overlays (battle, raid return, crate reveal, dev menu) are NEVER dimmed/disabled
+     by focus-mode — they render on top and must stay fully interactive. */
+  .shell.focus-mode .battle,
+  .shell.focus-mode .battle button,
+  .shell.focus-mode .raid-return,
+  .shell.focus-mode .raid-return button,
+  .shell.focus-mode .crate-reveal,
+  .shell.focus-mode .crate-reveal button {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
   /* ...but the glowing target (and its row/card) stays fully bright + clickable */
   .shell.focus-mode .guide-glow,
   .shell.focus-mode .guide-glow * {
@@ -6230,7 +6241,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W4.4'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W4.5'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }

@@ -524,7 +524,22 @@
   .ttg-icon { font-size: 24px; animation: ttgWiggle 2s ease-in-out infinite; }
   @keyframes ttgWiggle { 0%,90%,100% { transform: rotate(0deg); } 93% { transform: rotate(-12deg); } 96% { transform: rotate(12deg); } }
   .ttg-text { white-space: nowrap; }
-  .ver-badge { position: fixed; top: 4px; right: 6px; z-index: 400; font-size: 10px; font-weight: 700;
+  /* ===== GOTH 1.1 HAVE/NEED MATERIALS ===== */
+  .mat-req { background: rgba(30,22,16,0.7); border: 1px solid rgba(232,133,61,0.3); border-radius: 14px;
+    padding: 12px 14px; margin: 12px 0; }
+  .mat-req-title { color: #c9bca6; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+  .mat-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 15px; }
+  .mat-ico { font-size: 20px; width: 24px; text-align: center; }
+  .mat-name { flex: 1; color: #ede3d2; }
+  .mat-count { font-weight: 700; font-family: monospace; }
+  .mat-row.ok .mat-count { color: #7ed08a; }
+  .mat-row.short .mat-count { color: #ff9a8a; }
+  .mat-nudge { margin-top: 10px; padding: 10px 12px; background: rgba(95,168,255,0.15);
+    border: 1px solid rgba(95,168,255,0.4); border-radius: 12px; color: #bcd8ff; font-size: 14px;
+    line-height: 1.4; cursor: pointer; text-align: center; animation: ttgPulse 2.4s ease-in-out infinite; }
+  .mat-nudge:active { transform: scale(0.98); }
+
+    .ver-badge { position: fixed; top: 4px; right: 6px; z-index: 400; font-size: 10px; font-weight: 700;
     color: rgba(255,255,255,0.45); background: rgba(0,0,0,0.25); padding: 1px 6px; border-radius: 6px;
     pointer-events: none; letter-spacing: 0.5px; }
   /* gentle 'tap me' affordance on the guardian itself */
@@ -1380,12 +1395,12 @@
     ],
 
     BUILDINGS: {
-      HOME: { name: 'Home', baseCost: 100, maxLevel: 10 },
-      GARDEN: { name: 'Garden', baseCost: 80, maxLevel: 10 },
-      WORKSHOP: { name: 'Workshop', baseCost: 120, maxLevel: 10 },
-      HARBOR: { name: 'Harbor', baseCost: 200, maxLevel: 8 },
-      RUINS: { name: 'Ancient Ruins', baseCost: 300, maxLevel: 5 },
-      SANCTUARY: { name: 'Pet Sanctuary', baseCost: 150, maxLevel: 10 },
+      HOME: { name: 'Home', baseCost: 100, maxLevel: 10, materials: { common: 'itm_wood', uncommon: 'itm_clay', rare: 'itm_crystal' } },
+      GARDEN: { name: 'Garden', baseCost: 80, maxLevel: 10, materials: { common: 'itm_fiber', uncommon: 'itm_herbs', rare: 'itm_moonpetal' } },
+      WORKSHOP: { name: 'Workshop', baseCost: 120, maxLevel: 10, materials: { common: 'itm_wood', uncommon: 'itm_iron', rare: 'itm_crystal' } },
+      HARBOR: { name: 'Harbor', baseCost: 200, maxLevel: 8, materials: { common: 'itm_stone', uncommon: 'itm_iron', rare: 'itm_starsteel' } },
+      RUINS: { name: 'Ancient Ruins', baseCost: 300, maxLevel: 5, materials: { common: 'itm_stone', uncommon: 'itm_clay', rare: 'itm_phoenix_feather' } },
+      SANCTUARY: { name: 'Pet Sanctuary', baseCost: 150, maxLevel: 10, materials: { common: 'itm_fiber', uncommon: 'itm_herbs', rare: 'itm_crystal' } },
     },
   };
 
@@ -1484,6 +1499,28 @@
         leveledUp: after.level > before.level,
         levelsGained: after.level - before.level,
       };
+    },
+  };
+
+  const Building = {
+    // What materials does <type> need to go from <currentLevel> to <currentLevel+1>?
+    // Early levels: common only. Mid: common + uncommon. High: uncommon + rare.
+    // Quantities scale gently so it always feels achievable from a few raids.
+    materialCostFor: function (type, currentLevel) {
+      const def = CONFIG.BUILDINGS[type];
+      if (!def || !def.materials) return [];
+      const L = currentLevel; // level we're upgrading FROM (0-indexed)
+      const out = [];
+      if (L <= 2) {
+        out.push({ itemId: def.materials.common, qty: 3 + L * 2 }); // 3,5,7
+      } else if (L <= 5) {
+        out.push({ itemId: def.materials.common, qty: 6 });
+        out.push({ itemId: def.materials.uncommon, qty: 2 + (L - 3) }); // 2,3,4
+      } else {
+        out.push({ itemId: def.materials.uncommon, qty: 4 });
+        out.push({ itemId: def.materials.rare, qty: 1 + Math.floor((L - 6) / 2) }); // 1,1,2,2...
+      }
+      return out;
     },
   };
 
@@ -2443,11 +2480,11 @@
           return row;
         });
       },
-      // ONE atomic transaction: gold spend + building level + (for SANCTUARY)
-      // the guardian's max-energy bump commit together or not at all.
+      // ONE atomic transaction: material spend + gold spend + building level +
+      // (for SANCTUARY) the guardian's max-energy bump — all commit together or not at all.
       upgrade: function (userId, type) {
         V.oneOf(type, 'type', ENUMS.BUILDING_TYPE);
-        return db.atomic(['buildings', 'guardians'], async function (c) {
+        return db.atomic(['buildings', 'guardians', 'inventory'], async function (c) {
           const def = CONFIG.BUILDINGS[type];
           const existing = await c.byIndex('buildings', 'user_type', [userId, type]);
           const b = existing[0] || { id: Ids.uuid(), userId: userId, type: type, level: 0 };
@@ -2456,10 +2493,34 @@
           const grows = await c.byIndex('guardians', 'userId', userId);
           const g = grows[0];
           if (!g) throw new ValidationError('NOT_FOUND', 'guardian for user ' + userId);
+          // --- MATERIAL REQUIREMENT (GOTH 1.1): check the child has the needed materials ---
+          const matReq = Building.materialCostFor(type, b.level); // [{itemId, qty}, ...]
+          const shortages = [];
+          for (var mi = 0; mi < matReq.length; mi++) {
+            const need = matReq[mi];
+            const invRows = await c.byIndex('inventory', 'user_item', [userId, need.itemId]);
+            const have = invRows[0] ? invRows[0].qty : 0;
+            if (have < need.qty) shortages.push({ itemId: need.itemId, need: need.qty, have: have });
+          }
+          if (shortages.length) {
+            const e = new ValidationError('INSUFFICIENT_MATERIALS', def.name + ' needs more materials');
+            e.shortages = shortages; e.cost = cost; e.materials = matReq;
+            throw e;
+          }
+          // --- COIN REQUIREMENT (kept as secondary cost) ---
           if (g.gold < cost) {
             const e = new ValidationError('INSUFFICIENT_GOLD', 'needs ' + cost + ' gold, have ' + g.gold);
             e.cost = cost;
             throw e;
+          }
+          // --- CONSUME materials, then coins, then level up (all in this atomic txn) ---
+          for (var mc = 0; mc < matReq.length; mc++) {
+            const need2 = matReq[mc];
+            const rows2 = await c.byIndex('inventory', 'user_item', [userId, need2.itemId]);
+            const row2 = rows2[0];
+            row2.qty -= need2.qty;
+            if (row2.qty === 0) { await c.del('inventory', row2.id); }
+            else { await vput(c, 'inventory', row2); }
           }
           g.gold -= cost;
           b.level += 1;
@@ -2468,7 +2529,7 @@
           }
           await vput(c, 'guardians', g);
           await vput(c, 'buildings', b);
-          return { building: b, guardian: g, cost: cost };
+          return { building: b, guardian: g, cost: cost, materialsCost: matReq };
         });
       },
     };
@@ -3078,6 +3139,7 @@
           return {
             type: t, name: def.name, level: level, maxLevel: def.maxLevel,
             nextCost: level >= def.maxLevel ? null : costFor(t, level),
+            nextMaterials: level >= def.maxLevel ? null : Building.materialCostFor(t, level),
           };
         });
       },
@@ -4512,6 +4574,10 @@
       const child = await env.repos.users.create({ role: 'CHILD', name: 'Noa' });
       await env.repos.guardians.createForUser(child.id, { name: 'Boop', species: 'BEAR' });
       await env.repos.guardians.applyBundle(child.id, Rewards.normalizeBundle({ coins: 300 }));
+      await env.repos.inventory.addItem(child.id, 'itm_wood', 50); // GOTH 1.1: HOME needs Hearthwood
+      await env.repos.inventory.addItem(child.id, 'itm_stone', 50); // RUINS materials for the max-level check
+      await env.repos.inventory.addItem(child.id, 'itm_clay', 50);
+      await env.repos.inventory.addItem(child.id, 'itm_phoenix_feather', 50);
       t.equal(env.services.building.costFor('HOME', 0), 100, 'L0 cost');
       t.equal(env.services.building.costFor('HOME', 1), 160, 'L1 cost (×1.6)');
       const u1 = await env.services.building.upgrade(child.id, 'HOME');
@@ -4532,6 +4598,7 @@
       const child = await env.repos.users.create({ role: 'CHILD', name: 'Rio' });
       await env.repos.guardians.createForUser(child.id, { name: 'Sol', species: 'PHOENIX' });
       await env.repos.guardians.applyBundle(child.id, Rewards.normalizeBundle({ coins: 1000 }));
+      await env.repos.inventory.addItem(child.id, 'itm_fiber', 50); // GOTH 1.1: SANCTUARY needs Wild Fiber
       await env.services.building.upgrade(child.id, 'SANCTUARY');
       t.equal((await env.repos.guardians.getByUser(child.id)).maxEnergy, 110, '+10 per level');
       await env.services.building.upgrade(child.id, 'SANCTUARY');
@@ -4734,6 +4801,7 @@
       await store.dispatch(Actions.boot());
       const made = await store.dispatch(Actions.createChild('Iri', '🧒', 'Ash', 'WOLF'));
       await env.repos.guardians.applyBundle(made.child.id, Rewards.normalizeBundle({ coins: 300, lootCrates: 1 }));
+      await env.repos.inventory.addItem(made.child.id, 'itm_wood', 50); // GOTH 1.1: HOME needs Hearthwood
       await store.dispatch(Actions.refreshChild());
       t.equal(store.getState().crates, 1, 'crate in state');
       const opened = await store.dispatch(Actions.openCrate());
@@ -5165,6 +5233,7 @@
   GOTH.RNG = RNG;
   GOTH.Leveling = Leveling;
   GOTH.Loot = Loot;
+  GOTH.Building = Building;
   GOTH.TimeUtil = TimeUtil;
   GOTH.Streaks = Streaks;
   GOTH.Rewards = Rewards;
@@ -5935,15 +6004,28 @@ function DevMenu(props) {
     try {
       // 1) remove the tutorial flags (so Sol's welcome + guidance play again)
       DEV_LS_KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
-      // 2) delete the entire game database (guardians, quests, raids, inventory, unlocks, flags)
+      // 2) CLEAR all data via the OPEN database first — this works even when deleteDatabase
+      //    would be blocked by the live connection (the common reason a reset "doesn't take").
+      try {
+        if (props.storeCtx && props.storeCtx.current && props.storeCtx.current.db) {
+          await props.storeCtx.current.db.clearAllStores();
+        }
+      } catch (e) {}
+      // 3) close the connection so the delete below isn't blocked
+      try {
+        if (props.storeCtx && props.storeCtx.current && props.storeCtx.current.db && props.storeCtx.current.db.close) {
+          props.storeCtx.current.db.close();
+        }
+      } catch (e) {}
+      // 4) delete the database entirely (now unblocked)
       await new Promise(function (resolve) {
         try {
           var req = indexedDB.deleteDatabase(DEV_DB_NAME);
           req.onsuccess = resolve; req.onerror = resolve; req.onblocked = resolve;
-          setTimeout(resolve, 1500); // safety: never hang
+          setTimeout(resolve, 1200);
         } catch (e) { resolve(); }
       });
-      // 3) reload — the game boots exactly like a brand-new install
+      // 5) reload — the game boots exactly like a brand-new install
       window.location.reload();
     } catch (e) { flash('Reset failed: ' + (e && e.message)); }
   }
@@ -6241,7 +6323,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W4.6'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W5.0-1.1p1'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }
@@ -6574,7 +6656,7 @@ function ChildShell(props) {
           {props.tab === 'home' && <HomeScreen store={store} state={state} setTab={props.setTab} guide={guide} />}
           {props.tab === 'quests' && <QuestsScreen store={store} state={state} guide={guide} />}
           {props.tab === 'raids' && <RaidsScreen store={store} state={state} guide={guide} />}
-          {props.tab === 'island' && <IslandScreen store={store} state={state} />}
+          {props.tab === 'island' && <IslandScreen store={store} state={state} setTab={props.setTab} />}
           {props.tab === 'bag' && <BagScreen store={store} state={state} guide={guide} />}
         </main>
       </div>
@@ -7623,7 +7705,11 @@ function IslandScreen(props) {
   const [built, setBuilt] = useState(null);
   const [bgFail, setBgFail] = useState(false);
   const [heroFail, setHeroFail] = useState(false);
-  const open = openType ? state.buildings.find(function (b) { return b.type === openType; }) : null;
+  var openRaw = openType ? state.buildings.find(function (b) { return b.type === openType; }) : null;
+  var open = openRaw ? Object.assign({}, openRaw, {
+    maxLevel: G.CONFIG.BUILDINGS[openRaw.type] ? G.CONFIG.BUILDINGS[openRaw.type].maxLevel : openRaw.level,
+    nextCost: (function () { var d = G.CONFIG.BUILDINGS[openRaw.type]; return (d && openRaw.level < d.maxLevel) ? Math.round(d.baseCost * Math.pow(G.CONFIG.ECONOMY.BUILDING_COST_GROWTH, openRaw.level)) : null; })(),
+  }) : null;
   const byType = {};
   state.buildings.forEach(function (b) { byType[b.type] = b; });
   async function upgrade(type) {
@@ -7633,6 +7719,23 @@ function IslandScreen(props) {
       setBuilt(type);
       setTimeout(function () { setBuilt(null); }, 950);
     }
+  }
+  // GOTH 1.1: compute the coin cost + whether the child has everything to build the next level
+  function nextCostFor(b) {
+    var def = G.CONFIG.BUILDINGS[b.type];
+    if (!def || b.level >= def.maxLevel) return null;
+    return Math.round(def.baseCost * Math.pow(G.CONFIG.ECONOMY.BUILDING_COST_GROWTH, b.level));
+  }
+  function invCountOf(itemId) {
+    var row = (state.inventory || []).find(function (r) { return r.itemId === itemId; });
+    return row ? row.qty : 0;
+  }
+  function canBuild(b) {
+    if (!b || b.level >= b.maxLevel) return false;
+    var cost = nextCostFor(b);
+    if (!g || g.gold < cost) return false;
+    var need = G.Building.materialCostFor(b.type, b.level);
+    return need.every(function (m) { return invCountOf(m.itemId) >= m.qty; });
   }
   function pipsFor(b) {
     const arr = [];
@@ -7735,12 +7838,47 @@ function IslandScreen(props) {
               <span className="lv-pill">Lv {open.level}/{open.maxLevel}</span>
             </div>
             {pipsFor(open)}
+            {open.level < open.maxLevel && (function () {
+              var need = G.Building.materialCostFor(open.type, open.level);
+              var invCount = function (itemId) {
+                var row = (state.inventory || []).find(function (r) { return r.itemId === itemId; });
+                return row ? row.qty : 0;
+              };
+              var allEnough = need.every(function (m) { return invCount(m.itemId) >= m.qty; }) && g && g.gold >= open.nextCost;
+              return (
+                <div className="mat-req">
+                  <div className="mat-req-title">To grow this, you need:</div>
+                  {need.map(function (m) {
+                    var have = invCount(m.itemId);
+                    var item = state.itemsById[m.itemId];
+                    var ok = have >= m.qty;
+                    return (
+                      <div key={m.itemId} className={'mat-row' + (ok ? ' ok' : ' short')}>
+                        <span className="mat-ico">{ITEM_EMOJI[m.itemId] || '📦'}</span>
+                        <span className="mat-name">{item ? item.name : m.itemId}</span>
+                        <span className="mat-count">{have} / {m.qty}{ok ? ' ✓' : ''}</span>
+                      </div>
+                    );
+                  })}
+                  <div className={'mat-row' + (g && g.gold >= open.nextCost ? ' ok' : ' short')}>
+                    <span className="mat-ico">✦</span>
+                    <span className="mat-name">Coins</span>
+                    <span className="mat-count">{g ? g.gold : 0} / {open.nextCost}{g && g.gold >= open.nextCost ? ' ✓' : ''}</span>
+                  </div>
+                  {!allEnough && (
+                    <div className="mat-nudge" onClick={function () { setOpenType(null); props.setTab && props.setTab('raids'); }}>
+                      🗺️ {g ? g.name : 'Your guardian'} can find these on an adventure! Tap to go on a Raid.
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             <div className="btnrow" style={{ marginTop: 12 }}>
               <button className="btn" onClick={function () { setOpenType(null); }}>Close</button>
               {open.nextCost !== null ? (
-                <button className="btn primary" disabled={!g || g.gold < open.nextCost}
+                <button className="btn primary" disabled={!canBuild(open)}
                   onClick={function () { upgrade(open.type); }}>
-                  {(!g || g.gold < open.nextCost) ? 'Need ' + open.nextCost + ' ✦' : 'Make it beautiful · ' + open.nextCost + ' ✦'}
+                  {canBuild(open) ? 'Build it! 🔨' : 'Need more materials'}
                 </button>
               ) : (
                 <span className="seal" style={{ alignSelf: 'center' }}>Fully grown ✨</span>

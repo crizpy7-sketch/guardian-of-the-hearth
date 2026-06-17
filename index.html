@@ -5993,7 +5993,11 @@ function AnimArt(props) {
 
 // Picks the right motion for the guardian's current situation.
 function guardianMotion(species, level, mood) {
-  const base = stageArt(species, level);
+  // Prefer a CUT-OUT (transparent png) resting frame over the square jpg portrait, so the
+  // guardian sits cleanly on the background instead of in an ugly opaque box. The square
+  // jpg from stageArt() stays as the final fallback for species without cut-out frames.
+  const cutoutRest = 'guardian-' + species.toLowerCase() + '-cheer2.png';
+  const base = [cutoutRest].concat(stageArt(species, level));
   if (mood === 'walk') return { frames: frameSet(species, 'walk', 4), fallback: base, fps: 6, fade: 140, cls: 'm-walk' };
   if (mood === 'celebrate') return { frames: frameSet(species, 'cheer', 4), fallback: base, fps: 5, fade: 160, cls: 'm-cheer' };
   if (mood === 'sleep') return { frames: frameSet(species, 'sleep', 3), fallback: base, fps: 1.6, fade: 700, cls: 'm-sleep' };
@@ -6414,7 +6418,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W5.4'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W5.5'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }

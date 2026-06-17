@@ -524,7 +524,44 @@
   .ttg-icon { font-size: 24px; animation: ttgWiggle 2s ease-in-out infinite; }
   @keyframes ttgWiggle { 0%,90%,100% { transform: rotate(0deg); } 93% { transform: rotate(-12deg); } 96% { transform: rotate(12deg); } }
   .ttg-text { white-space: nowrap; }
-  /* ===== GOTH 1.1 HAVE/NEED MATERIALS ===== */
+  /* ===== PRINCESS DRESS-UP ===== */
+  .dressup-btn { position: absolute; top: 12px; right: 12px; z-index: 14; display: flex; align-items: center;
+    gap: 6px; background: linear-gradient(135deg, #e87fc4, #b85fd6); color: #fff; border: none;
+    border-radius: 999px; padding: 9px 16px; font-weight: 800; font-size: 15px; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(184,95,214,0.45); }
+  .dressup-btn:active { transform: scale(0.96); }
+  .dressup-overlay { position: fixed; inset: 0; z-index: 150; background: linear-gradient(180deg, #2a1838, #1a1026);
+    display: flex; flex-direction: column; }
+  .dressup-top { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+  .du-close { background: rgba(255,255,255,0.15); color: #fff; border: none; border-radius: 999px;
+    padding: 8px 16px; font-weight: 700; font-size: 15px; cursor: pointer; }
+  .du-title { color: #fff; font-size: 22px; font-weight: 800; }
+  .du-stage { position: relative; flex: 1; display: flex; align-items: center; justify-content: center;
+    min-height: 0; overflow: hidden; }
+  .du-layer { position: absolute; height: 88%; width: auto; object-fit: contain; bottom: 2%;
+    left: 50%; transform: translateX(-50%); pointer-events: none; }
+  .du-base { z-index: 1; }
+  /* dress sits over the body — sized + positioned to overlay the base princess's torso/legs */
+  .du-dress { z-index: 2; height: 56%; bottom: 4%; }
+  /* crown sits on her head, near the top of the figure */
+  .du-crown { z-index: 3; height: 15%; bottom: 80%; }
+  .du-slots { display: flex; gap: 10px; padding: 10px 16px; justify-content: center; }
+  .du-slot { background: rgba(255,255,255,0.12); color: #e8d8f0; border: 2px solid transparent;
+    border-radius: 14px; padding: 10px 22px; font-weight: 700; font-size: 16px; cursor: pointer; }
+  .du-slot.on { background: rgba(232,127,196,0.3); border-color: #e87fc4; color: #fff; }
+  .du-tray { display: flex; gap: 12px; overflow-x: auto; padding: 14px 16px 24px; }
+  .du-item { position: relative; flex: 0 0 auto; width: 92px; height: 110px; border-radius: 16px;
+    background: rgba(255,255,255,0.08); border: 3px solid rgba(255,255,255,0.15); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; padding: 6px; }
+  .du-item img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .du-item.on { border-color: #ffce4a; box-shadow: 0 0 16px rgba(255,206,74,0.6); }
+  .du-item.locked img { opacity: 0.4; filter: grayscale(0.6); }
+  .du-item.rarity-legendary { background: linear-gradient(135deg, rgba(255,206,74,0.2), rgba(255,140,60,0.15)); }
+  .du-item.rarity-rare { background: rgba(180,120,255,0.15); }
+  .du-lock { position: absolute; top: 4px; right: 6px; font-size: 18px; }
+  .du-check { position: absolute; top: 2px; left: 6px; font-size: 18px; color: #ffce4a; }
+
+    /* ===== GOTH 1.1 HAVE/NEED MATERIALS ===== */
   .mat-req { background: rgba(30,22,16,0.7); border: 1px solid rgba(232,133,61,0.3); border-radius: 14px;
     padding: 12px 14px; margin: 12px 0; }
   .mat-req-title { color: #c9bca6; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
@@ -1500,6 +1537,40 @@
         levelsGained: after.level - before.level,
       };
     },
+  };
+
+  const Cosmetics = {
+    // Dress-up catalog for the princess avatar. slot = where it layers.
+    // source: 'free' (owned at start) | 'raid' (from adventures) | 'legendary' (chore reward)
+    CATALOG: {
+      // ----- DRESSES -----
+      dress_pink:   { slot: 'dress', name: 'Pink Dress',      art: 'dress-pink.png',   rarity: 'common',    source: 'free' },
+      dress_blue:   { slot: 'dress', name: 'Blue Gown',       art: 'dress-blue.png',   rarity: 'uncommon',  source: 'raid' },
+      dress_purple: { slot: 'dress', name: 'Sparkle Dress',   art: 'dress-purple.png', rarity: 'rare',      source: 'raid' },
+      dress_green:  { slot: 'dress', name: 'Garden Dress',    art: 'dress-green.png',  rarity: 'uncommon',  source: 'raid' },
+      dress_gold:   { slot: 'dress', name: 'Royal Gown',      art: 'dress-gold.png',   rarity: 'legendary', source: 'legendary' },
+      // ----- CROWNS -----
+      crown_flower:   { slot: 'crown', name: 'Flower Crown',   art: 'crown-flower.png',   rarity: 'common',    source: 'free' },
+      crown_silver:   { slot: 'crown', name: 'Silver Tiara',   art: 'crown-silver.png',   rarity: 'uncommon',  source: 'raid' },
+      crown_pink:     { slot: 'crown', name: 'Pink Tiara',     art: 'crown-pink.png',     rarity: 'uncommon',  source: 'raid' },
+      crown_rosegold: { slot: 'crown', name: 'Rose Crown',     art: 'crown-rosegold.png', rarity: 'rare',      source: 'raid' },
+      crown_gold:     { slot: 'crown', name: 'Golden Crown',   art: 'crown-gold.png',     rarity: 'rare',      source: 'raid' },
+      crown_magic:    { slot: 'crown', name: 'Magic Crown',    art: 'crown-magic.png',    rarity: 'legendary', source: 'legendary' },
+    },
+    // the items every new princess owns immediately
+    starterIds: function () {
+      var out = [];
+      var cat = Cosmetics.CATALOG;
+      for (var k in cat) { if (cat[k].source === 'free') out.push(k); }
+      return out;
+    },
+    bySlot: function (slot) {
+      var out = [];
+      var cat = Cosmetics.CATALOG;
+      for (var k in cat) { if (cat[k].slot === slot) out.push(Object.assign({ id: k }, cat[k])); }
+      return out;
+    },
+    get: function (id) { return Cosmetics.CATALOG[id] || null; },
   };
 
   const Building = {
@@ -5234,6 +5305,7 @@
   GOTH.Leveling = Leveling;
   GOTH.Loot = Loot;
   GOTH.Building = Building;
+  GOTH.Cosmetics = Cosmetics;
   GOTH.TimeUtil = TimeUtil;
   GOTH.Streaks = Streaks;
   GOTH.Rewards = Rewards;
@@ -6323,7 +6395,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W5.0-1.1p1'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W5.1'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }
@@ -6817,11 +6889,106 @@ function FlameCard(props) {
 }
 
 /* ---------------- home ---------------- */
+/* ============================ PRINCESS DRESS-UP ============================ */
+// Owned/equipped cosmetics are stored per-child in localStorage (cosmetic-only,
+// kept out of the validated game DB so there's zero economy/save risk).
+function cosmKey(childId) { return 'goth.cosmetics.' + childId; }
+function loadCosmetics(childId) {
+  try {
+    var raw = localStorage.getItem(cosmKey(childId));
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  // first time: grant the free starter items + equip the starter look
+  var owned = {};
+  G.Cosmetics.starterIds().forEach(function (id) { owned[id] = true; });
+  var data = { owned: owned, equipped: { dress: 'dress_pink', crown: 'crown_flower' } };
+  try { localStorage.setItem(cosmKey(childId), JSON.stringify(data)); } catch (e) {}
+  return data;
+}
+function saveCosmetics(childId, data) {
+  try { localStorage.setItem(cosmKey(childId), JSON.stringify(data)); } catch (e) {}
+}
+// grant an item (used by raids / chore rewards later). returns true if newly granted.
+function grantCosmetic(childId, id) {
+  var data = loadCosmetics(childId);
+  if (data.owned[id]) return false;
+  data.owned[id] = true;
+  saveCosmetics(childId, data);
+  return true;
+}
+
+function DressUp(props) {
+  var childId = props.childId;
+  var initial = loadCosmetics(childId);
+  var ownedState = useState(initial.owned);
+  var owned = ownedState[0], setOwned = ownedState[1];
+  var equippedState = useState(initial.equipped);
+  var equipped = equippedState[0], setEquipped = equippedState[1];
+  var slotState = useState('dress');
+  var slot = slotState[0], setSlot = slotState[1];
+
+  function tryOn(item) {
+    if (!owned[item.id]) {
+      // locked — tell the child how to earn it (no dead-end, just info)
+      var how = item.source === 'legendary' ? 'Do a special mission to earn this!' : 'Find this on an adventure!';
+      Voice.speak(item.name + '. ' + how);
+      return;
+    }
+    var next = Object.assign({}, equipped); next[item.slot] = item.id;
+    setEquipped(next);
+    saveCosmetics(childId, { owned: owned, equipped: next });
+    Sfx.sparkle && Sfx.sparkle();
+    Voice.speak('You look beautiful!');
+  }
+
+  var items = G.Cosmetics.bySlot(slot);
+  var dressArt = equipped.dress ? G.Cosmetics.get(equipped.dress) : null;
+  var crownArt = equipped.crown ? G.Cosmetics.get(equipped.crown) : null;
+
+  return (
+    React.createElement('div', { className: 'dressup-overlay' },
+      React.createElement('div', { className: 'dressup-top' },
+        React.createElement('button', { className: 'du-close', onClick: props.onClose }, '← Back'),
+        React.createElement('div', { className: 'du-title' }, '👗 Dress Up')
+      ),
+      // ---- the live princess preview (layered) ----
+      React.createElement('div', { className: 'du-stage' },
+        React.createElement('img', { className: 'du-layer du-base', src: 'princess-base.png', alt: 'princess' }),
+        dressArt ? React.createElement('img', { className: 'du-layer du-dress', src: dressArt.art, alt: dressArt.name }) : null,
+        crownArt ? React.createElement('img', { className: 'du-layer du-crown', src: crownArt.art, alt: crownArt.name }) : null
+      ),
+      // ---- slot tabs (Dress / Crown) ----
+      React.createElement('div', { className: 'du-slots' },
+        React.createElement('button', { className: 'du-slot' + (slot === 'dress' ? ' on' : ''), onClick: function () { setSlot('dress'); } }, '👗 Dresses'),
+        React.createElement('button', { className: 'du-slot' + (slot === 'crown' ? ' on' : ''), onClick: function () { setSlot('crown'); } }, '👑 Crowns')
+      ),
+      // ---- the item tray ----
+      React.createElement('div', { className: 'du-tray' },
+        items.map(function (item) {
+          var isOwned = !!owned[item.id];
+          var isOn = equipped[item.slot] === item.id;
+          return React.createElement('button', {
+            key: item.id,
+            className: 'du-item rarity-' + item.rarity + (isOn ? ' on' : '') + (isOwned ? '' : ' locked'),
+            onClick: function () { tryOn(item); }
+          },
+            React.createElement('img', { src: item.art, alt: item.name }),
+            isOwned ? null : React.createElement('span', { className: 'du-lock' }, item.source === 'legendary' ? '⭐' : '🔒'),
+            isOn ? React.createElement('span', { className: 'du-check' }, '✓') : null
+          );
+        })
+      )
+    )
+  );
+}
+
+
 function HomeScreen(props) {
   const state = props.state;
   const g = state.guardian;
   const [hop, setHop] = useState(false);
   const [flash, setFlash] = useState({});
+  const [showDressUp, setShowDressUp] = useState(false);
   const prevRef = useRef({ gold: g ? g.gold : 0, energy: g ? g.energy : 0 });
   useEffect(function () {
     if (!g) return;
@@ -6916,6 +7083,14 @@ function HomeScreen(props) {
           <span className="ttg-icon">🔊</span>
           <span className="ttg-text">Talk to {g.name}!</span>
         </button>
+        <button className="dressup-btn" onClick={function (e) { e.stopPropagation(); setShowDressUp(true); }}
+          aria-label="Dress up your princess">
+          <span className="ttg-icon">👗</span>
+          <span className="ttg-text">Dress Up!</span>
+        </button>
+        {showDressUp && S.selectActiveChild(state) && (
+          <DressUp childId={S.selectActiveChild(state).id} onClose={function () { setShowDressUp(false); }} />
+        )}
         <div className="hero-body">
           <div className="xp-bar"><span style={{ width: pct + '%' }} /></div>
           <div className="xp-row"><span>XP</span><span className="num">{g.xp} / {xpNeeded}</span></div>

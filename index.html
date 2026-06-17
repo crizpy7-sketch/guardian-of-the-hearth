@@ -6002,8 +6002,9 @@ function guardianMotion(species, level, mood) {
   if (mood === 'celebrate') return { frames: frameSet(species, 'cheer', 4), fallback: base, fps: 5, fade: 160, cls: 'm-cheer' };
   if (mood === 'sleep') return { frames: frameSet(species, 'sleep', 3), fallback: base, fps: 1.6, fade: 700, cls: 'm-sleep' };
   if (mood === 'play') return { frames: frameSet(species, 'play', 4), fallback: base, fps: 6, fade: 140, cls: 'm-play' };
-  // idle: a SINGLE clean frame (wings folded) + CSS breathing. One frame = zero wing-overlap ghosting.
-  return { frames: ['guardian-' + species.toLowerCase() + '-cheer2.png'], fallback: base, fps: 1, fade: 0, cls: 'm-breathe' };
+  // idle: the lively ANIMATED loop (the original moving guardian). Cycles the cheer frames so
+  // it bounces/moves at rest rather than sitting still.
+  return { frames: frameSet(species, 'cheer', 4), fallback: base, fps: 4, fade: 180, cls: 'm-breathe' };
 }
 const RARITY_COLOR = {
   COMMON: 'var(--r-common)', UNCOMMON: 'var(--r-uncommon)', RARE: 'var(--r-rare)',
@@ -6418,7 +6419,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W5.5'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W5.6'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }

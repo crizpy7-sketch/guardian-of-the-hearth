@@ -6073,33 +6073,32 @@ function DevMenu(props) {
 
   // THE BIG ONE: wipe all progress -> fresh install -> reload into first-time experience.
   async function resetToNewPlayer() {
+    var hadError = false;
+    // 1) CLEAR all game data via the OPEN database. This is the reliable part — it works on a
+    //    live connection (no blocked-delete problem) and is enough to make a brand-new player.
     try {
-      // 1) remove the tutorial flags (so Sol's welcome + guidance play again)
-      DEV_LS_KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
-      // 2) CLEAR all data via the OPEN database first — this works even when deleteDatabase
-      //    would be blocked by the live connection (the common reason a reset "doesn't take").
-      try {
-        if (props.storeCtx && props.storeCtx.current && props.storeCtx.current.db) {
-          await props.storeCtx.current.db.clearAllStores();
-        }
-      } catch (e) {}
-      // 3) close the connection so the delete below isn't blocked
-      try {
-        if (props.storeCtx && props.storeCtx.current && props.storeCtx.current.db && props.storeCtx.current.db.close) {
-          props.storeCtx.current.db.close();
-        }
-      } catch (e) {}
-      // 4) delete the database entirely (now unblocked)
-      await new Promise(function (resolve) {
-        try {
-          var req = indexedDB.deleteDatabase(DEV_DB_NAME);
-          req.onsuccess = resolve; req.onerror = resolve; req.onblocked = resolve;
-          setTimeout(resolve, 1200);
-        } catch (e) { resolve(); }
-      });
-      // 5) reload — the game boots exactly like a brand-new install
-      window.location.reload();
-    } catch (e) { flash('Reset failed: ' + (e && e.message)); }
+      if (props.storeCtx && props.storeCtx.current && props.storeCtx.current.db) {
+        await props.storeCtx.current.db.clearAllStores();
+      }
+    } catch (e) { hadError = true; }
+    // 2) remove ALL goth.* localStorage keys (tutorial flags, bond taps, AND every child's
+    //    dress-up cosmetics) so nothing from the old player lingers.
+    try {
+      var toRemove = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('goth.') === 0) toRemove.push(k);
+      }
+      toRemove.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+    } catch (e) { hadError = true; }
+    // 3) best-effort: also delete the whole DB so a fresh schema is rebuilt. We do NOT block
+    //    the reload on this (it can be blocked by the open connection on some devices).
+    try {
+      indexedDB.deleteDatabase(DEV_DB_NAME);
+    } catch (e) {}
+    // 4) reload after a short beat so the clear above is flushed. Always reloads, even on error.
+    flash(hadError ? 'Reset had a hiccup — reloading…' : 'Fresh start! Reloading…');
+    setTimeout(function () { window.location.reload(); }, 400);
   }
 
   // Tutorial flag controls (only touch flags, nothing else)
@@ -6395,7 +6394,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W5.1'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W5.2'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }

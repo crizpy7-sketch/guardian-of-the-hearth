@@ -6394,7 +6394,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W5.2'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W5.3'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }
@@ -6894,15 +6894,22 @@ function FlameCard(props) {
 function cosmKey(childId) { return 'goth.cosmetics.' + childId; }
 function loadCosmetics(childId) {
   try {
-    var raw = localStorage.getItem(cosmKey(childId));
-    if (raw) return JSON.parse(raw);
-  } catch (e) {}
-  // first time: grant the free starter items + equip the starter look
-  var owned = {};
-  G.Cosmetics.starterIds().forEach(function (id) { owned[id] = true; });
-  var data = { owned: owned, equipped: { dress: 'dress_pink', crown: 'crown_flower' } };
-  try { localStorage.setItem(cosmKey(childId), JSON.stringify(data)); } catch (e) {}
-  return data;
+    if (!childId || !window.GOTH || !GOTH.Cosmetics) {
+      return { owned: {}, equipped: {} };
+    }
+    try {
+      var raw = localStorage.getItem(cosmKey(childId));
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    // first time: grant the free starter items + equip the starter look
+    var owned = {};
+    GOTH.Cosmetics.starterIds().forEach(function (id) { owned[id] = true; });
+    var data = { owned: owned, equipped: { dress: 'dress_pink', crown: 'crown_flower' } };
+    try { localStorage.setItem(cosmKey(childId), JSON.stringify(data)); } catch (e) {}
+    return data;
+  } catch (e) {
+    return { owned: {}, equipped: {} };
+  }
 }
 function saveCosmetics(childId, data) {
   try { localStorage.setItem(cosmKey(childId), JSON.stringify(data)); } catch (e) {}

@@ -1184,9 +1184,29 @@
 </head>
 <body>
 <div id="root"></div>
+<div id="boot-fallback" style="display:none;position:fixed;inset:0;z-index:99998;background:#1a1026;color:#fff;font-family:system-ui,sans-serif;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;">
+  <div style="font-size:48px;margin-bottom:12px;">🐉</div>
+  <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Hmm, the game didn't load.</div>
+  <div id="boot-fallback-msg" style="font-size:13px;opacity:0.7;margin-bottom:20px;max-width:320px;font-family:monospace;"></div>
+  <button onclick="(async function(){try{var ks=await caches.keys();await Promise.all(ks.map(function(k){return caches.delete(k);}));}catch(e){}location.reload(true);})()" style="background:#e8853d;color:#fff;border:none;border-radius:999px;padding:14px 28px;font-size:16px;font-weight:700;">Tap to reload</button>
+</div>
+<script>
+  // Black-screen guard: if #root is still empty after 6s, the app failed to start.
+  window.__bootErr = '';
+  window.addEventListener('error', function(e){ window.__bootErr = (e && e.message ? e.message : 'load error'); });
+  setTimeout(function(){
+    var root = document.getElementById('root');
+    if (!root || root.childNodes.length === 0) {
+      var fb = document.getElementById('boot-fallback');
+      var msg = document.getElementById('boot-fallback-msg');
+      if (msg) msg.textContent = window.__bootErr ? ('Error: ' + window.__bootErr) : 'The app scripts may not have loaded (network/cache).';
+      if (fb) fb.style.display = 'flex';
+    }
+  }, 6000);
+</script>
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
 <script>
 /* ============================================================================
    GUARDIAN OF THE HEARTH — CORE (Phase 2)
@@ -6394,7 +6414,7 @@ function App() {
 }
 
 /* ---------------- Sol's cinematic welcome (first-time, voice-guided) ---------------- */
-const APP_VERSION = 'W5.3'; // bump every ship — shown in the corner so you can confirm the update loaded
+const APP_VERSION = 'W5.4'; // bump every ship — shown in the corner so you can confirm the update loaded
 const SOL_WELCOME_KEY = 'goth.tutorial.sol.v1';
 function solTutorialDone() { try { return localStorage.getItem(SOL_WELCOME_KEY) === '1'; } catch (e) { return false; } }
 function markSolTutorialDone() { try { localStorage.setItem(SOL_WELCOME_KEY, '1'); } catch (e) {} }

@@ -1,4 +1,4 @@
-const CACHE = 'goth-p7-33';
+const CACHE = 'goth-p7-34';
 const ASSETS = [
  "./",
  "./apple-touch-icon.png",
@@ -30,7 +30,7 @@ const ASSETS = [
  "./manifest.json",
  "https://unpkg.com/react@18/umd/react.production.min.js",
  "https://unpkg.com/react-dom@18/umd/react-dom.production.min.js",
- "https://unpkg.com/@babel/standalone/babel.min.js"
+ "https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"
 ];
 self.addEventListener('install', function (e) {
   e.waitUntil(

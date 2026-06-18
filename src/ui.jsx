@@ -635,14 +635,18 @@ function guardianMotion(species, level, mood) {
   // guardian sits cleanly on the background instead of in an ugly opaque box. The square
   // jpg from stageArt() stays as the final fallback for species without cut-out frames.
   const cutoutRest = 'guardian-' + species.toLowerCase() + '-cheer2.png';
+  const cheerPose = 'guardian-' + species.toLowerCase() + '-cheer1.png';
   const base = [cutoutRest].concat(stageArt(species, level));
+  // NOTE: the four cheerN.png are DISTINCT illustrations (arms-up, resting, fire-breath, …),
+  // not in-between animation cels. Cross-fading them as a loop ghosts two different poses on
+  // top of each other. So idle/celebrate each hold ONE clean pose and lean on CSS for life;
+  // only walk/sleep (which DO ship matched cycle frames) animate frame-to-frame.
   if (mood === 'walk') return { frames: frameSet(species, 'walk', 4), fallback: base, fps: 6, fade: 140, cls: 'm-walk' };
-  if (mood === 'celebrate') return { frames: frameSet(species, 'cheer', 4), fallback: base, fps: 5, fade: 160, cls: 'm-cheer' };
+  if (mood === 'celebrate') return { frames: [cheerPose], fallback: base, fps: 1, fade: 0, cls: 'm-cheer' };
   if (mood === 'sleep') return { frames: frameSet(species, 'sleep', 3), fallback: base, fps: 1.6, fade: 700, cls: 'm-sleep' };
-  if (mood === 'play') return { frames: frameSet(species, 'play', 4), fallback: base, fps: 6, fade: 140, cls: 'm-play' };
-  // idle: the lively ANIMATED loop (the original moving guardian). Cycles the cheer frames so
-  // it bounces/moves at rest rather than sitting still.
-  return { frames: frameSet(species, 'cheer', 4), fallback: base, fps: 4, fade: 180, cls: 'm-breathe' };
+  if (mood === 'play') return { frames: [cheerPose], fallback: base, fps: 1, fade: 0, cls: 'm-play' };
+  // idle: a single calm resting pose with a gentle CSS "breathe" — no cross-fade, no ghosting.
+  return { frames: [cutoutRest], fallback: base, fps: 1, fade: 0, cls: 'm-breathe' };
 }
 const RARITY_COLOR = {
   COMMON: 'var(--r-common)', UNCOMMON: 'var(--r-uncommon)', RARE: 'var(--r-rare)',
@@ -1795,9 +1799,8 @@ function HomeScreen(props) {
           <span className="ttg-text">Talk to {g.name}!</span>
         </button>
         <button className="dressup-btn" onClick={function (e) { e.stopPropagation(); setShowDressUp(true); }}
-          aria-label="Dress up your princess">
+          aria-label="Dress up your guardian" title="Dress Up!">
           <span className="ttg-icon">👗</span>
-          <span className="ttg-text">Dress Up!</span>
         </button>
         {showDressUp && S.selectActiveChild(state) && (
           <DressUp childId={S.selectActiveChild(state).id} onClose={function () { setShowDressUp(false); }} />
@@ -1941,8 +1944,13 @@ function QuestsScreen(props) {
                     <span className="q-title" onClick={function () { Voice.say(b.quest.title); }}>{b.quest.title}</span>
                     <div className="q-sub">
                       {qdDots(b.quest.maxPerDay, b.quest.maxPerDay - b.remainingToday)}
-                      {spent ? 'done for today ✓' : b.remainingToday + ' left today'} · +{b.quest.reward.energy}⚡ +{b.quest.reward.coins}✦ +{b.quest.reward.xp}xp
+                      {spent ? 'done for today ✓' : b.remainingToday + ' left today'}
                       {pc > 0 && <span className="sent-chip">✉️ {pc} with the Keeper</span>}
+                    </div>
+                    <div className="q-rewards">
+                      <span className="rwd energy">+{b.quest.reward.energy}⚡</span>
+                      <span className="rwd coins">+{b.quest.reward.coins}✦</span>
+                      <span className="rwd xp">+{b.quest.reward.xp} XP</span>
                     </div>
                   </span>
                   <button className={'mini ' + (J.ok[b.quest.id] ? 'sentok' : 'go') + ((firstAvailQ === b.quest.id && !J.ok[b.quest.id]) ? ' guide-glow' : '')}

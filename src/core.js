@@ -79,6 +79,11 @@
 
     RARITY_WEIGHTS: { COMMON: 50, UNCOMMON: 27, RARE: 13, EPIC: 6, LEGENDARY: 3, MYTHIC: 1 },
 
+    // The rarest treasures are earned, not farmed: Legendary & Mythic items can
+    // only reach a child as a direct reward for a real-world chore ("shore").
+    // Expeditions and loot crates therefore cap at Epic — see Loot.fieldPool.
+    CHORE_ONLY_RARITIES: ['LEGENDARY', 'MYTHIC'],
+
     STREAK: { DECAY_PER_MISSED_DAY: 0.8 },
     DAYNIGHT: {
       // Phase boundaries in local hours [start, end). Derived from the device clock.
@@ -422,6 +427,16 @@
       const pool = itemPool.filter(function (i) { return i.rarity === rarity; });
       if (pool.length === 0) return null;
       return pool[Math.floor(rand() * pool.length)];
+    },
+    // The pool that expeditions and crates draw from: every catalog item EXCEPT
+    // loot crates themselves and the chore-only treasures (Legendary/Mythic).
+    // When a rarity roll lands on an excluded tier, resolveDungeon/openCrate walk
+    // down to the nearest available tier, so the top end of farmed loot is Epic.
+    fieldPool: function (items) {
+      const choreOnly = CONFIG.CHORE_ONLY_RARITIES || [];
+      return items.filter(function (i) {
+        return i.id !== 'itm_loot_crate' && choreOnly.indexOf(i.rarity) === -1;
+      });
     },
     rollInt: function (rand, min, max) {
       return min + Math.floor(rand() * (max - min + 1));
@@ -1978,7 +1993,7 @@
           throw e;
         }
         const def = defOf(run.dungeonId);
-        const result = Loot.resolveDungeon(run, def, CONFIG.ITEMS);
+        const result = Loot.resolveDungeon(run, def, Loot.fieldPool(CONFIG.ITEMS));
         return repos.dungeons.claimRun(runId, result);
       },
     };
@@ -1994,7 +2009,7 @@
       // Deterministic when given a seed string (used by tests); random otherwise.
       openCrate: async function (userId, seedStr) {
         const rand = RNG.mulberry32(RNG.seedFromString(seedStr || Ids.uuid()));
-        const pool = CONFIG.ITEMS.filter(function (i) { return i.id !== 'itm_loot_crate'; });
+        const pool = Loot.fieldPool(CONFIG.ITEMS);
         let rarity = Loot.rollRarity(rand);
         let item = Loot.pickItemOfRarity(rand, rarity, pool);
         if (!item) { item = pool[0]; rarity = item.rarity; }
@@ -3440,8 +3455,9 @@
       await env.repos.guardians.applyBundle(child.id, Rewards.normalizeBundle({ lootCrates: 2 }));
       t.equal(await env.services.loot.crateCount(child.id), 2, 'two crates held');
       const rand = RNG.mulberry32(RNG.seedFromString('demo-crate-1'));
-      const pool = CONFIG.ITEMS.filter(function (i) { return i.id !== 'itm_loot_crate'; });
-      const expected = Loot.pickItemOfRarity(rand, Loot.rollRarity(rand), pool);
+      const pool = Loot.fieldPool(CONFIG.ITEMS);
+      let expected = Loot.pickItemOfRarity(rand, Loot.rollRarity(rand), pool);
+      if (!expected) expected = pool[0]; // mirror openCrate's fallback
       const opened = await env.services.loot.openCrate(child.id, 'demo-crate-1');
       t.equal(opened.item.id, expected.id, 'seeded open is deterministic');
       t.ok(opened.item.id !== 'itm_loot_crate', 'crates never drop crates');
@@ -3450,6 +3466,26 @@
       t.ok(inv.some(function (r) { return r.itemId === opened.item.id && r.qty >= 1; }), 'prize granted');
       await env.services.loot.openCrate(child.id, 'demo-crate-2');
       await t.throwsCode(function () { return env.services.loot.openCrate(child.id); }, 'INSUFFICIENT_ITEMS', 'no crates, no prize');
+    } },
+    { name: 'economy: chore-only rarities never drop from raids or crates', db: false, fn: function (t) {
+      const choreOnly = CONFIG.CHORE_ONLY_RARITIES;
+      t.ok(choreOnly.length > 0, 'some rarities are chore-exclusive');
+      const field = Loot.fieldPool(CONFIG.ITEMS);
+      t.ok(field.every(function (i) { return choreOnly.indexOf(i.rarity) === -1; }), 'field pool excludes chore-only tiers');
+      t.ok(field.every(function (i) { return i.id !== 'itm_loot_crate'; }), 'field pool excludes crates');
+      // Catalog still HAS chore-only treasures — they just route through chores.
+      t.ok(CONFIG.ITEMS.some(function (i) { return choreOnly.indexOf(i.rarity) !== -1; }), 'legendary/mythic still exist in catalog');
+      // Resolve every dungeon over many seeds; no drop may be a chore-only rarity.
+      const rarityOf = {};
+      CONFIG.ITEMS.forEach(function (i) { rarityOf[i.id] = i.rarity; });
+      CONFIG.DUNGEONS.forEach(function (def) {
+        for (let s = 0; s < 200; s++) {
+          const res = Loot.resolveDungeon({ seed: s * 2654435761 }, def, field);
+          res.drops.forEach(function (d) {
+            t.ok(choreOnly.indexOf(rarityOf[d.itemId]) === -1, 'raid drop ' + d.itemId + ' is not chore-only');
+          });
+        }
+      });
     } },
     { name: 'game: building upgrades follow the cost curve atomically', db: true, fn: async function (t, env) {
       await env.services.seed.seedIfEmpty();

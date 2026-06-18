@@ -525,11 +525,13 @@
   @keyframes ttgWiggle { 0%,90%,100% { transform: rotate(0deg); } 93% { transform: rotate(-12deg); } 96% { transform: rotate(12deg); } }
   .ttg-text { white-space: nowrap; }
   /* ===== PRINCESS DRESS-UP ===== */
-  .dressup-btn { position: absolute; top: 12px; right: 12px; z-index: 14; display: flex; align-items: center;
-    gap: 6px; background: linear-gradient(135deg, #e87fc4, #b85fd6); color: #fff; border: none;
-    border-radius: 999px; padding: 9px 16px; font-weight: 800; font-size: 15px; cursor: pointer;
-    box-shadow: 0 4px 14px rgba(184,95,214,0.45); }
-  .dressup-btn:active { transform: scale(0.96); }
+  .dressup-btn { position: absolute; top: 10px; right: 10px; z-index: 14;
+    display: flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; background: linear-gradient(135deg, #e87fc4, #b85fd6); color: #fff;
+    border: 1.5px solid rgba(255,255,255,0.35); border-radius: 50%; padding: 0; cursor: pointer;
+    box-shadow: 0 3px 12px rgba(184,95,214,0.5); }
+  .dressup-btn .ttg-icon { font-size: 20px; animation: none; }
+  .dressup-btn:active { transform: scale(0.92); }
   .dressup-overlay { position: fixed; inset: 0; z-index: 150; background: linear-gradient(180deg, #2a1838, #1a1026);
     display: flex; flex-direction: column; }
   .dressup-top { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
@@ -605,6 +607,12 @@
   .q-main { flex: 1; min-width: 0; }
   .q-title { font-weight: 600; font-size: 14px; }
   .q-sub { font-size: 12px; color: var(--dim); }
+  .q-rewards { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+  .rwd { font-size: 11px; font-weight: 700; line-height: 1; padding: 3px 7px; border-radius: 999px;
+    border: 1px solid var(--edge); background: rgba(255,255,255,0.04); white-space: nowrap; }
+  .rwd.energy { color: #ffcf7a; }
+  .rwd.coins { color: #ffe08a; }
+  .rwd.xp { color: #9fd3ff; }
   .cat-label { display: flex; align-items: center; gap: 8px; margin: 14px 2px 8px; }
   .cat-label .eyebrow { letter-spacing: 0.18em; }
   .cat-rule { flex: 1; height: 1px; background: var(--edge); }
@@ -1114,7 +1122,9 @@
   .island-scene { position: relative; width: 100%; aspect-ratio: 613 / 1100;
     border-radius: 20px; overflow: hidden; border: 1px solid var(--edge);
     background: radial-gradient(420px 300px at 50% 30%, #2E2444, #1B1830 75%);
-    box-shadow: 0 10px 34px rgba(0,0,0,0.45); }
+    box-shadow: 0 10px 34px rgba(0,0,0,0.45);
+    /* keep the lowest building (Sanctuary) clear of the fixed tab bar when scrolled */
+    margin-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
   .island-scene > img.base { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .plot { position: absolute; transform: translate(-50%, -82%); border: none; background: none;
     padding: 0; cursor: pointer; z-index: 3; }
@@ -6631,7 +6641,12 @@ function guardianMotion(species, level, mood) {
   // guardian sits cleanly on the background instead of in an ugly opaque box. The square
   // jpg from stageArt() stays as the final fallback for species without cut-out frames.
   const cutoutRest = 'guardian-' + species.toLowerCase() + '-cheer2.png';
+  const cheerPose = 'guardian-' + species.toLowerCase() + '-cheer1.png';
   const base = [cutoutRest].concat(stageArt(species, level));
+  // NOTE: the four cheerN.png are DISTINCT illustrations (arms-up, resting, fire-breath, …),
+  // not in-between animation cels. Cross-fading them as a loop ghosts two different poses on
+  // top of each other. So idle/celebrate each hold ONE clean pose and lean on CSS for life;
+  // only walk/sleep (which DO ship matched cycle frames) animate frame-to-frame.
   if (mood === 'walk') return {
     frames: frameSet(species, 'walk', 4),
     fallback: base,
@@ -6640,10 +6655,10 @@ function guardianMotion(species, level, mood) {
     cls: 'm-walk'
   };
   if (mood === 'celebrate') return {
-    frames: frameSet(species, 'cheer', 4),
+    frames: [cheerPose],
     fallback: base,
-    fps: 5,
-    fade: 160,
+    fps: 1,
+    fade: 0,
     cls: 'm-cheer'
   };
   if (mood === 'sleep') return {
@@ -6654,19 +6669,18 @@ function guardianMotion(species, level, mood) {
     cls: 'm-sleep'
   };
   if (mood === 'play') return {
-    frames: frameSet(species, 'play', 4),
+    frames: [cheerPose],
     fallback: base,
-    fps: 6,
-    fade: 140,
+    fps: 1,
+    fade: 0,
     cls: 'm-play'
   };
-  // idle: the lively ANIMATED loop (the original moving guardian). Cycles the cheer frames so
-  // it bounces/moves at rest rather than sitting still.
+  // idle: a single calm resting pose with a gentle CSS "breathe" — no cross-fade, no ghosting.
   return {
-    frames: frameSet(species, 'cheer', 4),
+    frames: [cutoutRest],
     fallback: base,
-    fps: 4,
-    fade: 180,
+    fps: 1,
+    fade: 0,
     cls: 'm-breathe'
   };
 }
@@ -8457,12 +8471,11 @@ function HomeScreen(props) {
       e.stopPropagation();
       setShowDressUp(true);
     },
-    "aria-label": "Dress up your princess"
+    "aria-label": "Dress up your guardian",
+    title: "Dress Up!"
   }, /*#__PURE__*/React.createElement("span", {
     className: "ttg-icon"
-  }, "👗"), /*#__PURE__*/React.createElement("span", {
-    className: "ttg-text"
-  }, "Dress Up!")), showDressUp && S.selectActiveChild(state) && /*#__PURE__*/React.createElement(DressUp, {
+  }, "👗")), showDressUp && S.selectActiveChild(state) && /*#__PURE__*/React.createElement(DressUp, {
     childId: S.selectActiveChild(state).id,
     onClose: function () {
       setShowDressUp(false);
@@ -8699,9 +8712,17 @@ function QuestsScreen(props) {
         }
       }, b.quest.title), /*#__PURE__*/React.createElement("div", {
         className: "q-sub"
-      }, qdDots(b.quest.maxPerDay, b.quest.maxPerDay - b.remainingToday), spent ? 'done for today ✓' : b.remainingToday + ' left today', " · +", b.quest.reward.energy, "⚡ +", b.quest.reward.coins, "✦ +", b.quest.reward.xp, "xp", pc > 0 && /*#__PURE__*/React.createElement("span", {
+      }, qdDots(b.quest.maxPerDay, b.quest.maxPerDay - b.remainingToday), spent ? 'done for today ✓' : b.remainingToday + ' left today', pc > 0 && /*#__PURE__*/React.createElement("span", {
         className: "sent-chip"
-      }, "✉️ ", pc, " with the Keeper"))), /*#__PURE__*/React.createElement("button", {
+      }, "✉️ ", pc, " with the Keeper")), /*#__PURE__*/React.createElement("div", {
+        className: "q-rewards"
+      }, /*#__PURE__*/React.createElement("span", {
+        className: "rwd energy"
+      }, "+", b.quest.reward.energy, "⚡"), /*#__PURE__*/React.createElement("span", {
+        className: "rwd coins"
+      }, "+", b.quest.reward.coins, "✦"), /*#__PURE__*/React.createElement("span", {
+        className: "rwd xp"
+      }, "+", b.quest.reward.xp, " XP"))), /*#__PURE__*/React.createElement("button", {
         className: 'mini ' + (J.ok[b.quest.id] ? 'sentok' : 'go') + (firstAvailQ === b.quest.id && !J.ok[b.quest.id] ? ' guide-glow' : ''),
         style: spent ? {
           opacity: 0.65

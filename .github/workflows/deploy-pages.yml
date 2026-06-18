@@ -1,0 +1,63 @@
+name: Deploy to GitHub Pages
+
+# Builds the single-file app and publishes it to GitHub Pages so it can be
+# viewed in a browser. Runs on the active feature branch and on main.
+#
+# ONE-TIME SETUP (repo owner): Settings → Pages → Build and deployment →
+# Source: "GitHub Actions". After that, every push here deploys automatically.
+
+on:
+  push:
+    branches: ["claude/game-fixes-hgjprk", "main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - run: npm run build
+      # Assemble a clean static site folder (runtime assets only — no dev files).
+      - name: Assemble _site
+        run: |
+          mkdir -p _site
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='_site' \
+            --exclude='src' \
+            --exclude='tools' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            --exclude='vercel.json' \
+            --exclude='README.md' \
+            --exclude='guardian-hearth-v1' \
+            --exclude='guardian-hearth-v1.zip' \
+            ./ _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

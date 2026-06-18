@@ -154,6 +154,22 @@
       },
     },
 
+    // The child's own hero evolves like a guardian does — but its growth is fed
+    // by real-world effort: the number of chores ('shores') a parent approves.
+    // Each stage swaps the avatar's aura, title, and (if present) art; missing
+    // art falls back to the chosen emoji, so stages work today and can be
+    // illustrated later by dropping in keeper-<n>.png assets.
+    KEEPER: {
+      COUNTER: 'global.approvals',
+      STAGES: [
+        { at: 0,   name: 'New Keeper',       title: 'a spark of promise',        emoji: '🧒', aura: '#9DB4C0', art: 'keeper-1.png' },
+        { at: 10,  name: 'Brave Keeper',     title: 'finding their courage',     emoji: '🧑', aura: '#7FB77E', art: 'keeper-2.png' },
+        { at: 30,  name: 'Hero Keeper',      title: 'a true hero of the hearth',  emoji: '🦸', aura: '#5AA9E6', art: 'keeper-3.png' },
+        { at: 75,  name: 'Champion Keeper',  title: 'champion of the island',     emoji: '🦸', aura: '#C77DFF', art: 'keeper-4.png' },
+        { at: 150, name: 'Legendary Keeper', title: 'a legend the flame remembers', emoji: '👑', aura: '#FFC857', art: 'keeper-5.png' },
+      ],
+    },
+
     SPECIES: {
       DRAGON: { emoji: '🐉', flavor: 'Bold keeper of ember and sky.' },
       WOLF: { emoji: '🐺', flavor: 'Loyal sentinel of the night watch.' },
@@ -2245,7 +2261,7 @@
       boot: 'LOADING', bootInfo: null, now: now || Date.now(),
       mode: 'CHILD_MODE', session: null, parentHasPin: false,
       parentQueue: [], family: [],
-      flame: 0,
+      flame: 0, approvals: 0,
       users: [], activeChildId: null, itemsById: {},
       guardian: null, questBoard: [], pending: [],
       inventory: [], crates: 0,
@@ -2260,7 +2276,7 @@
     return {
       guardian: null, questBoard: [], pending: [], inventory: [], crates: 0,
       dungeon: { list: [], activeRun: null }, buildings: [], achievements: [], streaks: [],
-      flame: 0,
+      flame: 0, approvals: 0,
     };
   }
 
@@ -2287,7 +2303,7 @@
         const b = action.bundle || emptyBundle();
         return Object.assign({}, state, {
           guardian: b.guardian, questBoard: b.questBoard, pending: b.pending,
-          flame: b.flame || 0,
+          flame: b.flame || 0, approvals: b.approvals || 0,
           inventory: b.inventory, crates: b.crates, dungeon: b.dungeon,
           buildings: b.buildings, achievements: b.achievements, streaks: b.streaks,
         });
@@ -2367,6 +2383,8 @@
     bundle.streaks = await ctx.repos.streaks.listByUser(childId);
     const flameRow = await ctx.repos.counters.get(CONFIG.FLAME.FAMILY_ID, CONFIG.FLAME.KEY);
     bundle.flame = flameRow ? flameRow.value : 0;
+    const approvalsRow = await ctx.repos.counters.get(childId, 'global.approvals');
+    bundle.approvals = approvalsRow ? approvalsRow.value : 0;
     if (guardian) {
       const dz = await ctx.services.dungeon.listForGuardian(guardian.id);
       bundle.dungeon = { list: dz.dungeons, activeRun: dz.activeRun };
@@ -2868,6 +2886,37 @@
     },
   };
 
+  // The child's hero progression — same shape as Flame, fed by approved chores.
+  const Keeper = {
+    stageIndex: function (approvals) {
+      const st = CONFIG.KEEPER.STAGES;
+      let idx = 0;
+      for (let i = 0; i < st.length; i++) { if (approvals >= st[i].at) idx = i; }
+      return idx;
+    },
+    describe: function (approvals) {
+      const st = CONFIG.KEEPER.STAGES;
+      const a = Math.max(0, approvals || 0);
+      const idx = Keeper.stageIndex(a);
+      const cur = st[idx];
+      const next = st[idx + 1] || null;
+      return {
+        approvals: a,
+        stage: idx,
+        name: cur.name,
+        title: cur.title,
+        emoji: cur.emoji,
+        aura: cur.aura,
+        art: cur.art || null,
+        isMax: !next,
+        nextName: next ? next.name : null,
+        nextAt: next ? next.at : null,
+        toNext: next ? Math.max(0, next.at - a) : 0,
+        progress: next ? Math.min(1, (a - cur.at) / (next.at - cur.at)) : 1,
+      };
+    },
+  };
+
   async function healTimeTravel(ctx) {
     // Repairs records stamped in the future by dev-clock fast-forwarding.
     // Future streak days make every approval throw TIME_BACKWARDS, which
@@ -2963,6 +3012,7 @@
     },
     selectActiveRun: function (s) { return s.dungeon.activeRun; },
     selectGuardianPower: function (s) { return Gear.totalPower(s.guardian && s.guardian.equipped); },
+    selectKeeper: function (s) { return Keeper.describe(s.approvals || 0); },
     selectEquipped: function (s) { return (s.guardian && s.guardian.equipped) || []; },
     selectIsParentMode: function (s) { return s.mode === 'PARENT_MODE' && !!s.session; },
     selectCanApprove: function (s) { return !!(s.session && s.now <= s.session.expiresAt); },
@@ -3672,6 +3722,29 @@
       await env.repos.guardians.equip(g.id, 'itm_scout_boots'); // now it fits
       t.equal((await env.repos.guardians.get(g.id)).equipped.length, 3, 'refilled');
     } },
+    { name: 'keeper: the hero evolves through chore milestones', db: false, fn: function (t) {
+      const st = CONFIG.KEEPER.STAGES;
+      t.equal(st[0].at, 0, 'first stage starts at zero');
+      for (let i = 1; i < st.length; i++) t.ok(st[i].at > st[i - 1].at, 'thresholds ascend');
+      t.equal(Keeper.describe(0).stage, 0, 'no chores -> first stage');
+      t.equal(Keeper.describe(0).name, st[0].name, 'first stage name');
+      t.equal(Keeper.describe(0).nextAt, st[1].at, 'knows the next milestone');
+      t.equal(Keeper.describe(st[1].at - 1).stage, 0, 'one short of evolving');
+      t.equal(Keeper.describe(st[1].at).stage, 1, 'crossing the line evolves');
+      // Progress climbs from 0 toward 1 within a stage, never exceeding it.
+      const mid = Keeper.describe(Math.floor((st[1].at + st[2].at) / 2));
+      t.ok(mid.progress > 0 && mid.progress < 1, 'mid-stage progress is partial');
+      const top = Keeper.describe(st[st.length - 1].at + 999);
+      t.equal(top.stage, st.length - 1, 'caps at the final stage');
+      t.ok(top.isMax && top.progress === 1 && top.nextAt === null, 'final stage is the summit');
+      // Monotonic: stage never decreases as approvals rise.
+      let prev = 0;
+      for (let a = 0; a <= st[st.length - 1].at + 5; a++) {
+        const s = Keeper.stageIndex(a);
+        t.ok(s >= prev, 'stage is monotonic at ' + a);
+        prev = s;
+      }
+    } },
     { name: 'game: loot crates open atomically and deterministically', db: true, fn: async function (t, env) {
       await env.services.seed.seedIfEmpty();
       const child = await env.repos.users.create({ role: 'CHILD', name: 'Iri' });
@@ -4370,6 +4443,7 @@
   GOTH.SCHEMA = SCHEMA;
   GOTH.STORE_NAMES = STORE_NAMES;
   GOTH.Flame = Flame;
+  GOTH.Keeper = Keeper;
   GOTH.TimeOfDay = TimeOfDay;
   GOTH.Ids = Ids;
   GOTH.RNG = RNG;

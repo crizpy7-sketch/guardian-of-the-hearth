@@ -647,6 +647,19 @@
   .gear-row.on { background: rgba(110,160,120,0.14); border-color: rgba(140,210,150,0.4); }
   .gear-name { flex: 1; font-family: var(--display); font-size: 14px; color: #EADFCB; }
   .gear-pw { font-family: var(--mono); font-size: 13px; color: #9FD0A8; }
+  .keeper-crest { display: flex; align-items: center; gap: 14px; }
+  .keeper-ring { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; overflow: hidden; flex: none;
+    background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.12), rgba(0,0,0,0.18)); }
+  .keeper-ring img { width: 100%; height: 100%; object-fit: cover; }
+  .keeper-ring .fallback { font-size: 34px; line-height: 1; }
+  .keeper-ring.big { width: 96px; height: 96px; }
+  .keeper-ring.big .fallback { font-size: 54px; }
+  .keeper-meta { flex: 1; min-width: 0; }
+  .keeper-name { font-size: 15px; font-weight: 700; color: #EADFCB; }
+  .keeper-title { font-size: 13px; color: var(--dim); font-style: italic; margin-top: 1px; }
+  .keeper-next { font-size: 12px; color: #C8B79A; margin-top: 5px; }
+  .keeper-bar { margin-top: 10px; }
   .raid-live { position: relative; width: 100%; aspect-ratio: 1264 / 620; max-height: 230px;
     overflow: hidden; background: #20181E; }
   .raid-live > img { width: 100%; height: 100%; object-fit: cover; object-position: center 38%;
@@ -1376,6 +1389,22 @@
         SHRINE_PX: [12, 18, 26, 34, 44],
         SHRINE_GLOW: [10, 16, 24, 34, 48],
       },
+    },
+
+    // The child's own hero evolves like a guardian does — but its growth is fed
+    // by real-world effort: the number of chores ('shores') a parent approves.
+    // Each stage swaps the avatar's aura, title, and (if present) art; missing
+    // art falls back to the chosen emoji, so stages work today and can be
+    // illustrated later by dropping in keeper-<n>.png assets.
+    KEEPER: {
+      COUNTER: 'global.approvals',
+      STAGES: [
+        { at: 0,   name: 'New Keeper',       title: 'a spark of promise',        emoji: '🧒', aura: '#9DB4C0', art: 'keeper-1.png' },
+        { at: 10,  name: 'Brave Keeper',     title: 'finding their courage',     emoji: '🧑', aura: '#7FB77E', art: 'keeper-2.png' },
+        { at: 30,  name: 'Hero Keeper',      title: 'a true hero of the hearth',  emoji: '🦸', aura: '#5AA9E6', art: 'keeper-3.png' },
+        { at: 75,  name: 'Champion Keeper',  title: 'champion of the island',     emoji: '🦸', aura: '#C77DFF', art: 'keeper-4.png' },
+        { at: 150, name: 'Legendary Keeper', title: 'a legend the flame remembers', emoji: '👑', aura: '#FFC857', art: 'keeper-5.png' },
+      ],
     },
 
     SPECIES: {
@@ -3469,7 +3498,7 @@
       boot: 'LOADING', bootInfo: null, now: now || Date.now(),
       mode: 'CHILD_MODE', session: null, parentHasPin: false,
       parentQueue: [], family: [],
-      flame: 0,
+      flame: 0, approvals: 0,
       users: [], activeChildId: null, itemsById: {},
       guardian: null, questBoard: [], pending: [],
       inventory: [], crates: 0,
@@ -3484,7 +3513,7 @@
     return {
       guardian: null, questBoard: [], pending: [], inventory: [], crates: 0,
       dungeon: { list: [], activeRun: null }, buildings: [], achievements: [], streaks: [],
-      flame: 0,
+      flame: 0, approvals: 0,
     };
   }
 
@@ -3511,7 +3540,7 @@
         const b = action.bundle || emptyBundle();
         return Object.assign({}, state, {
           guardian: b.guardian, questBoard: b.questBoard, pending: b.pending,
-          flame: b.flame || 0,
+          flame: b.flame || 0, approvals: b.approvals || 0,
           inventory: b.inventory, crates: b.crates, dungeon: b.dungeon,
           buildings: b.buildings, achievements: b.achievements, streaks: b.streaks,
         });
@@ -3591,6 +3620,8 @@
     bundle.streaks = await ctx.repos.streaks.listByUser(childId);
     const flameRow = await ctx.repos.counters.get(CONFIG.FLAME.FAMILY_ID, CONFIG.FLAME.KEY);
     bundle.flame = flameRow ? flameRow.value : 0;
+    const approvalsRow = await ctx.repos.counters.get(childId, 'global.approvals');
+    bundle.approvals = approvalsRow ? approvalsRow.value : 0;
     if (guardian) {
       const dz = await ctx.services.dungeon.listForGuardian(guardian.id);
       bundle.dungeon = { list: dz.dungeons, activeRun: dz.activeRun };
@@ -4092,6 +4123,37 @@
     },
   };
 
+  // The child's hero progression — same shape as Flame, fed by approved chores.
+  const Keeper = {
+    stageIndex: function (approvals) {
+      const st = CONFIG.KEEPER.STAGES;
+      let idx = 0;
+      for (let i = 0; i < st.length; i++) { if (approvals >= st[i].at) idx = i; }
+      return idx;
+    },
+    describe: function (approvals) {
+      const st = CONFIG.KEEPER.STAGES;
+      const a = Math.max(0, approvals || 0);
+      const idx = Keeper.stageIndex(a);
+      const cur = st[idx];
+      const next = st[idx + 1] || null;
+      return {
+        approvals: a,
+        stage: idx,
+        name: cur.name,
+        title: cur.title,
+        emoji: cur.emoji,
+        aura: cur.aura,
+        art: cur.art || null,
+        isMax: !next,
+        nextName: next ? next.name : null,
+        nextAt: next ? next.at : null,
+        toNext: next ? Math.max(0, next.at - a) : 0,
+        progress: next ? Math.min(1, (a - cur.at) / (next.at - cur.at)) : 1,
+      };
+    },
+  };
+
   async function healTimeTravel(ctx) {
     // Repairs records stamped in the future by dev-clock fast-forwarding.
     // Future streak days make every approval throw TIME_BACKWARDS, which
@@ -4187,6 +4249,7 @@
     },
     selectActiveRun: function (s) { return s.dungeon.activeRun; },
     selectGuardianPower: function (s) { return Gear.totalPower(s.guardian && s.guardian.equipped); },
+    selectKeeper: function (s) { return Keeper.describe(s.approvals || 0); },
     selectEquipped: function (s) { return (s.guardian && s.guardian.equipped) || []; },
     selectIsParentMode: function (s) { return s.mode === 'PARENT_MODE' && !!s.session; },
     selectCanApprove: function (s) { return !!(s.session && s.now <= s.session.expiresAt); },
@@ -4896,6 +4959,29 @@
       await env.repos.guardians.equip(g.id, 'itm_scout_boots'); // now it fits
       t.equal((await env.repos.guardians.get(g.id)).equipped.length, 3, 'refilled');
     } },
+    { name: 'keeper: the hero evolves through chore milestones', db: false, fn: function (t) {
+      const st = CONFIG.KEEPER.STAGES;
+      t.equal(st[0].at, 0, 'first stage starts at zero');
+      for (let i = 1; i < st.length; i++) t.ok(st[i].at > st[i - 1].at, 'thresholds ascend');
+      t.equal(Keeper.describe(0).stage, 0, 'no chores -> first stage');
+      t.equal(Keeper.describe(0).name, st[0].name, 'first stage name');
+      t.equal(Keeper.describe(0).nextAt, st[1].at, 'knows the next milestone');
+      t.equal(Keeper.describe(st[1].at - 1).stage, 0, 'one short of evolving');
+      t.equal(Keeper.describe(st[1].at).stage, 1, 'crossing the line evolves');
+      // Progress climbs from 0 toward 1 within a stage, never exceeding it.
+      const mid = Keeper.describe(Math.floor((st[1].at + st[2].at) / 2));
+      t.ok(mid.progress > 0 && mid.progress < 1, 'mid-stage progress is partial');
+      const top = Keeper.describe(st[st.length - 1].at + 999);
+      t.equal(top.stage, st.length - 1, 'caps at the final stage');
+      t.ok(top.isMax && top.progress === 1 && top.nextAt === null, 'final stage is the summit');
+      // Monotonic: stage never decreases as approvals rise.
+      let prev = 0;
+      for (let a = 0; a <= st[st.length - 1].at + 5; a++) {
+        const s = Keeper.stageIndex(a);
+        t.ok(s >= prev, 'stage is monotonic at ' + a);
+        prev = s;
+      }
+    } },
     { name: 'game: loot crates open atomically and deterministically', db: true, fn: async function (t, env) {
       await env.services.seed.seedIfEmpty();
       const child = await env.repos.users.create({ role: 'CHILD', name: 'Iri' });
@@ -5594,6 +5680,7 @@
   GOTH.SCHEMA = SCHEMA;
   GOTH.STORE_NAMES = STORE_NAMES;
   GOTH.Flame = Flame;
+  GOTH.Keeper = Keeper;
   GOTH.TimeOfDay = TimeOfDay;
   GOTH.Ids = Ids;
   GOTH.RNG = RNG;
@@ -7045,6 +7132,37 @@ function App() {
     };
   }, [store, state && state.ui.toast]);
 
+  /* the hero evolves: when approved chores cross a Keeper milestone, celebrate */
+  const prevKeeper = useRef(null);
+  useEffect(function () {
+    if (!store || !state || state.boot !== 'READY') return;
+    const child = S.selectActiveChild(state);
+    if (!child) {
+      prevKeeper.current = null;
+      return;
+    }
+    const k = S.selectKeeper(state);
+    const prev = prevKeeper.current;
+    prevKeeper.current = {
+      id: child.id,
+      stage: k.stage
+    };
+    if (prev && prev.id === child.id && k.stage > prev.stage) {
+      store.dispatch({
+        type: G.ActionTypes.CELEBRATION_SHOW,
+        celebration: {
+          type: 'keeper',
+          name: k.name,
+          title: k.title,
+          emoji: k.emoji,
+          aura: k.aura,
+          art: k.art
+        }
+      });
+      Sfx.achieve && Sfx.achieve();
+    }
+  }, [store, state && state.approvals, state && state.activeChildId, state && state.boot]);
+
   /* sound: unlock on first touch (iOS rule) + soft tap on every button */
   useEffect(function () {
     function onDown(e) {
@@ -7902,6 +8020,50 @@ function FlameOrb(props) {
     }
   });
 }
+
+// The child's own hero — evolves through stages as chores are approved.
+function KeeperCard(props) {
+  const state = props.state;
+  const child = S.selectActiveChild(state);
+  if (!child) return null;
+  const k = S.selectKeeper(state);
+  const emoji = k.emoji || child.avatar || '🧒';
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card keeper-card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "keeper-crest"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "keeper-ring",
+    style: {
+      boxShadow: '0 0 0 3px ' + k.aura + ', 0 0 22px ' + k.aura
+    }
+  }, /*#__PURE__*/React.createElement(Art, {
+    srcs: k.art ? [k.art] : [],
+    emoji: emoji,
+    alt: child.name
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "keeper-meta"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "keeper-name"
+  }, child.name, " · ", /*#__PURE__*/React.createElement("span", {
+    className: "display",
+    style: {
+      color: k.aura
+    }
+  }, k.name)), /*#__PURE__*/React.createElement("div", {
+    className: "keeper-title"
+  }, k.title), !k.isMax ? /*#__PURE__*/React.createElement("div", {
+    className: "keeper-next"
+  }, k.toNext, " more ", k.toNext === 1 ? 'chore' : 'chores', " → ", k.nextName) : /*#__PURE__*/React.createElement("div", {
+    className: "keeper-next"
+  }, "The highest a Keeper can rise. ✨"))), !k.isMax && /*#__PURE__*/React.createElement("div", {
+    className: "xp-bar keeper-bar"
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: Math.round(k.progress * 100) + '%'
+    }
+  })));
+}
 function FlameCard(props) {
   const fd = S.selectFlame(props.state);
   const [whispers, setWhispers] = useState(false);
@@ -8327,7 +8489,9 @@ function HomeScreen(props) {
     className: "chip heart"
   }, "♥ ", /*#__PURE__*/React.createElement("b", null, g.affection)), /*#__PURE__*/React.createElement("span", {
     className: "chip streak"
-  }, "🔥 ", /*#__PURE__*/React.createElement("b", null, S.selectGlobalStreak(state)))))), /*#__PURE__*/React.createElement(FlameCard, {
+  }, "🔥 ", /*#__PURE__*/React.createElement("b", null, S.selectGlobalStreak(state)))))), /*#__PURE__*/React.createElement(KeeperCard, {
+    state: state
+  }), /*#__PURE__*/React.createElement(FlameCard, {
     state: state,
     store: props.store
   }), state.pending.length > 0 && /*#__PURE__*/React.createElement("div", {
@@ -10411,7 +10575,29 @@ function Celebration(props) {
     style: {
       marginTop: 4
     }
-  }, "Your family's light grows brighter.")), c.type === 'achievement' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "Your family's light grows brighter.")), c.type === 'keeper' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "keeper-ring big",
+    style: {
+      margin: '0 auto',
+      boxShadow: '0 0 0 4px ' + c.aura + ', 0 0 32px ' + c.aura
+    }
+  }, /*#__PURE__*/React.createElement(Art, {
+    srcs: c.art ? [c.art] : [],
+    emoji: c.emoji || '🧒',
+    alt: c.name
+  })), /*#__PURE__*/React.createElement("h2", {
+    className: "display",
+    style: {
+      fontSize: 26,
+      margin: '10px 0 2px',
+      color: c.aura
+    }
+  }, c.name, "!"), /*#__PURE__*/React.createElement("p", {
+    className: "note",
+    style: {
+      marginTop: 0
+    }
+  }, "Your hero evolved — ", c.title, ".")), c.type === 'achievement' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "burst"
   }, "🏅"), /*#__PURE__*/React.createElement("h2", {
     style: {

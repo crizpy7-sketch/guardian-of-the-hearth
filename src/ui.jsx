@@ -934,6 +934,22 @@ function App() {
     return function () { clearTimeout(id); };
   }, [store, state && state.ui.toast]);
 
+  /* the hero evolves: when approved chores cross a Keeper milestone, celebrate */
+  const prevKeeper = useRef(null);
+  useEffect(function () {
+    if (!store || !state || state.boot !== 'READY') return;
+    const child = S.selectActiveChild(state);
+    if (!child) { prevKeeper.current = null; return; }
+    const k = S.selectKeeper(state);
+    const prev = prevKeeper.current;
+    prevKeeper.current = { id: child.id, stage: k.stage };
+    if (prev && prev.id === child.id && k.stage > prev.stage) {
+      store.dispatch({ type: G.ActionTypes.CELEBRATION_SHOW,
+        celebration: { type: 'keeper', name: k.name, title: k.title, emoji: k.emoji, aura: k.aura, art: k.art } });
+      Sfx.achieve && Sfx.achieve();
+    }
+  }, [store, state && state.approvals, state && state.activeChildId, state && state.boot]);
+
   /* sound: unlock on first touch (iOS rule) + soft tap on every button */
   useEffect(function () {
     function onDown(e) {
@@ -1500,6 +1516,32 @@ function FlameOrb(props) {
   return <span className="fl" style={{ width: px, height: px, boxShadow: '0 0 ' + glow + 'px ' + Math.round(glow / 2) + 'px rgba(232,133,61,0.7)' }} />;
 }
 
+// The child's own hero — evolves through stages as chores are approved.
+function KeeperCard(props) {
+  const state = props.state;
+  const child = S.selectActiveChild(state);
+  if (!child) return null;
+  const k = S.selectKeeper(state);
+  const emoji = k.emoji || child.avatar || '🧒';
+  return (
+    <div className="card keeper-card">
+      <div className="keeper-crest">
+        <div className="keeper-ring" style={{ boxShadow: '0 0 0 3px ' + k.aura + ', 0 0 22px ' + k.aura }}>
+          <Art srcs={k.art ? [k.art] : []} emoji={emoji} alt={child.name} />
+        </div>
+        <div className="keeper-meta">
+          <div className="keeper-name">{child.name} · <span className="display" style={{ color: k.aura }}>{k.name}</span></div>
+          <div className="keeper-title">{k.title}</div>
+          {!k.isMax
+            ? <div className="keeper-next">{k.toNext} more {k.toNext === 1 ? 'chore' : 'chores'} → {k.nextName}</div>
+            : <div className="keeper-next">The highest a Keeper can rise. ✨</div>}
+        </div>
+      </div>
+      {!k.isMax && <div className="xp-bar keeper-bar"><span style={{ width: Math.round(k.progress * 100) + '%' }} /></div>}
+    </div>
+  );
+}
+
 function FlameCard(props) {
   const fd = S.selectFlame(props.state);
   const [whispers, setWhispers] = useState(false);
@@ -1771,6 +1813,8 @@ function HomeScreen(props) {
           </div>
         </div>
       </div>
+
+      <KeeperCard state={state} />
 
       <FlameCard state={state} store={props.store} />
 
@@ -3040,6 +3084,15 @@ function Celebration(props) {
             <h2 className="display" style={{ fontSize: 24, margin: '6px 0' }}>The Flame grows!</h2>
             <p style={{ margin: '2px 0', fontWeight: 700, color: 'var(--gold)', fontSize: 18 }}>{c.name}</p>
             <p className="note" style={{ marginTop: 4 }}>Your family's light grows brighter.</p>
+          </React.Fragment>
+        )}
+        {c.type === 'keeper' && (
+          <React.Fragment>
+            <div className="keeper-ring big" style={{ margin: '0 auto', boxShadow: '0 0 0 4px ' + c.aura + ', 0 0 32px ' + c.aura }}>
+              <Art srcs={c.art ? [c.art] : []} emoji={c.emoji || '🧒'} alt={c.name} />
+            </div>
+            <h2 className="display" style={{ fontSize: 26, margin: '10px 0 2px', color: c.aura }}>{c.name}!</h2>
+            <p className="note" style={{ marginTop: 0 }}>Your hero evolved — {c.title}.</p>
           </React.Fragment>
         )}
         {c.type === 'achievement' && (

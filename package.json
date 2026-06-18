@@ -1,0 +1,11 @@
+{
+  "name": "guardian-of-the-hearth",
+  "private": true,
+  "scripts": {
+    "build": "node tools/build.mjs"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@babel/preset-react": "^7.24.0"
+  }
+}

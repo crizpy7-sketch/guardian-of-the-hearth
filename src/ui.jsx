@@ -2364,7 +2364,10 @@ function RaidsScreen(props) {
   return (
     <React.Fragment>
       <h1 style={{ fontSize: 24, marginBottom: 4 }}>Expeditions</h1>
-      <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>Spend earned energy to send {g ? g.name : 'your guardian'} raiding. One expedition at a time.</p>
+      <p className="note" style={{ marginTop: 0, marginBottom: 10 }}>
+        Spend earned energy to send {g ? g.name : 'your guardian'} raiding. One expedition at a time.
+        {S.selectGuardianPower(state) > 0 && <span className="gear-power inline"> · ★ {S.selectGuardianPower(state)} gear power</span>}
+      </p>
       {active && run && g && (
         <div className="card hero">
           <div className="raid-live">
@@ -2791,6 +2794,12 @@ function BagScreen(props) {
   const totalKinds = inv.length;
   const totalCount = inv.reduce(function (s, r) { return s + r.qty; }, 0);
   const best = sorted.length ? (sorted[0].item ? sorted[0].item.rarity : 'COMMON') : null;
+  // Guardian gear: owned equipment the child can wear into expeditions.
+  const g = state.guardian;
+  const equipped = S.selectEquipped(state);
+  const power = S.selectGuardianPower(state);
+  const gearOwned = sorted.filter(function (r) { return r.item && r.item.type === 'EQUIPMENT'; });
+  const slotsFull = equipped.length >= G.CONFIG.EQUIP.MAX_SLOTS;
   return (
     <React.Fragment>
       <div className="bag-head">
@@ -2818,6 +2827,37 @@ function BagScreen(props) {
           </React.Fragment>
         )}
       </div>
+      {g && (gearOwned.length > 0 || equipped.length > 0) && (
+        <div className="card gear-card">
+          <div className="gear-head">
+            <h2 style={{ margin: 0 }}>🛡️ {g.name}'s Gear</h2>
+            <span className="gear-power">★ {power} power</span>
+          </div>
+          <p className="note" style={{ margin: '4px 0 10px' }}>
+            Wear up to {G.CONFIG.EQUIP.MAX_SLOTS} pieces — more power means richer expedition hauls.
+          </p>
+          {gearOwned.length === 0 && (
+            <p className="note" style={{ margin: 0, fontSize: 13 }}>Find armor and weapons on raids, then come back to equip them.</p>
+          )}
+          <div className="gear-list">
+            {gearOwned.map(function (r) {
+              const on = equipped.indexOf(r.itemId) !== -1;
+              return (
+                <div className={'gear-row' + (on ? ' on' : '')} key={r.itemId}>
+                  <span className="gear-name">{r.item.name}</span>
+                  <span className="gear-pw">+{G.Gear.itemPower(r.item)}</span>
+                  {on
+                    ? <button className="mini" onClick={function () { props.store.dispatch(A.unequipGear(r.itemId)); }}>Worn ✓</button>
+                    : <button className="mini go" disabled={slotsFull}
+                        onClick={function () { props.store.dispatch(A.equipGear(r.itemId)); }}>
+                        {slotsFull ? 'Slots full' : 'Equip'}
+                      </button>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="card">
         <h2>Achievements</h2>
         {state.achievements.map(function (a) {

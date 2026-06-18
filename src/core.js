@@ -84,6 +84,16 @@
     // Expeditions and loot crates therefore cap at Epic — see Loot.fieldPool.
     CHORE_ONLY_RARITIES: ['LEGENDARY', 'MYTHIC'],
 
+    // Gear the guardian wears into expeditions. Equipped EQUIPMENT items grant
+    // power; power earns bonus loot rolls and a richer gold/xp haul (see
+    // Gear + Loot.resolveDungeon). The avatar's looks stay with cosmetics.
+    EQUIP: {
+      MAX_SLOTS: 3,
+      POWER_BY_RARITY: { COMMON: 1, UNCOMMON: 2, RARE: 4, EPIC: 7, LEGENDARY: 12, MYTHIC: 20 },
+      BONUS_ROLL_PER_POWER: 8,   // +1 loot roll per 8 power
+      GOLD_BONUS_PER_POWER: 0.015, // +1.5% gold & xp per power
+    },
+
     STREAK: { DECAY_PER_MISSED_DAY: 0.8 },
     DAYNIGHT: {
       // Phase boundaries in local hours [start, end). Derived from the device clock.
@@ -416,6 +426,24 @@
     },
   };
 
+  const Gear = {
+    // Power a single catalog item contributes when equipped (0 if not gear).
+    itemPower: function (item) {
+      if (!item || item.type !== 'EQUIPMENT') return 0;
+      return (CONFIG.EQUIP.POWER_BY_RARITY[item.rarity] || 0);
+    },
+    // Total power of an equipped loadout (array of item ids), resolved against
+    // the catalog. Unknown ids contribute nothing.
+    totalPower: function (equippedIds) {
+      const byId = {};
+      CONFIG.ITEMS.forEach(function (i) { byId[i.id] = i; });
+      return (equippedIds || []).reduce(function (sum, id) { return sum + Gear.itemPower(byId[id]); }, 0);
+    },
+    // How an amount of power translates into expedition rewards.
+    bonusRolls: function (power) { return power > 0 ? Math.floor(power / CONFIG.EQUIP.BONUS_ROLL_PER_POWER) : 0; },
+    haulMultiplier: function (power) { return 1 + Math.max(0, power) * CONFIG.EQUIP.GOLD_BONUS_PER_POWER; },
+  };
+
   const Loot = {
     rollRarity: function (rand, weights) {
       const w = weights || CONFIG.RARITY_WEIGHTS;
@@ -448,12 +476,18 @@
     },
     // Pure, deterministic dungeon resolver: the same run (same seed) always
     // produces the same result, on any device, any number of times.
-    resolveDungeon: function (run, def, itemPool) {
+    resolveDungeon: function (run, def, itemPool, power) {
       const rand = RNG.mulberry32(run.seed);
-      const gold = Loot.rollInt(rand, def.gold[0], def.gold[1]);
-      const xp = Loot.rollInt(rand, def.xp[0], def.xp[1]);
+      const baseGold = Loot.rollInt(rand, def.gold[0], def.gold[1]);
+      const baseXp = Loot.rollInt(rand, def.xp[0], def.xp[1]);
+      // Equipped gear enriches the haul. Power 0 leaves everything untouched
+      // (same gold/xp and same number of rolls as before gear existed).
+      const mult = Gear.haulMultiplier(power || 0);
+      const gold = Math.round(baseGold * mult);
+      const xp = Math.round(baseXp * mult);
+      const rolls = def.lootRolls + Gear.bonusRolls(power || 0);
       const byItem = {};
-      for (let i = 0; i < def.lootRolls; i++) {
+      for (let i = 0; i < rolls; i++) {
         const rarity = Loot.rollRarity(rand);
         let item = Loot.pickItemOfRarity(rand, rarity, itemPool);
         if (!item) {
@@ -691,6 +725,11 @@
         if (o.energy > o.maxEnergy) throw new ValidationError('OUT_OF_RANGE', 'energy > maxEnergy');
         V.int(o.gold, 'gold', 0, CONFIG.LIMITS.MAX_GOLD);
         V.int(o.affection, 'affection', 0, CONFIG.ECONOMY.AFFECTION_MAX);
+        if (o.equipped !== undefined) {
+          if (!Array.isArray(o.equipped)) throw new ValidationError('BAD_TYPE', 'equipped must be array');
+          if (o.equipped.length > CONFIG.EQUIP.MAX_SLOTS) throw new ValidationError('OUT_OF_RANGE', 'too many equipped items');
+          o.equipped.forEach(function (id, i) { V.str(id, 'equipped[' + i + ']', 1, 64); });
+        }
       },
       items: function (o) {
         V.str(o.id, 'id', 1); V.str(o.name, 'name', 1, 48);
@@ -1091,6 +1130,34 @@
           if (!g) throw new ValidationError('NOT_FOUND', 'guardian ' + guardianId);
           if (g.gold < amount) throw new ValidationError('INSUFFICIENT_GOLD', 'have ' + g.gold + ', need ' + amount);
           g.gold -= amount;
+          await vput(c, 'guardians', g);
+          return g;
+        });
+      },
+      // Wear a piece of owned gear into expeditions. Must be an EQUIPMENT item the
+      // child actually holds; slots are limited; no item is worn twice.
+      equip: function (guardianId, itemId) {
+        const item = CONFIG.ITEMS.find(function (i) { return i.id === itemId; });
+        if (!item || item.type !== 'EQUIPMENT') throw new ValidationError('NOT_EQUIPMENT', itemId + ' is not gear');
+        return db.atomic(['guardians', 'inventory'], async function (c) {
+          const g = await c.get('guardians', guardianId);
+          if (!g) throw new ValidationError('NOT_FOUND', 'guardian ' + guardianId);
+          const have = await c.byIndex('inventory', 'user_item', [g.userId, itemId]);
+          if (!have.length || have[0].qty < 1) throw new ValidationError('INSUFFICIENT_ITEMS', itemId);
+          const equipped = (g.equipped || []).slice();
+          if (equipped.indexOf(itemId) !== -1) return g; // already worn — idempotent
+          if (equipped.length >= CONFIG.EQUIP.MAX_SLOTS) throw new ValidationError('SLOTS_FULL', 'unequip something first');
+          equipped.push(itemId);
+          g.equipped = equipped;
+          await vput(c, 'guardians', g);
+          return g;
+        });
+      },
+      unequip: function (guardianId, itemId) {
+        return db.atomic(['guardians'], async function (c) {
+          const g = await c.get('guardians', guardianId);
+          if (!g) throw new ValidationError('NOT_FOUND', 'guardian ' + guardianId);
+          g.equipped = (g.equipped || []).filter(function (id) { return id !== itemId; });
           await vput(c, 'guardians', g);
           return g;
         });
@@ -2020,7 +2087,9 @@
           throw e;
         }
         const def = defOf(run.dungeonId);
-        const result = Loot.resolveDungeon(run, def, Loot.fieldPool(CONFIG.ITEMS));
+        const g = await repos.guardians.get(run.guardianId);
+        const power = Gear.totalPower(g && g.equipped);
+        const result = Loot.resolveDungeon(run, def, Loot.fieldPool(CONFIG.ITEMS), power);
         return repos.dungeons.claimRun(runId, result);
       },
       // Spend a booster to hurry an in-progress expedition along. Consuming the
@@ -2140,6 +2209,10 @@
       integrity: makeIntegrityService(repos),
       approval: makeApprovalService(repos, auth, audit),
       quest: makeQuestService(repos),
+      guardian: {
+        equip: function (gid, itemId) { return repos.guardians.equip(gid, itemId); },
+        unequip: function (gid, itemId) { return repos.guardians.unequip(gid, itemId); },
+      },
       dungeon: makeDungeonService(repos, opts),
       loot: makeLootService(repos),
       building: makeBuildingService(repos),
@@ -2559,6 +2632,30 @@
         }
       };
     },
+    equipGear: function (itemId) {
+      return async function (dispatch, getState, ctx) {
+        const g = getState().guardian;
+        if (!g) return failToast(dispatch, 'main', { code: 'NO_GUARDIAN', message: 'No guardian selected.' });
+        try {
+          await ctx.services.guardian.equip(g.id, itemId);
+          const it = getState().itemsById[itemId];
+          toastOk(dispatch, 'main', '🛡️ ' + (it ? it.name : 'Gear') + ' equipped — ' + g.name + ' is stronger!');
+          await Actions.refreshChild()(dispatch, getState, ctx);
+          return { ok: true };
+        } catch (e) { return failToast(dispatch, 'main', e); }
+      };
+    },
+    unequipGear: function (itemId) {
+      return async function (dispatch, getState, ctx) {
+        const g = getState().guardian;
+        if (!g) return failToast(dispatch, 'main', { code: 'NO_GUARDIAN', message: 'No guardian selected.' });
+        try {
+          await ctx.services.guardian.unequip(g.id, itemId);
+          await Actions.refreshChild()(dispatch, getState, ctx);
+          return { ok: true };
+        } catch (e) { return failToast(dispatch, 'main', e); }
+      };
+    },
     useBooster: function (runId, itemId) {
       return async function (dispatch, getState, ctx) {
         try {
@@ -2865,6 +2962,8 @@
       });
     },
     selectActiveRun: function (s) { return s.dungeon.activeRun; },
+    selectGuardianPower: function (s) { return Gear.totalPower(s.guardian && s.guardian.equipped); },
+    selectEquipped: function (s) { return (s.guardian && s.guardian.equipped) || []; },
     selectIsParentMode: function (s) { return s.mode === 'PARENT_MODE' && !!s.session; },
     selectCanApprove: function (s) { return !!(s.session && s.now <= s.session.expiresAt); },
     selectSessionRemainingMs: function (s) { return s.session ? Math.max(0, s.session.expiresAt - s.now) : 0; },
@@ -3533,6 +3632,45 @@
       // Both boosters were spent; neither lingers in the satchel.
       const inv = await env.repos.inventory.listByUser(child.id);
       t.ok(!inv.some(function (r) { return r.itemId === 'itm_swift_sand' || r.itemId === 'itm_time_feather'; }), 'boosters consumed');
+    } },
+    { name: 'gear: equipped power enriches a haul (more rolls, bigger gold)', db: false, fn: function (t) {
+      t.equal(Gear.itemPower({ type: 'EQUIPMENT', rarity: 'EPIC' }), CONFIG.EQUIP.POWER_BY_RARITY.EPIC, 'epic power');
+      t.equal(Gear.itemPower({ type: 'MATERIAL', rarity: 'EPIC' }), 0, 'non-gear has no power');
+      t.equal(Gear.totalPower(['itm_guardian_plate', 'itm_runed_blade', 'itm_iron_shield']), 7 + 4 + 2, 'loadout power sums');
+      t.equal(Gear.totalPower([]), 0, 'bare guardian has no power');
+      const def = CONFIG.DUNGEONS[0];
+      const run = { seed: RNG.seedFromString('gear-demo|dgn|1') };
+      const pool = Loot.fieldPool(CONFIG.ITEMS);
+      const bare = Loot.resolveDungeon(run, def, pool, 0);
+      const armed = Loot.resolveDungeon(run, def, pool, 24);
+      const bareDrops = bare.drops.reduce(function (s, d) { return s + d.qty; }, 0);
+      const armedDrops = armed.drops.reduce(function (s, d) { return s + d.qty; }, 0);
+      t.equal(bareDrops, def.lootRolls, 'no power, no bonus rolls');
+      t.equal(armedDrops, def.lootRolls + Gear.bonusRolls(24), 'power adds loot rolls');
+      t.ok(armed.gold > bare.gold && armed.xp > bare.xp, 'power enriches gold & xp');
+    } },
+    { name: 'gear: equip respects ownership, slots, and item type', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Wren' });
+      const g = await env.repos.guardians.createForUser(child.id, { name: 'Flint', species: 'BEAR' });
+      await t.throwsCode(function () { return env.repos.guardians.equip(g.id, 'itm_wood'); }, 'NOT_EQUIPMENT', 'wood is not gear');
+      await t.throwsCode(function () { return env.repos.guardians.equip(g.id, 'itm_guardian_plate'); }, 'INSUFFICIENT_ITEMS', 'must own it to wear it');
+      await env.repos.inventory.addItem(child.id, 'itm_guardian_plate', 1);
+      await env.repos.inventory.addItem(child.id, 'itm_runed_blade', 1);
+      await env.repos.inventory.addItem(child.id, 'itm_iron_shield', 1);
+      await env.repos.inventory.addItem(child.id, 'itm_scout_boots', 1);
+      await env.repos.guardians.equip(g.id, 'itm_guardian_plate');
+      await env.repos.guardians.equip(g.id, 'itm_guardian_plate'); // idempotent — no duplicate slot
+      await env.repos.guardians.equip(g.id, 'itm_runed_blade');
+      await env.repos.guardians.equip(g.id, 'itm_iron_shield');
+      const full = await env.repos.guardians.get(g.id);
+      t.equal(full.equipped.length, CONFIG.EQUIP.MAX_SLOTS, 'three slots worn');
+      t.equal(Gear.totalPower(full.equipped), 7 + 4 + 2, 'worn power');
+      await t.throwsCode(function () { return env.repos.guardians.equip(g.id, 'itm_scout_boots'); }, 'SLOTS_FULL', 'no fourth slot');
+      const after = await env.repos.guardians.unequip(g.id, 'itm_iron_shield');
+      t.equal(after.equipped.length, 2, 'unequip frees a slot');
+      await env.repos.guardians.equip(g.id, 'itm_scout_boots'); // now it fits
+      t.equal((await env.repos.guardians.get(g.id)).equipped.length, 3, 'refilled');
     } },
     { name: 'game: loot crates open atomically and deterministically', db: true, fn: async function (t, env) {
       await env.services.seed.seedIfEmpty();
@@ -4236,6 +4374,7 @@
   GOTH.Ids = Ids;
   GOTH.RNG = RNG;
   GOTH.Leveling = Leveling;
+  GOTH.Gear = Gear;
   GOTH.Loot = Loot;
   GOTH.Building = Building;
   GOTH.Cosmetics = Cosmetics;

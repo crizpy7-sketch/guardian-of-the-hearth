@@ -2356,6 +2356,10 @@ function RaidsScreen(props) {
     : 1;
   const log = (run && active && g) ? raidLog(run, g.name) : [];
   const returned = !!(active && active.claimable);
+  // Boosters the child holds — spent to hurry the current expedition home.
+  const boosters = (state.inventory || [])
+    .map(function (r) { return { row: r, item: state.itemsById[r.itemId] }; })
+    .filter(function (b) { return b.item && b.item.type === 'BOOSTER' && b.row.qty > 0; });
   useEffect(function () { if (returned) Sfx.achieve(); }, [returned]);
   return (
     <React.Fragment>
@@ -2391,6 +2395,20 @@ function RaidsScreen(props) {
                     <li className="new">{g.name} sets off into {active.def.name}… 🏕️</li>
                   )}
                 </ul>
+                {boosters.length > 0 && (
+                  <div className="booster-bar">
+                    <span className="booster-label">✨ Speed up</span>
+                    {boosters.map(function (b) {
+                      return (
+                        <button key={b.item.id} className="mini booster"
+                          title={b.item.description}
+                          onClick={function () { props.store.dispatch(A.useBooster(active.runId, b.item.id)); }}>
+                          {b.item.name} ×{b.row.qty}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </React.Fragment>
             )}
             {active.claimable && (

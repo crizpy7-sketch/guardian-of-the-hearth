@@ -198,6 +198,11 @@
       { id: 'itm_party_hat', name: 'Party Hat', rarity: 'UNCOMMON', type: 'COSMETIC', description: 'For level-up celebrations.' },
       { id: 'itm_star_cape', name: 'Star Cape', rarity: 'RARE', type: 'COSMETIC', description: 'A night sky that follows you.' },
       { id: 'itm_mythic_aura', name: 'Mythic Aura', rarity: 'MYTHIC', type: 'COSMETIC', description: 'You shimmer. Everyone notices.' },
+
+      // Boosters — earned from chores; spent to hurry an expedition along.
+      // boost.cut = fraction of the REMAINING time removed (1 = finish instantly).
+      { id: 'itm_swift_sand', name: 'Swift Sand', rarity: 'UNCOMMON', type: 'BOOSTER', description: 'A pinch hurries an expedition halfway home.', boost: { kind: 'TIME', cut: 0.5 } },
+      { id: 'itm_time_feather', name: 'Time Feather', rarity: 'RARE', type: 'BOOSTER', description: 'The guardian returns at once, adventure complete.', boost: { kind: 'TIME', cut: 1 } },
     ],
 
     // Default quest catalog. reward overrides start from REWARD_DEFAULTS.
@@ -209,7 +214,7 @@
       { id: 'qst_bath', title: 'Take a bath or shower', category: 'HEALTH', icon: '🛁', maxPerDay: 1 },
       { id: 'qst_sleep_time', title: 'Get to bed on time', category: 'HEALTH', icon: '🌙', maxPerDay: 1, reward: { coins: 15, energy: 10, xp: 20 } },
       { id: 'qst_read_15', title: 'Read for 15 minutes', category: 'LEARNING', icon: '📚', maxPerDay: 3 },
-      { id: 'qst_homework', title: 'Finish your homework', category: 'LEARNING', icon: '✏️', maxPerDay: 1, reward: { coins: 20, energy: 12, xp: 35 } },
+      { id: 'qst_homework', title: 'Finish your homework', category: 'LEARNING', icon: '✏️', maxPerDay: 1, reward: { coins: 20, energy: 12, xp: 35, materials: [{ itemId: 'itm_swift_sand', qty: 1 }] } },
       { id: 'qst_practice', title: 'Practice math or language', category: 'LEARNING', icon: '🧠', maxPerDay: 2 },
       { id: 'qst_make_bed', title: 'Make your bed', category: 'RESPONSIBILITY', icon: '🛏️', maxPerDay: 1 },
       { id: 'qst_clean_room', title: 'Tidy your room', category: 'RESPONSIBILITY', icon: '🧹', maxPerDay: 1 },
@@ -276,7 +281,7 @@
     QUEST_CATEGORY: ['HYDRATION', 'HEALTH', 'LEARNING', 'RESPONSIBILITY', 'KINDNESS', 'FITNESS'],
     SPECIES: Object.keys(CONFIG.SPECIES),
     BUILDING_TYPE: Object.keys(CONFIG.BUILDINGS),
-    ITEM_TYPE: ['EQUIPMENT', 'MATERIAL', 'COSMETIC', 'FOOD'],
+    ITEM_TYPE: ['EQUIPMENT', 'MATERIAL', 'COSMETIC', 'FOOD', 'BOOSTER'],
     DUNGEON_TIER: ['SHORT', 'MEDIUM', 'LONG'],
   };
 
@@ -1483,6 +1488,28 @@
           return { alreadyClaimed: false, run: run, guardian: g, leveledUp: lv.leveledUp, levelsGained: lv.levelsGained };
         });
       },
+      // ONE atomic transaction: consume a booster and pull the run's finish line
+      // closer, together. A crash can never eat the booster without the speedup.
+      // `cut` is the fraction of the REMAINING time removed (1 = finish now).
+      applyBoost: function (runId, userId, itemId, cut, nowMs) {
+        return db.atomic(['dungeonRuns', 'inventory'], async function (c) {
+          const run = await c.get('dungeonRuns', runId);
+          if (!run) throw new ValidationError('NOT_FOUND', 'dungeonRun ' + runId);
+          if (run.claimed) throw new ValidationError('ALREADY_CLAIMED', 'this expedition is already home');
+          const have = await c.byIndex('inventory', 'user_item', [userId, itemId]);
+          const row = have[0];
+          if (!row || row.qty < 1) throw new ValidationError('INSUFFICIENT_ITEMS', itemId);
+          row.qty -= 1;
+          if (row.qty === 0) await c.del('inventory', row.id);
+          else await vput(c, 'inventory', row);
+          const remaining = Math.max(0, run.endsAt - nowMs);
+          const newEndsAt = nowMs + Math.round(remaining * (1 - cut));
+          run.startedAt = Math.min(run.startedAt, newEndsAt - 1000); // validation needs startedAt < endsAt
+          run.endsAt = newEndsAt;
+          await vput(c, 'dungeonRuns', run);
+          return { run: run, remainingMs: Math.max(0, newEndsAt - nowMs) };
+        });
+      },
       listByGuardian: function (gid) { return db.byIndex('dungeonRuns', 'guardianId', gid); },
       get: function (id) { return db.get('dungeonRuns', id); },
     };
@@ -1995,6 +2022,20 @@
         const def = defOf(run.dungeonId);
         const result = Loot.resolveDungeon(run, def, Loot.fieldPool(CONFIG.ITEMS));
         return repos.dungeons.claimRun(runId, result);
+      },
+      // Spend a booster to hurry an in-progress expedition along. Consuming the
+      // item and shortening the run happen in one atomic step (see applyBoost).
+      useBooster: async function (runId, itemId) {
+        const run = await repos.dungeons.get(runId);
+        if (!run) throw new ValidationError('NOT_FOUND', 'dungeonRun ' + runId);
+        if (run.claimed) throw new ValidationError('ALREADY_CLAIMED', 'this expedition is already home');
+        const item = CONFIG.ITEMS.find(function (i) { return i.id === itemId; });
+        if (!item || item.type !== 'BOOSTER' || !item.boost || item.boost.kind !== 'TIME') {
+          throw new ValidationError('NOT_A_BOOSTER', itemId + ' cannot speed up an expedition');
+        }
+        const g = await repos.guardians.get(run.guardianId);
+        if (!g) throw new ValidationError('NOT_FOUND', 'guardian ' + run.guardianId);
+        return repos.dungeons.applyBoost(runId, g.userId, itemId, item.boost.cut, now());
       },
     };
   }
@@ -2516,6 +2557,21 @@
           }
           return failToast(dispatch, 'main', e);
         }
+      };
+    },
+    useBooster: function (runId, itemId) {
+      return async function (dispatch, getState, ctx) {
+        try {
+          const itemsById = getState().itemsById;
+          const it = itemsById[itemId];
+          const r = await ctx.services.dungeon.useBooster(runId, itemId);
+          const name = it ? it.name : 'Booster';
+          toastOk(dispatch, 'main', r.remainingMs === 0
+            ? '✨ ' + name + ' used — the expedition is home!'
+            : '✨ ' + name + ' used — the journey just got shorter!');
+          await Actions.refreshChild()(dispatch, getState, ctx);
+          return { ok: true, remainingMs: r.remainingMs };
+        } catch (e) { return failToast(dispatch, 'main', e); }
       };
     },
     openCrate: function () {
@@ -3447,6 +3503,36 @@
       const repoRetry = await env.repos.dungeons.claimRun(started.run.id, claimed.run.result);
       t.ok(repoRetry.alreadyClaimed, 'repo retry is a no-op');
       t.equal((await env.repos.guardians.get(g.id)).gold, after.gold, 'no double rewards');
+    } },
+    { name: 'game: a booster hurries an expedition home and is consumed atomically', db: true, fn: async function (t, env) {
+      await env.services.seed.seedIfEmpty();
+      const clock = fakeClock(1750000000000);
+      const dungeon = makeDungeonService(env.repos, { now: function () { return clock.t; } });
+      const child = await env.repos.users.create({ role: 'CHILD', name: 'Bo' });
+      const g = await env.repos.guardians.createForUser(child.id, { name: 'Gust', species: 'OWL' });
+      await env.repos.guardians.applyBundle(child.id, Rewards.normalizeBundle({ energy: 30 }));
+      const started = await dungeon.start(g.id, 'dgn_glade');
+      await t.throwsCode(function () { return dungeon.claim(started.run.id); }, 'RUN_NOT_FINISHED', 'still running');
+      // No booster in the satchel yet.
+      await t.throwsCode(function () { return dungeon.useBooster(started.run.id, 'itm_time_feather'); }, 'INSUFFICIENT_ITEMS', 'need the booster first');
+      // A plain material is not a booster.
+      await env.repos.inventory.addItem(child.id, 'itm_wood', 1);
+      await t.throwsCode(function () { return dungeon.useBooster(started.run.id, 'itm_wood'); }, 'NOT_A_BOOSTER', 'wood cannot hurry a raid');
+      // Swift Sand cuts the remaining time in half.
+      await env.repos.inventory.addItem(child.id, 'itm_swift_sand', 1);
+      const before = (await env.repos.dungeons.get(started.run.id)).endsAt;
+      const half = await dungeon.useBooster(started.run.id, 'itm_swift_sand');
+      t.ok(half.run.endsAt < before, 'finish line pulled closer');
+      t.ok(Math.abs(half.remainingMs - (before - clock.t) / 2) < 1000, 'about half the wait remains');
+      // Time Feather finishes the rest instantly, and the run is now claimable.
+      await env.repos.inventory.addItem(child.id, 'itm_time_feather', 1);
+      const done = await dungeon.useBooster(started.run.id, 'itm_time_feather');
+      t.equal(done.remainingMs, 0, 'expedition home at once');
+      const claimed = await dungeon.claim(started.run.id);
+      t.ok(!claimed.alreadyClaimed, 'claim succeeds right away');
+      // Both boosters were spent; neither lingers in the satchel.
+      const inv = await env.repos.inventory.listByUser(child.id);
+      t.ok(!inv.some(function (r) { return r.itemId === 'itm_swift_sand' || r.itemId === 'itm_time_feather'; }), 'boosters consumed');
     } },
     { name: 'game: loot crates open atomically and deterministically', db: true, fn: async function (t, env) {
       await env.services.seed.seedIfEmpty();

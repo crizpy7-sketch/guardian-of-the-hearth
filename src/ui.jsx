@@ -1698,12 +1698,105 @@ function DressUp(props) {
 }
 
 
+// Ember's "living" stage on the Home screen. The dragon ships four cut-out poses
+// that share the SAME framing (rest / wave / fire / jump), so we hard-CUT between
+// them (only one shown at a time — never cross-faded, which is what used to ghost
+// two poses together). Ember idles with a gentle breathe and every few seconds
+// performs a little routine, and reacts with a pose when tapped. Species without
+// pose art fall back to the proven static-portrait + CSS motion (unchanged).
+var EMBER_POSES = {
+  rest: { file: 'cheer2', cls: 'ep-rest', hold: 0,    emote: null },
+  wave: { file: 'cheer1', cls: 'ep-wave', hold: 1500, emote: '👋' },
+  jump: { file: 'cheer4', cls: 'ep-jump', hold: 1300, emote: '✨' },
+  fire: { file: 'cheer3', cls: 'ep-fire', hold: 1600, emote: '🔥' },
+};
+var EMBER_IDLE_ACTS = ['wave', 'fire', 'jump', 'wave', 'fire']; // weighted toward wave/fire
+function EmberStage(props) {
+  var sp = props.species;
+  var asleep = props.asleep;
+  var modeState = useState('probing'); var mode = modeState[0], setMode = modeState[1];
+  var actState = useState('rest'); var act = actState[0], setAct = actState[1];
+  var busyRef = useRef(false);
+  var holdRef = useRef(null);
+  function file(name) { return 'guardian-' + sp.toLowerCase() + '-' + name + '.png'; }
+
+  // Probe whether this species ships the cut-out poses; only then go "live".
+  useEffect(function () {
+    var alive = true; setMode('probing');
+    var need = ['cheer1', 'cheer2', 'cheer3', 'cheer4']; var ok = 0, done = 0;
+    need.forEach(function (n) {
+      var im = new Image();
+      im.onload = function () { ok++; fin(); };
+      im.onerror = function () { fin(); };
+      im.src = './' + file(n);
+    });
+    function fin() { done++; if (done < need.length || !alive) return; setMode(ok === need.length ? 'live' : 'plain'); }
+    return function () { alive = false; };
+  }, [sp]);
+
+  function play(name) {
+    if (mode !== 'live' || asleep) return;
+    var a = EMBER_POSES[name]; if (!a) return;
+    busyRef.current = true; setAct(name);
+    if (a.emote && props.onEmote) props.onEmote(a.emote);
+    clearTimeout(holdRef.current);
+    holdRef.current = setTimeout(function () { setAct('rest'); busyRef.current = false; }, a.hold);
+  }
+  // Let the parent's tap handler poke Ember into a happy reaction.
+  useEffect(function () {
+    if (!props.pokeRef) return;
+    props.pokeRef.current = function () {
+      if (mode !== 'live' || asleep) return false;
+      var picks = ['wave', 'jump', 'fire'];
+      play(picks[Math.floor(Math.random() * picks.length)]);
+      return true;
+    };
+  });
+  // Autonomous idle life — a little routine every few seconds.
+  useEffect(function () {
+    if (mode !== 'live' || asleep) return;
+    var reduce = false;
+    try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches && !document.body.classList.contains('motion-force'); } catch (e) {}
+    if (reduce) return;
+    var id = setInterval(function () {
+      if (busyRef.current || Math.random() < 0.4) return;
+      play(EMBER_IDLE_ACTS[Math.floor(Math.random() * EMBER_IDLE_ACTS.length)]);
+    }, 4800);
+    return function () { clearInterval(id); };
+  }, [mode, asleep]);
+  useEffect(function () { return function () { clearTimeout(holdRef.current); }; }, []);
+
+  // Asleep, or a species without pose art -> the proven AnimArt behaviour.
+  if (asleep || mode === 'plain' || mode === 'probing') {
+    var m = guardianMotion(sp, props.level, asleep ? 'sleep' : 'idle');
+    return React.createElement('div', { className: 'pet-stage ' + m.cls },
+      React.createElement(AnimArt, { frames: m.frames, fallback: m.fallback, fps: m.fps, fade: m.fade, emoji: props.emoji, alt: props.alt }));
+  }
+  // Live pose machine: all poses stacked, only the active one shown (hard cut).
+  var cls = EMBER_POSES[act].cls;
+  return React.createElement('div', { className: 'pet-stage ember-stage ' + cls },
+    Object.keys(EMBER_POSES).map(function (k) {
+      return React.createElement('img', {
+        key: k, alt: k === 'rest' ? props.alt : '',
+        className: 'ember-pose' + (k === act ? ' on' : ''),
+        src: './' + file(EMBER_POSES[k].file),
+      });
+    }),
+    cls === 'ep-fire' ? React.createElement('span', { key: 'fx', className: 'ember-firefx' }) : null,
+    React.createElement('span', { key: 'amb', className: 'amb-embers' },
+      [0, 1, 2, 3].map(function (i) {
+        return React.createElement('span', { key: i, className: 'amb-ember', style: { left: (12 + i * 22) + '%', animationDelay: (i * 1.3) + 's' } });
+      }))
+  );
+}
+
+
 function HomeScreen(props) {
   const state = props.state;
   const g = state.guardian;
-  const [hop, setHop] = useState(false);
   const [flash, setFlash] = useState({});
   const [showDressUp, setShowDressUp] = useState(false);
+  const pokeRef = useRef(function () {});
   const prevRef = useRef({ gold: g ? g.gold : 0, energy: g ? g.energy : 0 });
   useEffect(function () {
     if (!g) return;
@@ -1718,7 +1811,6 @@ function HomeScreen(props) {
     }
   }, [g && g.gold, g && g.energy]);
   const J = useQuestJuice(props.store);
-  const [idle, setIdle] = useState('');
   const [emotes, setEmotes] = useState([]);
   const reactRef = useRef(0);
   function emote(icon) {
@@ -1728,18 +1820,6 @@ function HomeScreen(props) {
       setEmotes(function (list) { return list.filter(function (x) { return x.id !== e.id; }); });
     }, 1700);
   }
-  useEffect(function () {
-    const id = setInterval(function () {
-      if (Math.random() < 0.25) return;
-      const moves = ['sway', 'tilt', 'shine'];
-      setIdle(moves[Math.floor(Math.random() * moves.length)]);
-      setTimeout(function () { setIdle(''); }, 1000);
-      const r = Math.random();
-      if (g && g.energy === 0 && r < 0.5) emote('💤');
-      else if (r < 0.3) emote(['✨', '❤️', '🎶'][Math.floor(Math.random() * 3)]);
-    }, 6500);
-    return function () { clearInterval(id); };
-  }, [g && g.energy === 0]);
   // Friendly things the guardian 'says' when tapped — spoken aloud so a NON-READER
   // discovers that tapping the dragon makes it talk. The guardian IS the tutorial.
   const PET_LINES = [
@@ -1757,24 +1837,13 @@ function HomeScreen(props) {
   function petTap() {
     addBondTap(); // play-first: each tap builds the bond that unlocks mission guidance
     guardianSpeak(); // ALWAYS talk back — this is how a non-reader learns the dragon is alive
-    if (hop || idle) return;
-    const kind = reactRef.current % 3;
-    reactRef.current = reactRef.current + 1;
-    if (kind === 0) {
-      setHop(true); Sfx.pet(); emote('❤️');
-      setTimeout(function () { setHop(false); }, 650);
-    } else if (kind === 1) {
-      setIdle('tilt'); Sfx.pet(); emote('🎶');
-      setTimeout(function () { setIdle(''); }, 700);
-    } else {
-      setIdle('shine'); Sfx.coin(); emote('✨');
-      setTimeout(function () { setIdle(''); }, 800);
-    }
+    Sfx.pet();
+    // Poke Ember into a real pose reaction (wave / jump / fire). If she's asleep or
+    // the species has no pose art, fall back to a simple heart so a tap is never dead.
+    if (!(pokeRef.current && pokeRef.current())) emote('❤️');
   }
   if (!g) return null;
   const sp = speciesOf(g.species);
-  const homeMood = g.energy <= 8 ? 'sleep' : 'idle';
-  const homeMotion = guardianMotion(g.species, g.level, homeMood);
   const xpNeeded = G.Leveling.xpToNext(g.level);
   const pct = Math.min(100, Math.round((g.xp / xpNeeded) * 100));
   const quick = state.questBoard.filter(function (b) { return b.remainingToday > 0; }).slice(0, 3);
@@ -1782,9 +1851,8 @@ function HomeScreen(props) {
     <React.Fragment>
       <div className="card hero">
         <div className={"hero-art" + (props.guide === "pet-guardian" ? " guide-glow" : "")} onClick={petTap}>
-          <div className={'pet-stage' + (hop ? ' hop' : '') + (idle ? ' ' + idle : '') + ' ' + homeMotion.cls}>
-            <AnimArt frames={homeMotion.frames} fallback={homeMotion.fallback} fps={homeMotion.fps} fade={homeMotion.fade} emoji={sp.emoji} alt={sp.name} />
-          </div>
+          <EmberStage species={g.species} level={g.level} asleep={g.energy <= 8}
+            pokeRef={pokeRef} onEmote={emote} emoji={sp.emoji} alt={sp.name} />
           {emotes.map(function (e) {
             return <span key={e.id} className="emote" style={{ left: e.x + '%' }}>{e.icon}</span>;
           })}

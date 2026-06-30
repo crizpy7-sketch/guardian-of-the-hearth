@@ -181,8 +181,10 @@
     border-radius: 14px; font-size: 14px; font-weight: 600;
     display: inline-flex; align-items: center; justify-content: center; gap: 7px;
     cursor: pointer;
+    transition: transform 0.16s cubic-bezier(.34,1.56,.64,1), filter 0.16s ease;
   }
-  button.btn:active { transform: scale(0.97); }
+  button.btn:active { transform: scale(0.96); }
+  button.btn.primary:active { filter: brightness(1.06); }
   button.btn.primary {
     background: linear-gradient(180deg, var(--ember), var(--ember-deep));
     border-color: #8F4715; color: #1C0F05;
@@ -191,6 +193,7 @@
   button.mini {
     min-height: 40px; padding: 8px 13px; font-size: 13px; font-weight: 600;
     background: var(--panel-2); border: 1px solid var(--edge); border-radius: 11px;
+    transition: transform 0.16s cubic-bezier(.34,1.56,.64,1), filter 0.16s ease;
   }
   button.mini.go { background: linear-gradient(180deg, var(--ember), var(--ember-deep)); border-color: #8F4715; color: #1C0F05; }
   .btnrow { display: flex; flex-wrap: wrap; gap: 9px; }
@@ -5995,6 +5998,59 @@ const Sfx = function () {
   };
 }();
 
+// Haptics: subtle vibration on key moments — the "tactile" half of premium feel.
+// Android Chrome supports navigator.vibrate; iOS Safari and desktop simply no-op,
+// so this is pure upside where it's available and harmless where it isn't. Auto-
+// disabled when the user prefers reduced motion (unless motion is force-enabled).
+const Haptics = function () {
+  let on = true;
+  function can() {
+    if (!on) return false;
+    if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return false;
+    try {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches && !document.body.classList.contains('motion-force')) return false;
+    } catch (e) {}
+    return true;
+  }
+  function buzz(pattern) {
+    if (!can()) return;
+    try {
+      navigator.vibrate(pattern);
+    } catch (e) {}
+  }
+  return {
+    setOn: function (v) {
+      on = !!v;
+    },
+    isOn: function () {
+      return on;
+    },
+    tap: function () {
+      buzz(8);
+    },
+    // light press on any button
+    select: function () {
+      buzz(12);
+    },
+    // a deliberate choice
+    success: function () {
+      buzz([0, 16, 38, 22]);
+    },
+    // reward / chest / approve
+    levelUp: function () {
+      buzz([0, 22, 45, 22, 45, 40]);
+    },
+    // big celebratory roll
+    impact: function () {
+      buzz(26);
+    },
+    // a battle hit landing
+    error: function () {
+      buzz([0, 38, 28, 38]);
+    }
+  };
+}();
+
 /* ---- Music: real tracks when present, generative lullaby as fallback.
    Drop music-hearth.mp3 / music-raids.mp3 into the repo and the game uses
    them automatically — same contract as the art. ---- */
@@ -7245,7 +7301,10 @@ function App() {
   useEffect(function () {
     function onDown(e) {
       Sfx.unlock();
-      if (e.target && e.target.closest && e.target.closest('button')) Sfx.tap();
+      if (e.target && e.target.closest && e.target.closest('button')) {
+        Sfx.tap();
+        Haptics.tap();
+      }
     }
     document.addEventListener('pointerdown', onDown);
     return function () {
@@ -7259,6 +7318,9 @@ function App() {
     storeCtx.current.repos.meta.get('pref.sound').then(function (v) {
       if (v === false) Sfx.setOn(false);
     });
+    storeCtx.current.repos.meta.get('pref.haptics').then(function (v) {
+      if (v === false) Haptics.setOn(false);
+    });
     storeCtx.current.repos.meta.get('pref.motion').then(function (v) {
       applyMotionPref(v || 'auto');
     });
@@ -7268,11 +7330,26 @@ function App() {
   useEffect(function () {
     const c = state && state.ui.celebration;
     if (!c) return;
-    if (c.type === 'levelUp') Sfx.levelUp();else if (c.type === 'achievement') Sfx.achieve();else if (c.type === 'flame') Sfx.flame();else Sfx.chest();
+    if (c.type === 'levelUp') {
+      Sfx.levelUp();
+      Haptics.levelUp();
+    } else if (c.type === 'achievement') {
+      Sfx.achieve();
+      Haptics.success();
+    } else if (c.type === 'flame') {
+      Sfx.flame();
+      Haptics.success();
+    } else {
+      Sfx.chest();
+      Haptics.success();
+    }
   }, [state && state.ui.celebration]);
   useEffect(function () {
     const t = state && state.ui.toast;
-    if (t && t.kind === 'bad') Sfx.error();
+    if (t && t.kind === 'bad') {
+      Sfx.error();
+      Haptics.error();
+    }
   }, [state && state.ui.toast]);
   useEffect(function () {
     function vis() {
@@ -8754,6 +8831,7 @@ function HomeScreen(props) {
     addBondTap(); // play-first: each tap builds the bond that unlocks mission guidance
     guardianSpeak(); // ALWAYS talk back — this is how a non-reader learns the dragon is alive
     Sfx.pet();
+    Haptics.tap();
     // Poke Ember into a real pose reaction (wave / jump / fire). If she's asleep or
     // the species has no pose art, fall back to a simple heart so a tap is never dead.
     if (!(pokeRef.current && pokeRef.current())) emote('❤️');
@@ -10428,7 +10506,13 @@ function TreasureCell(props) {
   const rank = RARITY_RANK[rar] || 0;
   const [pop, setPop] = useState(false);
   function tap() {
-    if (rank >= 2) Sfx.sparkle();else Sfx.coin();
+    if (rank >= 2) {
+      Sfx.sparkle();
+      Haptics.success();
+    } else {
+      Sfx.coin();
+      Haptics.select();
+    }
     Voice.say((r.item ? r.item.name : 'treasure') + '. ' + RARITY_LABEL[rar]);
     setPop(true);
     setTimeout(function () {
@@ -10787,10 +10871,13 @@ function CrateReveal(props) {
     if (phase === 'reward') {
       if (tier >= 2) {
         Sfx.achieve && Sfx.achieve();
+        Haptics.levelUp();
       } else if (tier >= 1) {
         Sfx.chest && Sfx.chest();
+        Haptics.success();
       } else {
         Sfx.sparkle && Sfx.sparkle();
+        Haptics.success();
       }
     }
   }, [phase]);

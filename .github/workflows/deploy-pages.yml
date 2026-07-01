@@ -54,6 +54,10 @@ jobs:
 
   deploy:
     needs: build
+    # The github-pages environment only permits deploys from the default branch,
+    # so only attempt it on main. On feature branches the build job alone runs
+    # (validating the build) and the PR stays green instead of a false-alarm red.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

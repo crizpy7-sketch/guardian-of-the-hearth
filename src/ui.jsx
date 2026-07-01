@@ -93,6 +93,34 @@ const Sfx = (function () {
   };
 })();
 
+// Haptics: subtle vibration on key moments — the "tactile" half of premium feel.
+// Android Chrome supports navigator.vibrate; iOS Safari and desktop simply no-op,
+// so this is pure upside where it's available and harmless where it isn't. Auto-
+// disabled when the user prefers reduced motion (unless motion is force-enabled).
+const Haptics = (function () {
+  let on = true;
+  function can() {
+    if (!on) return false;
+    if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return false;
+    try {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        && !document.body.classList.contains('motion-force')) return false;
+    } catch (e) {}
+    return true;
+  }
+  function buzz(pattern) { if (!can()) return; try { navigator.vibrate(pattern); } catch (e) {} }
+  return {
+    setOn: function (v) { on = !!v; },
+    isOn: function () { return on; },
+    tap: function () { buzz(8); },          // light press on any button
+    select: function () { buzz(12); },      // a deliberate choice
+    success: function () { buzz([0, 16, 38, 22]); },          // reward / chest / approve
+    levelUp: function () { buzz([0, 22, 45, 22, 45, 40]); },  // big celebratory roll
+    impact: function () { buzz(26); },      // a battle hit landing
+    error: function () { buzz([0, 38, 28, 38]); },
+  };
+})();
+
 /* ---- Music: real tracks when present, generative lullaby as fallback.
    Drop music-hearth.mp3 / music-raids.mp3 into the repo and the game uses
    them automatically — same contract as the art. ---- */
@@ -958,7 +986,7 @@ function App() {
   useEffect(function () {
     function onDown(e) {
       Sfx.unlock();
-      if (e.target && e.target.closest && e.target.closest('button')) Sfx.tap();
+      if (e.target && e.target.closest && e.target.closest('button')) { Sfx.tap(); Haptics.tap(); }
     }
     document.addEventListener('pointerdown', onDown);
     return function () { document.removeEventListener('pointerdown', onDown); };
@@ -970,6 +998,9 @@ function App() {
     storeCtx.current.repos.meta.get('pref.sound').then(function (v) {
       if (v === false) Sfx.setOn(false);
     });
+    storeCtx.current.repos.meta.get('pref.haptics').then(function (v) {
+      if (v === false) Haptics.setOn(false);
+    });
     storeCtx.current.repos.meta.get('pref.motion').then(function (v) {
       applyMotionPref(v || 'auto');
     });
@@ -979,14 +1010,14 @@ function App() {
   useEffect(function () {
     const c = state && state.ui.celebration;
     if (!c) return;
-    if (c.type === 'levelUp') Sfx.levelUp();
-    else if (c.type === 'achievement') Sfx.achieve();
-    else if (c.type === 'flame') Sfx.flame();
-    else Sfx.chest();
+    if (c.type === 'levelUp') { Sfx.levelUp(); Haptics.levelUp(); }
+    else if (c.type === 'achievement') { Sfx.achieve(); Haptics.success(); }
+    else if (c.type === 'flame') { Sfx.flame(); Haptics.success(); }
+    else { Sfx.chest(); Haptics.success(); }
   }, [state && state.ui.celebration]);
   useEffect(function () {
     const t = state && state.ui.toast;
-    if (t && t.kind === 'bad') Sfx.error();
+    if (t && t.kind === 'bad') { Sfx.error(); Haptics.error(); }
   }, [state && state.ui.toast]);
   useEffect(function () {
     function vis() { Music.sync(); }
@@ -1704,6 +1735,67 @@ function DressUp(props) {
 // two poses together). Ember idles with a gentle breathe and every few seconds
 // performs a little routine, and reacts with a pose when tapped. Species without
 // pose art fall back to the proven static-portrait + CSS motion (unchanged).
+// ---- Layered puppet rig (the "flawless" path) -------------------------------
+// When 7 matching ember-*.png cut-out layers exist, Ember is assembled from them
+// and animated joint-by-joint in CSS: gentle breathing, blinking (hide the open
+// eyes to reveal the closed eyes painted on the head), slow wing-flaps + tail
+// sway, and jaw-open reactions. All layers share ONE canvas/size/position, so
+// stacking them at inset:0 reassembles her perfectly. Pivot %s in the CSS are
+// first-pass and get calibrated against the real art once the layers land.
+var EMBER_RIG_LAYERS = ['body', 'head', 'eyes', 'jaw', 'wing-near', 'wing-far', 'tail'];
+function EmberRig(props) {
+  var asleep = props.asleep;
+  var fxState = useState('idle'); var fx = fxState[0], setFx = fxState[1];
+  var busyRef = useRef(false);
+  var holdRef = useRef(null);
+  function L(name) { return './ember-' + name + '.png'; }
+
+  function play(kind) {
+    if (asleep) return;
+    busyRef.current = true; setFx(kind);
+    if (props.onEmote) props.onEmote(kind === 'fire' ? '🔥' : '❤️');
+    clearTimeout(holdRef.current);
+    holdRef.current = setTimeout(function () { setFx('idle'); busyRef.current = false; }, kind === 'fire' ? 1500 : 900);
+  }
+  useEffect(function () {
+    if (!props.pokeRef) return;
+    props.pokeRef.current = function () {
+      if (asleep) return false;
+      play(Math.random() < 0.4 ? 'fire' : 'happy');
+      return true;
+    };
+  });
+  useEffect(function () {
+    if (asleep) return;
+    var reduce = false;
+    try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches && !document.body.classList.contains('motion-force'); } catch (e) {}
+    if (reduce) return;
+    var id = setInterval(function () {
+      if (busyRef.current || Math.random() < 0.5) return;
+      play(Math.random() < 0.35 ? 'fire' : 'happy');
+    }, 5200);
+    return function () { clearInterval(id); };
+  }, [asleep]);
+  useEffect(function () { return function () { clearTimeout(holdRef.current); }; }, []);
+
+  return React.createElement('div', { className: 'pet-stage ember-rig fx-' + (asleep ? 'sleep' : fx), 'aria-label': props.alt || '' },
+    React.createElement('img', { className: 'erl l-wingfar', src: L('wing-far'), alt: '' }),
+    React.createElement('img', { className: 'erl l-wingnear', src: L('wing-near'), alt: '' }),
+    React.createElement('img', { className: 'erl l-tail', src: L('tail'), alt: '' }),
+    React.createElement('img', { className: 'erl l-body', src: L('body'), alt: '' }),
+    React.createElement('div', { className: 'er-head' },
+      React.createElement('img', { className: 'erl l-head', src: L('head'), alt: '' }),
+      React.createElement('img', { className: 'erl l-jaw', src: L('jaw'), alt: '' }),
+      React.createElement('img', { className: 'erl l-eyes', src: L('eyes'), alt: props.alt || '' })
+    ),
+    fx === 'fire' ? React.createElement('span', { key: 'fx', className: 'ember-firefx' }) : null,
+    React.createElement('span', { key: 'amb', className: 'amb-embers' },
+      [0, 1, 2, 3].map(function (i) {
+        return React.createElement('span', { key: i, className: 'amb-ember', style: { left: (12 + i * 22) + '%', animationDelay: (i * 1.3) + 's' } });
+      }))
+  );
+}
+
 var EMBER_POSES = {
   rest: { file: 'cheer2', cls: 'ep-rest', hold: 0,    emote: null },
   wave: { file: 'cheer1', cls: 'ep-wave', hold: 1500, emote: '👋' },
@@ -1716,9 +1808,25 @@ function EmberStage(props) {
   var asleep = props.asleep;
   var modeState = useState('probing'); var mode = modeState[0], setMode = modeState[1];
   var actState = useState('rest'); var act = actState[0], setAct = actState[1];
+  var rigState = useState(sp === 'DRAGON' ? 'probing' : 'no'); var rig = rigState[0], setRig = rigState[1];
   var busyRef = useRef(false);
   var holdRef = useRef(null);
   function file(name) { return 'guardian-' + sp.toLowerCase() + '-' + name + '.png'; }
+
+  // Probe for the layered rig art first — it's the flawless path when present.
+  useEffect(function () {
+    if (sp !== 'DRAGON') { setRig('no'); return; }
+    var alive = true; setRig('probing');
+    var need = EMBER_RIG_LAYERS; var ok = 0, done = 0;
+    need.forEach(function (n) {
+      var im = new Image();
+      im.onload = function () { ok++; fin(); };
+      im.onerror = function () { fin(); };
+      im.src = './ember-' + n + '.png';
+    });
+    function fin() { done++; if (done < need.length || !alive) return; setRig(ok === need.length ? 'yes' : 'no'); }
+    return function () { alive = false; };
+  }, [sp]);
 
   // Probe whether this species ships the cut-out poses; only then go "live".
   useEffect(function () {
@@ -1744,7 +1852,7 @@ function EmberStage(props) {
   }
   // Let the parent's tap handler poke Ember into a happy reaction.
   useEffect(function () {
-    if (!props.pokeRef) return;
+    if (!props.pokeRef || rig === 'yes') return; // the rig wires its own poke
     props.pokeRef.current = function () {
       if (mode !== 'live' || asleep) return false;
       var picks = ['wave', 'jump', 'fire'];
@@ -1754,7 +1862,7 @@ function EmberStage(props) {
   });
   // Autonomous idle life — a little routine every few seconds.
   useEffect(function () {
-    if (mode !== 'live' || asleep) return;
+    if (mode !== 'live' || asleep || rig === 'yes') return;
     var reduce = false;
     try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches && !document.body.classList.contains('motion-force'); } catch (e) {}
     if (reduce) return;
@@ -1763,11 +1871,15 @@ function EmberStage(props) {
       play(EMBER_IDLE_ACTS[Math.floor(Math.random() * EMBER_IDLE_ACTS.length)]);
     }, 4800);
     return function () { clearInterval(id); };
-  }, [mode, asleep]);
+  }, [mode, asleep, rig]);
   useEffect(function () { return function () { clearTimeout(holdRef.current); }; }, []);
 
+  // Best path: the layered puppet rig (handles its own idle, reactions, sleep).
+  if (rig === 'yes') {
+    return React.createElement(EmberRig, { asleep: asleep, pokeRef: props.pokeRef, onEmote: props.onEmote, alt: props.alt });
+  }
   // Asleep, or a species without pose art -> the proven AnimArt behaviour.
-  if (asleep || mode === 'plain' || mode === 'probing') {
+  if (asleep || mode === 'plain' || mode === 'probing' || rig === 'probing') {
     var m = guardianMotion(sp, props.level, asleep ? 'sleep' : 'idle');
     return React.createElement('div', { className: 'pet-stage ' + m.cls },
       React.createElement(AnimArt, { frames: m.frames, fallback: m.fallback, fps: m.fps, fade: m.fade, emoji: props.emoji, alt: props.alt }));
@@ -1837,7 +1949,7 @@ function HomeScreen(props) {
   function petTap() {
     addBondTap(); // play-first: each tap builds the bond that unlocks mission guidance
     guardianSpeak(); // ALWAYS talk back — this is how a non-reader learns the dragon is alive
-    Sfx.pet();
+    Sfx.pet(); Haptics.tap();
     // Poke Ember into a real pose reaction (wave / jump / fire). If she's asleep or
     // the species has no pose art, fall back to a simple heart so a tap is never dead.
     if (!(pokeRef.current && pokeRef.current())) emote('❤️');
@@ -2884,7 +2996,7 @@ function TreasureCell(props) {
   const rank = RARITY_RANK[rar] || 0;
   const [pop, setPop] = useState(false);
   function tap() {
-    if (rank >= 2) Sfx.sparkle(); else Sfx.coin();
+    if (rank >= 2) { Sfx.sparkle(); Haptics.success(); } else { Sfx.coin(); Haptics.select(); }
     Voice.say((r.item ? r.item.name : 'treasure') + '. ' + RARITY_LABEL[rar]);
     setPop(true);
     setTimeout(function () { setPop(false); }, 650);
@@ -3094,7 +3206,7 @@ function CrateReveal(props) {
       if (tier >= 2) { Sfx.flame && Sfx.flame(); } else { Sfx.magic && Sfx.magic(); }
     }
     if (phase === 'reward') {
-      if (tier >= 2) { Sfx.achieve && Sfx.achieve(); } else if (tier >= 1) { Sfx.chest && Sfx.chest(); } else { Sfx.sparkle && Sfx.sparkle(); }
+      if (tier >= 2) { Sfx.achieve && Sfx.achieve(); Haptics.levelUp(); } else if (tier >= 1) { Sfx.chest && Sfx.chest(); Haptics.success(); } else { Sfx.sparkle && Sfx.sparkle(); Haptics.success(); }
     }
   }, [phase]);
 

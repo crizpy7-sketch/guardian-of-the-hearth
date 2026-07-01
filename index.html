@@ -40,17 +40,21 @@
     font-size: 15px;
     line-height: 1.5;
     overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    text-wrap: pretty;
   }
   button { font: inherit; color: inherit; }
   img { display: block; }
 
   /* ---------- type ---------- */
-  .display { font-family: var(--display); font-weight: 600; letter-spacing: 0.01em; }
+  .display { font-family: var(--display); font-weight: 600; letter-spacing: 0.01em; text-wrap: balance; }
   .eyebrow {
     font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
     color: var(--dim); font-weight: 600;
   }
-  h1, h2, h3 { font-family: var(--display); margin: 0; font-weight: 600; }
+  h1, h2, h3 { font-family: var(--display); margin: 0; font-weight: 600; line-height: 1.18; letter-spacing: -0.01em; text-wrap: balance; }
   h2 { font-size: 19px; }
   .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
@@ -121,15 +125,15 @@
 
   /* ---------- cards ---------- */
   .card {
-    background: linear-gradient(180deg, rgba(44,34,24,0.92), rgba(36,27,20,0.92));
-    border: 1px solid var(--edge);
+    background: linear-gradient(180deg, rgba(46,36,26,0.94), rgba(34,26,19,0.94));
+    border: 1px solid rgba(86,66,48,0.55);
     border-radius: 18px;
     padding: 14px;
     margin-bottom: 14px;
-    box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+    box-shadow: inset 0 1px 0 rgba(255,238,214,0.055), 0 1px 2px rgba(0,0,0,0.28), 0 12px 32px -10px rgba(0,0,0,0.55);
   }
   .card h2 { margin-bottom: 10px; }
-  .note { color: var(--dim); font-size: 13px; margin: 6px 0 0; }
+  .note { color: var(--dim); font-size: 13px; line-height: 1.55; margin: 6px 0 0; }
 
   /* ---------- guardian hero ---------- */
   .hero { padding: 0; overflow: hidden; }
@@ -165,10 +169,12 @@
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .chip {
     display: inline-flex; align-items: center; gap: 5px;
-    background: rgba(20,16,12,0.7); border: 1px solid var(--edge);
+    background: linear-gradient(180deg, rgba(50,40,29,0.72), rgba(20,16,12,0.72));
+    border: 1px solid rgba(86,66,48,0.5);
     border-radius: 999px; padding: 6px 11px; font-size: 13px;
+    box-shadow: inset 0 1px 0 rgba(255,238,214,0.06), 0 1px 3px rgba(0,0,0,0.3);
   }
-  .chip b { font-family: var(--mono); font-weight: 700; }
+  .chip b { font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums; }
   .chip.gold b { color: var(--gold); }
   .chip.energy b { color: #FFC97F; }
   .chip.heart b { color: #E89BB5; }
@@ -181,8 +187,10 @@
     border-radius: 14px; font-size: 14px; font-weight: 600;
     display: inline-flex; align-items: center; justify-content: center; gap: 7px;
     cursor: pointer;
+    transition: transform 0.16s cubic-bezier(.34,1.56,.64,1), filter 0.16s ease;
   }
-  button.btn:active { transform: scale(0.97); }
+  button.btn:active { transform: scale(0.96); }
+  button.btn.primary:active { filter: brightness(1.06); }
   button.btn.primary {
     background: linear-gradient(180deg, var(--ember), var(--ember-deep));
     border-color: #8F4715; color: #1C0F05;
@@ -191,6 +199,7 @@
   button.mini {
     min-height: 40px; padding: 8px 13px; font-size: 13px; font-weight: 600;
     background: var(--panel-2); border: 1px solid var(--edge); border-radius: 11px;
+    transition: transform 0.16s cubic-bezier(.34,1.56,.64,1), filter 0.16s ease;
   }
   button.mini.go { background: linear-gradient(180deg, var(--ember), var(--ember-deep)); border-color: #8F4715; color: #1C0F05; }
   .btnrow { display: flex; flex-wrap: wrap; gap: 9px; }
@@ -881,16 +890,20 @@
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
     display: flex; justify-content: space-around;
     max-width: 560px; margin: 0 auto;
-    background: rgba(24,18,13,0.96);
-    border-top: 1px solid var(--edge);
+    background: rgba(24,18,13,0.82);
+    border-top: 1px solid rgba(86,66,48,0.45);
     padding: 7px 4px calc(7px + env(safe-area-inset-bottom));
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    box-shadow: 0 -10px 30px -6px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,238,214,0.05);
   }
   .tab { flex: 1; min-height: 50px; border: none; background: none; color: var(--dim);
     display: flex; flex-direction: column; align-items: center; gap: 2px;
-    font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; position: relative; }
-  .tab .ti { font-size: 21px; line-height: 1; }
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; position: relative;
+    transition: color 0.2s ease; }
+  .tab .ti { font-size: 21px; line-height: 1; transition: transform 0.24s cubic-bezier(.34,1.56,.64,1), filter 0.24s ease; }
   .tab.on { color: var(--ember); }
+  .tab.on .ti { transform: translateY(-2px) scale(1.06); filter: drop-shadow(0 4px 8px rgba(232,133,61,0.45)); }
   .tab .dot { position: absolute; top: 2px; right: 22%; min-width: 17px; height: 17px;
     border-radius: 999px; background: var(--brick); color: #fff;
     font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
@@ -916,19 +929,26 @@
   .sp-cell.on { border-color: var(--ember); box-shadow: 0 0 14px rgba(232,133,61,0.45); }
 
   /* ---------- modals, celebration, toast ---------- */
-  .veil { position: fixed; inset: 0; z-index: 40; background: rgba(12,9,6,0.72);
+  .veil { position: fixed; inset: 0; z-index: 40; background: rgba(12,9,6,0.66);
     display: flex; align-items: flex-end; justify-content: center;
+    backdrop-filter: blur(5px) saturate(1.05); -webkit-backdrop-filter: blur(5px) saturate(1.05);
     animation: veilIn 200ms ease both; }
   .veil.center { align-items: center; padding: 22px; }
   @keyframes veilIn { from { opacity: 0; } to { opacity: 1; } }
-  .sheet { width: 100%; max-width: 560px; background: var(--panel);
-    border: 1px solid var(--edge); border-radius: 22px 22px 0 0;
+  .sheet { width: 100%; max-width: 560px;
+    background: linear-gradient(180deg, #2B2118, var(--panel));
+    border: 1px solid rgba(86,66,48,0.5); border-radius: 22px 22px 0 0;
     padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
     max-height: 86dvh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    box-shadow: 0 -18px 54px -10px rgba(0,0,0,0.66), inset 0 1px 0 rgba(255,238,214,0.06);
     animation: sheetUp 260ms cubic-bezier(.22,1,.36,1) both; }
+  .sheet::before { content: ''; display: block; width: 38px; height: 4px; border-radius: 999px;
+    background: rgba(237,227,210,0.22); margin: -4px auto 12px; }
   @keyframes sheetUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
-  .modal { width: 100%; max-width: 420px; background: var(--panel);
-    border: 1px solid var(--edge); border-radius: 20px; padding: 18px;
+  .modal { width: 100%; max-width: 420px;
+    background: linear-gradient(180deg, #2B2118, var(--panel));
+    border: 1px solid rgba(86,66,48,0.5); border-radius: 20px; padding: 18px;
+    box-shadow: 0 24px 70px -16px rgba(0,0,0,0.72), inset 0 1px 0 rgba(255,238,214,0.06);
     animation: sheetUp 240ms cubic-bezier(.22,1,.36,1) both; }
   .celebrate { position: fixed; inset: 0; z-index: 50;
     display: flex; align-items: center; justify-content: center; padding: 26px;
@@ -1051,6 +1071,42 @@
   @media (prefers-reduced-motion: reduce) {
     body:not(.motion-force) .ember-pose.on { animation: none !important; }
     body:not(.motion-force) .amb-ember, body:not(.motion-force) .ember-firefx { display: none; }
+  }
+  /* --- Layered puppet rig: each ember-*.png is one joint, animated separately --- */
+  .ember-rig { position: absolute; inset: 0; transform-origin: 50% 92%; animation: rigBreathe 4s ease-in-out infinite; }
+  .ember-rig .erl { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; will-change: transform; }
+  .ember-rig .er-head { position: absolute; inset: 0; transform-origin: 50% 62%; animation: headBob 4.8s ease-in-out infinite; }
+  /* pivots (first pass — calibrated to the real art on import) */
+  .ember-rig .l-wingnear { transform-origin: 66% 36%; animation: flapNear 3s ease-in-out infinite; }
+  .ember-rig .l-wingfar  { transform-origin: 52% 34%; animation: flapFar 3s ease-in-out infinite; }
+  .ember-rig .l-tail     { transform-origin: 60% 76%; animation: tailSway 3.8s ease-in-out infinite; }
+  .ember-rig .l-jaw      { transform-origin: 54% 54%; transition: transform 0.18s ease; }
+  .ember-rig .l-eyes     { transform-origin: 50% 42%; animation: emberBlink 5.4s ease-in-out infinite; }
+  @keyframes rigBreathe { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.012); } }
+  @keyframes headBob    { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-1.5px) rotate(-0.6deg); } }
+  @keyframes flapNear   { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(4.5deg); } }
+  @keyframes flapFar    { 0%,100% { transform: rotate(2.5deg); } 50% { transform: rotate(-3deg); } }
+  @keyframes tailSway   { 0%,100% { transform: rotate(-2.5deg); } 50% { transform: rotate(3deg); } }
+  @keyframes emberBlink { 0%,92%,100% { transform: scaleY(1); } 96% { transform: scaleY(0.08); } }
+  /* happy reaction: a springy hop + quick double wing-flap */
+  .ember-rig.fx-happy { animation: rigHop 0.8s cubic-bezier(.34,1.56,.64,1); }
+  .ember-rig.fx-happy .l-wingnear { animation: flapNear 0.4s ease-in-out 2; }
+  .ember-rig.fx-happy .l-wingfar  { animation: flapFar 0.4s ease-in-out 2; }
+  @keyframes rigHop { 0% { transform: translateY(0) scale(1); } 35% { transform: translateY(-18px) scale(1.03,0.97); } 70% { transform: translateY(0) scale(1); } 85% { transform: translateY(-5px); } 100% { transform: translateY(0); } }
+  /* fire reaction: lunge forward, open jaw, squint */
+  .ember-rig.fx-fire { animation: rigLunge 1.5s ease; }
+  .ember-rig.fx-fire .l-jaw  { transform: rotate(13deg) translateY(3%); }
+  .ember-rig.fx-fire .l-eyes { animation: emberSquint 1.5s ease; }
+  @keyframes rigLunge  { 0% { transform: translateX(0) scale(1); } 25% { transform: translateX(5px) scale(1.02); } 60% { transform: translateX(3px); } 100% { transform: translateX(0) scale(1); } }
+  @keyframes emberSquint { 0%,100% { transform: scaleY(1); } 25%,80% { transform: scaleY(0.45); } }
+  /* sleeping: eyes hidden (closed eyes painted on head show through), slow breath, head tilt */
+  .ember-rig.fx-sleep { animation: rigBreathe 6.2s ease-in-out infinite; }
+  .ember-rig.fx-sleep .l-eyes { opacity: 0; }
+  .ember-rig.fx-sleep .er-head { animation: none; transform: rotate(-4deg) translateY(2px); }
+  .ember-rig.fx-sleep .l-wingnear, .ember-rig.fx-sleep .l-wingfar, .ember-rig.fx-sleep .l-tail { animation-duration: 7s; }
+  @media (prefers-reduced-motion: reduce) {
+    body:not(.motion-force) .ember-rig, body:not(.motion-force) .ember-rig .erl, body:not(.motion-force) .ember-rig .er-head { animation: none !important; }
+    body:not(.motion-force) .ember-rig .amb-ember { display: none; }
   }
   .emote { position: absolute; top: 20%; z-index: 3; font-size: 32px; pointer-events: none;
     animation: emoteUp 1.7s ease-out both; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
@@ -5959,6 +6015,59 @@ const Sfx = function () {
   };
 }();
 
+// Haptics: subtle vibration on key moments — the "tactile" half of premium feel.
+// Android Chrome supports navigator.vibrate; iOS Safari and desktop simply no-op,
+// so this is pure upside where it's available and harmless where it isn't. Auto-
+// disabled when the user prefers reduced motion (unless motion is force-enabled).
+const Haptics = function () {
+  let on = true;
+  function can() {
+    if (!on) return false;
+    if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return false;
+    try {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches && !document.body.classList.contains('motion-force')) return false;
+    } catch (e) {}
+    return true;
+  }
+  function buzz(pattern) {
+    if (!can()) return;
+    try {
+      navigator.vibrate(pattern);
+    } catch (e) {}
+  }
+  return {
+    setOn: function (v) {
+      on = !!v;
+    },
+    isOn: function () {
+      return on;
+    },
+    tap: function () {
+      buzz(8);
+    },
+    // light press on any button
+    select: function () {
+      buzz(12);
+    },
+    // a deliberate choice
+    success: function () {
+      buzz([0, 16, 38, 22]);
+    },
+    // reward / chest / approve
+    levelUp: function () {
+      buzz([0, 22, 45, 22, 45, 40]);
+    },
+    // big celebratory roll
+    impact: function () {
+      buzz(26);
+    },
+    // a battle hit landing
+    error: function () {
+      buzz([0, 38, 28, 38]);
+    }
+  };
+}();
+
 /* ---- Music: real tracks when present, generative lullaby as fallback.
    Drop music-hearth.mp3 / music-raids.mp3 into the repo and the game uses
    them automatically — same contract as the art. ---- */
@@ -7209,7 +7318,10 @@ function App() {
   useEffect(function () {
     function onDown(e) {
       Sfx.unlock();
-      if (e.target && e.target.closest && e.target.closest('button')) Sfx.tap();
+      if (e.target && e.target.closest && e.target.closest('button')) {
+        Sfx.tap();
+        Haptics.tap();
+      }
     }
     document.addEventListener('pointerdown', onDown);
     return function () {
@@ -7223,6 +7335,9 @@ function App() {
     storeCtx.current.repos.meta.get('pref.sound').then(function (v) {
       if (v === false) Sfx.setOn(false);
     });
+    storeCtx.current.repos.meta.get('pref.haptics').then(function (v) {
+      if (v === false) Haptics.setOn(false);
+    });
     storeCtx.current.repos.meta.get('pref.motion').then(function (v) {
       applyMotionPref(v || 'auto');
     });
@@ -7232,11 +7347,26 @@ function App() {
   useEffect(function () {
     const c = state && state.ui.celebration;
     if (!c) return;
-    if (c.type === 'levelUp') Sfx.levelUp();else if (c.type === 'achievement') Sfx.achieve();else if (c.type === 'flame') Sfx.flame();else Sfx.chest();
+    if (c.type === 'levelUp') {
+      Sfx.levelUp();
+      Haptics.levelUp();
+    } else if (c.type === 'achievement') {
+      Sfx.achieve();
+      Haptics.success();
+    } else if (c.type === 'flame') {
+      Sfx.flame();
+      Haptics.success();
+    } else {
+      Sfx.chest();
+      Haptics.success();
+    }
   }, [state && state.ui.celebration]);
   useEffect(function () {
     const t = state && state.ui.toast;
-    if (t && t.kind === 'bad') Sfx.error();
+    if (t && t.kind === 'bad') {
+      Sfx.error();
+      Haptics.error();
+    }
   }, [state && state.ui.toast]);
   useEffect(function () {
     function vis() {
@@ -8351,6 +8481,113 @@ function DressUp(props) {
 // two poses together). Ember idles with a gentle breathe and every few seconds
 // performs a little routine, and reacts with a pose when tapped. Species without
 // pose art fall back to the proven static-portrait + CSS motion (unchanged).
+// ---- Layered puppet rig (the "flawless" path) -------------------------------
+// When 7 matching ember-*.png cut-out layers exist, Ember is assembled from them
+// and animated joint-by-joint in CSS: gentle breathing, blinking (hide the open
+// eyes to reveal the closed eyes painted on the head), slow wing-flaps + tail
+// sway, and jaw-open reactions. All layers share ONE canvas/size/position, so
+// stacking them at inset:0 reassembles her perfectly. Pivot %s in the CSS are
+// first-pass and get calibrated against the real art once the layers land.
+var EMBER_RIG_LAYERS = ['body', 'head', 'eyes', 'jaw', 'wing-near', 'wing-far', 'tail'];
+function EmberRig(props) {
+  var asleep = props.asleep;
+  var fxState = useState('idle');
+  var fx = fxState[0],
+    setFx = fxState[1];
+  var busyRef = useRef(false);
+  var holdRef = useRef(null);
+  function L(name) {
+    return './ember-' + name + '.png';
+  }
+  function play(kind) {
+    if (asleep) return;
+    busyRef.current = true;
+    setFx(kind);
+    if (props.onEmote) props.onEmote(kind === 'fire' ? '🔥' : '❤️');
+    clearTimeout(holdRef.current);
+    holdRef.current = setTimeout(function () {
+      setFx('idle');
+      busyRef.current = false;
+    }, kind === 'fire' ? 1500 : 900);
+  }
+  useEffect(function () {
+    if (!props.pokeRef) return;
+    props.pokeRef.current = function () {
+      if (asleep) return false;
+      play(Math.random() < 0.4 ? 'fire' : 'happy');
+      return true;
+    };
+  });
+  useEffect(function () {
+    if (asleep) return;
+    var reduce = false;
+    try {
+      reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches && !document.body.classList.contains('motion-force');
+    } catch (e) {}
+    if (reduce) return;
+    var id = setInterval(function () {
+      if (busyRef.current || Math.random() < 0.5) return;
+      play(Math.random() < 0.35 ? 'fire' : 'happy');
+    }, 5200);
+    return function () {
+      clearInterval(id);
+    };
+  }, [asleep]);
+  useEffect(function () {
+    return function () {
+      clearTimeout(holdRef.current);
+    };
+  }, []);
+  return React.createElement('div', {
+    className: 'pet-stage ember-rig fx-' + (asleep ? 'sleep' : fx),
+    'aria-label': props.alt || ''
+  }, React.createElement('img', {
+    className: 'erl l-wingfar',
+    src: L('wing-far'),
+    alt: ''
+  }), React.createElement('img', {
+    className: 'erl l-wingnear',
+    src: L('wing-near'),
+    alt: ''
+  }), React.createElement('img', {
+    className: 'erl l-tail',
+    src: L('tail'),
+    alt: ''
+  }), React.createElement('img', {
+    className: 'erl l-body',
+    src: L('body'),
+    alt: ''
+  }), React.createElement('div', {
+    className: 'er-head'
+  }, React.createElement('img', {
+    className: 'erl l-head',
+    src: L('head'),
+    alt: ''
+  }), React.createElement('img', {
+    className: 'erl l-jaw',
+    src: L('jaw'),
+    alt: ''
+  }), React.createElement('img', {
+    className: 'erl l-eyes',
+    src: L('eyes'),
+    alt: props.alt || ''
+  })), fx === 'fire' ? React.createElement('span', {
+    key: 'fx',
+    className: 'ember-firefx'
+  }) : null, React.createElement('span', {
+    key: 'amb',
+    className: 'amb-embers'
+  }, [0, 1, 2, 3].map(function (i) {
+    return React.createElement('span', {
+      key: i,
+      className: 'amb-ember',
+      style: {
+        left: 12 + i * 22 + '%',
+        animationDelay: i * 1.3 + 's'
+      }
+    });
+  })));
+}
 var EMBER_POSES = {
   rest: {
     file: 'cheer2',
@@ -8387,11 +8624,46 @@ function EmberStage(props) {
   var actState = useState('rest');
   var act = actState[0],
     setAct = actState[1];
+  var rigState = useState(sp === 'DRAGON' ? 'probing' : 'no');
+  var rig = rigState[0],
+    setRig = rigState[1];
   var busyRef = useRef(false);
   var holdRef = useRef(null);
   function file(name) {
     return 'guardian-' + sp.toLowerCase() + '-' + name + '.png';
   }
+
+  // Probe for the layered rig art first — it's the flawless path when present.
+  useEffect(function () {
+    if (sp !== 'DRAGON') {
+      setRig('no');
+      return;
+    }
+    var alive = true;
+    setRig('probing');
+    var need = EMBER_RIG_LAYERS;
+    var ok = 0,
+      done = 0;
+    need.forEach(function (n) {
+      var im = new Image();
+      im.onload = function () {
+        ok++;
+        fin();
+      };
+      im.onerror = function () {
+        fin();
+      };
+      im.src = './ember-' + n + '.png';
+    });
+    function fin() {
+      done++;
+      if (done < need.length || !alive) return;
+      setRig(ok === need.length ? 'yes' : 'no');
+    }
+    return function () {
+      alive = false;
+    };
+  }, [sp]);
 
   // Probe whether this species ships the cut-out poses; only then go "live".
   useEffect(function () {
@@ -8435,7 +8707,7 @@ function EmberStage(props) {
   }
   // Let the parent's tap handler poke Ember into a happy reaction.
   useEffect(function () {
-    if (!props.pokeRef) return;
+    if (!props.pokeRef || rig === 'yes') return; // the rig wires its own poke
     props.pokeRef.current = function () {
       if (mode !== 'live' || asleep) return false;
       var picks = ['wave', 'jump', 'fire'];
@@ -8445,7 +8717,7 @@ function EmberStage(props) {
   });
   // Autonomous idle life — a little routine every few seconds.
   useEffect(function () {
-    if (mode !== 'live' || asleep) return;
+    if (mode !== 'live' || asleep || rig === 'yes') return;
     var reduce = false;
     try {
       reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches && !document.body.classList.contains('motion-force');
@@ -8458,15 +8730,24 @@ function EmberStage(props) {
     return function () {
       clearInterval(id);
     };
-  }, [mode, asleep]);
+  }, [mode, asleep, rig]);
   useEffect(function () {
     return function () {
       clearTimeout(holdRef.current);
     };
   }, []);
 
+  // Best path: the layered puppet rig (handles its own idle, reactions, sleep).
+  if (rig === 'yes') {
+    return React.createElement(EmberRig, {
+      asleep: asleep,
+      pokeRef: props.pokeRef,
+      onEmote: props.onEmote,
+      alt: props.alt
+    });
+  }
   // Asleep, or a species without pose art -> the proven AnimArt behaviour.
-  if (asleep || mode === 'plain' || mode === 'probing') {
+  if (asleep || mode === 'plain' || mode === 'probing' || rig === 'probing') {
     var m = guardianMotion(sp, props.level, asleep ? 'sleep' : 'idle');
     return React.createElement('div', {
       className: 'pet-stage ' + m.cls
@@ -8567,6 +8848,7 @@ function HomeScreen(props) {
     addBondTap(); // play-first: each tap builds the bond that unlocks mission guidance
     guardianSpeak(); // ALWAYS talk back — this is how a non-reader learns the dragon is alive
     Sfx.pet();
+    Haptics.tap();
     // Poke Ember into a real pose reaction (wave / jump / fire). If she's asleep or
     // the species has no pose art, fall back to a simple heart so a tap is never dead.
     if (!(pokeRef.current && pokeRef.current())) emote('❤️');
@@ -10241,7 +10523,13 @@ function TreasureCell(props) {
   const rank = RARITY_RANK[rar] || 0;
   const [pop, setPop] = useState(false);
   function tap() {
-    if (rank >= 2) Sfx.sparkle();else Sfx.coin();
+    if (rank >= 2) {
+      Sfx.sparkle();
+      Haptics.success();
+    } else {
+      Sfx.coin();
+      Haptics.select();
+    }
     Voice.say((r.item ? r.item.name : 'treasure') + '. ' + RARITY_LABEL[rar]);
     setPop(true);
     setTimeout(function () {
@@ -10600,10 +10888,13 @@ function CrateReveal(props) {
     if (phase === 'reward') {
       if (tier >= 2) {
         Sfx.achieve && Sfx.achieve();
+        Haptics.levelUp();
       } else if (tier >= 1) {
         Sfx.chest && Sfx.chest();
+        Haptics.success();
       } else {
         Sfx.sparkle && Sfx.sparkle();
+        Haptics.success();
       }
     }
   }, [phase]);

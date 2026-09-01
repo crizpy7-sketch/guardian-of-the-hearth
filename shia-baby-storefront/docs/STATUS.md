@@ -1,23 +1,34 @@
 # STATUS — Shia & Co. Storefront
 
-**Version:** 1.1.0 · **Lifecycle:** pre-launch · **Last updated:** 2026-09-01
+**Version:** 1.1.0 · **Lifecycle:** pre-launch · **Last verified:** 2026-09-01
 
 Per Factory Constitution Law 4 and Invariant 17, this records only what was
 actually observed. Anything unverified is labelled as such.
 
-## ⚠️ Deployed version is behind the repository
+## Deployment — VERIFIED LIVE (v1.1.0)
 
-| | Version | Contains |
-| --- | --- | --- |
-| **Repository (this code)** | 1.1.0 | Shop page, product catalog, admin console, admin APIs |
-| **Live on Vercel** | 1.0.0 | Storefront, agent surface, subscribe — **no shop, no admin** |
+| Item | Value |
+| --- | --- |
+| Vercel project | `shia-baby-storefront` (`prj_8tVxaB0d5XBpMvjhUUAWEDIMBgJO`) |
+| Production URL | https://shia-baby-storefront.vercel.app |
+| Deployment | `dpl_4WamTkkRoyESvBZ14LGLuaLd39B7` |
+| Functions | 8 Node serverless functions + static assets |
 
-The v1.1.0 deploy was **blocked**: the Vercel `deploy_to_vercel` call returned
-`MCP tool call requires approval` on two attempts. Read calls to Vercel succeed,
-so this is a write-permission gate on the operator's client, not a Vercel fault.
+### Live evidence (fetched from the production alias)
 
-**To ship v1.1.0:** approve the Vercel deploy tool, then redeploy. Nothing in the
-code needs to change.
+| Route | Result |
+| --- | --- |
+| `/api/health` | **200** — `degraded`, all 3 required gates pass, 5 gates reported |
+| `/api/products` | **200** — `count: 0`, `backend: memory` (nothing imported yet) |
+| `/api/admin/products` | **503** — `console_not_configured`, **fails closed** ✅ |
+
+`/api/health` gates: `web` pass · `catalog` pass (5 product lines) ·
+`agent_surface` pass (3 approved / 5 blocked claims) · `data_layer` degraded
+(Supabase unset) · `admin_console` degraded (token unset).
+
+The 503 on the admin route is the correct, intended behaviour: with no
+`SHIA_CONSOLE_TOKEN` set, no customer order data or wholesale figure is
+reachable by anyone.
 
 ## Verified — repository
 
@@ -32,16 +43,11 @@ Notable guarantees under test:
   cannot drift apart.
 - EN/ES dictionaries have identical key sets; every `data-i18n` key resolves.
 
-## Verified — live deployment (v1.0.0)
+## Previously verified (still serving)
 
-| Route | Result |
-| --- | --- |
-| `/` | 200, bilingual, preview banner present |
-| `/console/` | 200, `x-robots-tag: noindex, nofollow` |
-| `/assets/theme.css` | 200 |
-| `/api/health` | 200, `degraded`, 3/3 required gates pass |
-
-`/shop/`, `/api/products`, `/api/admin/*` are **not yet live** — they ship with v1.1.0.
+`/` (bilingual storefront, preview banner), `/console/` (with
+`x-robots-tag: noindex, nofollow`) and `/assets/theme.css` were each verified
+200 on the v1.0.0 deployment and ship unchanged-or-extended in v1.1.0.
 
 ## What v1.1.0 adds
 
@@ -65,23 +71,21 @@ step (branch `claude/publish-to-storefront`) that POSTs rows straight to
 
 ## Known degraded / not done
 
-1. **v1.1.0 is not deployed** (see above). This is the only blocker on the shop
-   and admin console going live.
-2. **Data layer is in memory mode.** `SHIA_SUPABASE_URL` /
+1. **Data layer is in memory mode.** `SHIA_SUPABASE_URL` /
    `SHIA_SUPABASE_SERVICE_KEY` are unset on Vercel, so signups and products are
    accepted but **not durably stored** (`persisted: false`).
-3. **Admin is disabled in production.** `SHIA_CONSOLE_TOKEN` is unset, so admin
+2. **Admin is disabled in production.** `SHIA_CONSOLE_TOKEN` is unset, so admin
    endpoints return 503 by design.
-4. **The Shia-songs Supabase project is unreachable from this account.** That app
+3. **The Shia-songs Supabase project is unreachable from this account.** That app
    points at project ref `bjnkgxkcbbnbtazelsjs`, which is not in the Supabase
    organization available here. Song-order administration cannot be verified
    end to end until its URL and a service key are supplied.
-5. **Repository home is provisional.** Source lives in a subdirectory of
+4. **Repository home is provisional.** Source lives in a subdirectory of
    `guardian-of-the-hearth` because this session's GitHub integration lacks
    repository-creation permission.
-6. **Deploys are file-direct, not push-to-deploy.** Until the repo is linked to
+5. **Deploys are file-direct, not push-to-deploy.** Until the repo is linked to
    the Vercel project, `APP_BUILD_STANDARD.md` §2 is only partially satisfied.
-7. **No checkout.** The shop displays and filters products; it does not sell
+6. **No checkout.** The shop displays and filters products; it does not sell
    them. Payments are out of scope for 1.x.
 
 ## Claims status
@@ -92,10 +96,9 @@ ratings, store-open date.
 
 ## Next actions (owner)
 
-1. Approve the Vercel deploy tool → redeploy v1.1.0.
-2. Set `SHIA_SUPABASE_URL` + `SHIA_SUPABASE_SERVICE_KEY`, then run
+1. Set `SHIA_SUPABASE_URL` + `SHIA_SUPABASE_SERVICE_KEY`, then run
    `docs/schema.sql` (creates `shia_subscribers` and `shia_products`).
-3. Set `SHIA_CONSOLE_TOKEN` to unlock the console.
-4. Supply the Shia-songs Supabase credentials to connect song orders.
-5. Confirm retail pricing → promote `claim-pricing` → flip `LAUNCH_STATE` to `live`.
-6. Create the `shia-baby-storefront` GitHub repo and link it to Vercel.
+2. Set `SHIA_CONSOLE_TOKEN` to unlock the console.
+3. Supply the Shia-songs Supabase credentials to connect song orders.
+4. Confirm retail pricing → promote `claim-pricing` → flip `LAUNCH_STATE` to `live`.
+5. Create the `shia-baby-storefront` GitHub repo and link it to Vercel.

@@ -10,133 +10,272 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/theme.css">
 <style>
-  .topbar { position:sticky; top:0; z-index:30; background:rgba(247,241,232,.94); backdrop-filter:blur(12px); border-bottom:1px solid rgba(36,52,95,.12); }
-  .topbar-inner { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.9rem 0; }
-  .brand { display:flex; align-items:center; gap:.75rem; }
-  .mark { width:42px; height:42px; border-radius:50%; background:var(--indigo); color:#fff; display:grid; place-items:center; font-family:var(--serif); font-weight:700; }
-  .brand h1 { font-size:1.35rem; }
-  .brand small { display:block; color:var(--muted); font-size:.7rem; }
-  main { padding:1.5rem 0 5rem; }
-  .grid { display:grid; gap:1.1rem; }
-  .cols-3 { grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); }
+  .topbar { position:sticky; top:0; z-index:30; background:rgba(247,241,232,.95); backdrop-filter:blur(12px); border-bottom:1px solid rgba(36,52,95,.12); }
+  .topbar-inner { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.85rem 0; flex-wrap:wrap; }
+  .brand { display:flex; align-items:center; gap:.7rem; }
+  .mark { width:40px; height:40px; border-radius:50%; background:var(--indigo); color:#fff; display:grid; place-items:center; font-family:var(--serif); font-weight:700; }
+  .brand h1 { font-size:1.25rem; }
+  .brand small { display:block; color:var(--muted); font-size:.68rem; }
+  .topbar-right { display:flex; align-items:center; gap:.6rem; }
+
+  .tabs { display:flex; gap:.3rem; border-bottom:1px solid var(--line); overflow-x:auto; padding-top:.3rem; }
+  .tabs button { border:0; background:transparent; padding:.7rem 1rem; font-weight:800; font-size:.86rem; color:var(--muted); border-bottom:3px solid transparent; white-space:nowrap; }
+  .tabs button.active { color:var(--indigo); border-bottom-color:var(--gold); }
+
+  main { padding:1.4rem 0 5rem; }
+  .panel { display:none; }
+  .panel.active { display:block; }
+  .grid { display:grid; gap:1rem; }
+  .cols-3 { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
   .cols-2 { grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
-  .card h2 { font-size:1.35rem; margin-bottom:.2rem; }
-  .card .hint { color:var(--muted); font-size:.85rem; margin:0 0 1rem; }
-  .metric { font-family:var(--serif); font-size:2.6rem; color:var(--indigo); line-height:1; }
-  .metric-label { color:var(--muted); font-size:.8rem; text-transform:uppercase; letter-spacing:.1em; font-weight:800; }
-  .apps { display:grid; gap:.75rem; }
-  .app-link { display:flex; align-items:center; gap:.9rem; padding:.9rem 1rem; border:1px solid var(--line); border-radius:var(--radius-sm); background:#fff; text-decoration:none; transition:border-color .15s ease, transform .15s ease; }
-  .app-link:hover { border-color:var(--indigo-soft); transform:translateY(-2px); }
-  .app-link .ico { font-size:1.5rem; }
-  .app-link strong { display:block; color:var(--indigo); }
-  .app-link span { font-size:.82rem; color:var(--muted); }
+  .card h2 { font-size:1.25rem; margin-bottom:.15rem; }
+  .card .hint { color:var(--muted); font-size:.84rem; margin:0 0 1rem; }
+  .metric { font-family:var(--serif); font-size:2.4rem; color:var(--indigo); line-height:1; }
+  .metric-label { color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; font-weight:800; }
+
   table { width:100%; border-collapse:collapse; }
-  th, td { text-align:left; padding:.6rem .5rem; border-bottom:1px solid #ebe6de; font-size:.86rem; vertical-align:top; }
-  th { background:#f5f1ea; color:#3f4654; font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; }
-  .gate { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.55rem 0; border-bottom:1px dashed var(--line); }
+  th, td { text-align:left; padding:.55rem .5rem; border-bottom:1px solid #ebe6de; font-size:.85rem; vertical-align:middle; }
+  th { background:#f5f1ea; color:#3f4654; font-size:.7rem; text-transform:uppercase; letter-spacing:.07em; position:sticky; top:0; }
+  td input, td select { border:1px solid var(--line); border-radius:8px; padding:.4rem .5rem; font-size:.84rem; width:100%; background:#fff; }
+  td input.narrow { max-width:110px; }
+  .scroll { overflow:auto; max-height:65vh; border:1px solid var(--line); border-radius:var(--radius-sm); background:#fff; }
+
+  .row { display:flex; gap:.6rem; flex-wrap:wrap; align-items:end; }
+  .row > .grow { flex:1; min-width:200px; }
+  textarea.field { min-height:150px; font-family:var(--mono); font-size:.78rem; resize:vertical; }
+  .btn-sm { padding:.45rem 1rem; font-size:.8rem; border-radius:999px; font-weight:800; border:0; }
+  .btn-sm.go { background:var(--indigo); color:#fff; }
+  .btn-sm.off { background:#fff; color:var(--indigo); border:1.5px solid var(--line); }
+  .gate { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.5rem 0; border-bottom:1px dashed var(--line); }
   .gate:last-child { border-bottom:0; }
-  .tokenbar { display:flex; gap:.6rem; flex-wrap:wrap; align-items:end; }
-  .tokenbar .field { max-width:320px; }
-  code { font-family:var(--mono); font-size:.8rem; background:#f0ece4; padding:.1rem .35rem; border-radius:5px; }
+  code { font-family:var(--mono); font-size:.78rem; background:#f0ece4; padding:.1rem .35rem; border-radius:5px; }
+  .lock { max-width:460px; margin:4rem auto; }
+  .toast { position:fixed; bottom:1.2rem; left:50%; transform:translateX(-50%); background:var(--indigo); color:#fff; padding:.7rem 1.2rem; border-radius:999px; font-size:.85rem; font-weight:600; box-shadow:var(--shadow-lg); z-index:60; }
 </style>
 </head>
 <body>
 
 <header class="topbar">
-  <div class="wrap topbar-inner">
-    <div class="brand">
-      <div class="mark">S&amp;C</div>
-      <div><h1>Operator Console</h1><small>Shia &amp; Co. · one place for the whole system</small></div>
+  <div class="wrap">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="mark">S&amp;C</div>
+        <div><h1>Operator Console</h1><small>Shia &amp; Co. · one place for the whole system</small></div>
+      </div>
+      <div class="topbar-right">
+        <span class="badge" id="modeBadge">checking…</span>
+        <button class="btn-sm off" id="lockBtn" type="button" hidden>Lock</button>
+      </div>
     </div>
-    <span class="badge" id="modeBadge">checking…</span>
+    <nav class="tabs" id="tabs" hidden>
+      <button data-tab="overview" class="active">Overview</button>
+      <button data-tab="products">Products</button>
+      <button data-tab="songs">Song orders</button>
+      <button data-tab="claims">Claims ledger</button>
+    </nav>
   </div>
 </header>
 
 <main class="wrap">
-  <div class="grid cols-3" style="margin-bottom:1.1rem">
-    <section class="card">
-      <p class="metric-label">Milestone Club</p>
-      <p class="metric" id="subCount">—</p>
-      <p class="hint" style="margin:.4rem 0 0">Confirmed subscribers — the primary KPI.</p>
-    </section>
-    <section class="card">
-      <p class="metric-label">Song orders</p>
-      <p class="metric" id="orderCount">—</p>
-      <p class="hint" style="margin:.4rem 0 0">From the Shia Songs intake app.</p>
-    </section>
-    <section class="card">
-      <p class="metric-label">Campaign readiness</p>
-      <p class="metric" id="claimScore">—</p>
-      <p class="hint" style="margin:.4rem 0 0">Confirmed claims Gary may advertise.</p>
-    </section>
-  </div>
 
-  <div class="grid cols-2">
-    <section class="card">
-      <h2>The system</h2>
-      <p class="hint">Every Shia app, in one place.</p>
-      <div class="apps">
-        <a class="app-link" href="/" target="_blank" rel="noopener">
-          <span class="ico">🏬</span>
-          <span><strong>Storefront</strong><span>Customer site, bilingual, Milestone Club capture</span></span>
-        </a>
-        <a class="app-link" href="https://github.com/crizpy7-sketch/shia-baby-inventory" target="_blank" rel="noopener">
-          <span class="ico">📦</span>
-          <span><strong>Shia Baby Inventory</strong><span>Invoice → pricing → Square → barcode labels</span></span>
-        </a>
-        <a class="app-link" href="https://github.com/crizpy7-sketch/Shia-songs" target="_blank" rel="noopener">
-          <span class="ico">🎶</span>
-          <span><strong>Shia Songs</strong><span>Song order intake &amp; admin (Supabase)</span></span>
-        </a>
-        <a class="app-link" href="/api/agent/brief" target="_blank" rel="noopener">
-          <span class="ico">📣</span>
-          <span><strong>Gary’s brief</strong><span>What the growth agent is cleared to say</span></span>
-        </a>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Health gates</h2>
-      <p class="hint">Live deployment evidence — not a build receipt.</p>
-      <div id="gates"><p class="muted">Checking…</p></div>
-    </section>
-  </div>
-
-  <section class="card" style="margin-top:1.1rem">
-    <h2>Claims ledger</h2>
+  <!-- Unlock ------------------------------------------------------------- -->
+  <section class="card lock" id="lockPanel">
+    <h2>Operator sign-in</h2>
     <p class="hint">
-      What the advertising agent may and may not say. Anything not
-      <strong>confirmed</strong> is blocked from campaigns until you resolve it.
+      Enter the console token (<code>SHIA_CONSOLE_TOKEN</code> from your Vercel
+      environment). It is kept in this browser tab only and sent as a header —
+      never stored on a server or logged.
     </p>
-    <div style="overflow:auto">
-      <table>
-        <thead><tr><th>Claim</th><th>State</th><th>What unblocks it</th></tr></thead>
-        <tbody id="claimsBody"></tbody>
-      </table>
+    <label for="token">Console token</label>
+    <input class="field" id="token" type="password" autocomplete="off" placeholder="paste to unlock">
+    <p style="margin-top:.9rem"><button class="btn btn-primary" id="unlockBtn" type="button" style="width:100%">Unlock console</button></p>
+    <p class="notice danger hidden" id="lockError" role="alert"></p>
+  </section>
+
+  <!-- Overview ----------------------------------------------------------- -->
+  <section class="panel" id="panel-overview">
+    <div class="grid cols-3" style="margin-bottom:1rem">
+      <div class="card"><p class="metric-label">Products live</p><p class="metric" id="mPublished">—</p><p class="hint" style="margin:.3rem 0 0">Published &amp; in stock on the shop.</p></div>
+      <div class="card"><p class="metric-label">Song orders</p><p class="metric" id="mOrders">—</p><p class="hint" style="margin:.3rem 0 0">Needing attention (not delivered).</p></div>
+      <div class="card"><p class="metric-label">Campaign readiness</p><p class="metric" id="mClaims">—</p><p class="hint" style="margin:.3rem 0 0">Confirmed claims Gary may advertise.</p></div>
+    </div>
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>The system</h2>
+        <p class="hint">Every Shia surface, in one place.</p>
+        <div class="grid" style="gap:.6rem">
+          <a class="btn-sm off" href="/" target="_blank" rel="noopener" style="text-align:left;padding:.8rem 1rem;text-decoration:none">🏬 &nbsp;Storefront</a>
+          <a class="btn-sm off" href="/shop/" target="_blank" rel="noopener" style="text-align:left;padding:.8rem 1rem;text-decoration:none">🧺 &nbsp;The Shop — all products</a>
+          <a class="btn-sm off" href="/api/agent/brief" target="_blank" rel="noopener" style="text-align:left;padding:.8rem 1rem;text-decoration:none">📣 &nbsp;Gary’s brief</a>
+          <a class="btn-sm off" href="https://github.com/crizpy7-sketch/shia-baby-inventory" target="_blank" rel="noopener" style="text-align:left;padding:.8rem 1rem;text-decoration:none">📦 &nbsp;Inventory app (invoices, SKUs, labels)</a>
+          <a class="btn-sm off" href="https://github.com/crizpy7-sketch/Shia-songs" target="_blank" rel="noopener" style="text-align:left;padding:.8rem 1rem;text-decoration:none">🎶 &nbsp;Songs intake app</a>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Health gates</h2>
+        <p class="hint">Live deployment evidence — not a build receipt.</p>
+        <div id="gates"><p class="muted">Checking…</p></div>
+      </div>
     </div>
   </section>
 
-  <section class="card" style="margin-top:1.1rem">
-    <h2>Song orders</h2>
-    <p class="hint">
-      Read-only view of the Shia Songs table. Requires the console token
-      (<code>SHIA_CONSOLE_TOKEN</code>); it is kept in this browser only, never sent anywhere else.
-    </p>
-    <div class="tokenbar">
-      <div style="flex:1">
-        <label for="token">Console token</label>
-        <input class="field" id="token" type="password" autocomplete="off" placeholder="paste to unlock">
+  <!-- Products ----------------------------------------------------------- -->
+  <section class="panel" id="panel-products">
+    <div class="card" style="margin-bottom:1rem">
+      <h2>Import from Shia Baby Inventory</h2>
+      <p class="hint">
+        The inventory app keeps its rows in your browser. To bring them here: open
+        the inventory app, press <code>F12</code> → Console, run
+        <code>copy(localStorage.getItem('shiaBabyInventoryState'))</code>, then paste below.
+        You can also paste a plain array of rows.
+      </p>
+      <label for="importBox">Inventory export (JSON)</label>
+      <textarea class="field" id="importBox" placeholder='{"items":[{"name":"Ribbed Footie","size":"0-3m","retail":26.99,"sku":"RF-BLU-03","qty":4}]}'></textarea>
+      <div class="row" style="margin-top:.7rem">
+        <button class="btn btn-primary" id="importBtn" type="button">Import products</button>
+        <span class="hint" style="margin:0">Imported items start <strong>unpublished</strong>. Nothing shows to customers until you publish it.</span>
       </div>
-      <button class="btn btn-primary" id="loadOrders" type="button">Load orders</button>
+      <div id="importResult" style="margin-top:.8rem"></div>
     </div>
-    <div id="ordersResult" style="margin-top:1rem"></div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:.8rem">
+        <div class="grow"><h2>Catalog</h2><p class="hint" style="margin:0">Edit price, size, description and image, then publish.</p></div>
+        <button class="btn-sm off" id="refreshProducts" type="button">Refresh</button>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Name</th><th>SKU</th><th>Size</th><th>Category</th><th>Price</th><th>Stock</th><th>Image URL</th><th>Live</th><th></th></tr></thead>
+          <tbody id="productsBody"><tr><td colspan="9" class="muted">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Song orders -------------------------------------------------------- -->
+  <section class="panel" id="panel-songs">
+    <div class="card">
+      <div class="row" style="margin-bottom:.8rem">
+        <div class="grow">
+          <h2>Song orders</h2>
+          <p class="hint" style="margin:0">
+            From the Shia Songs intake app. You may set <strong>status</strong> and
+            <strong>internal notes</strong> — customer answers and photos stay owned by that app.
+          </p>
+        </div>
+        <select id="statusFilter" class="field" style="max-width:200px"><option value="">All statuses</option></select>
+        <button class="btn-sm off" id="refreshSongs" type="button">Refresh</button>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>#</th><th>Title</th><th>Customer</th><th>Created</th><th>Status</th><th>Internal notes</th><th></th></tr></thead>
+          <tbody id="songsBody"><tr><td colspan="7" class="muted">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Claims ------------------------------------------------------------- -->
+  <section class="panel" id="panel-claims">
+    <div class="card">
+      <h2>Claims ledger</h2>
+      <p class="hint">
+        What the advertising agent may and may not say. Anything not
+        <strong>confirmed</strong> is blocked from campaigns until you resolve it.
+      </p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Claim</th><th>State</th><th>What unblocks it</th></tr></thead>
+          <tbody id="claimsBody"></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 </main>
 
 <script>
 const $ = (id) => document.getElementById(id);
+const STATE_CLASS = { confirmed:'ok', proposed:'warn', evidence_gap:'bad', placeholder:'bad' };
+const SONG_LABELS = {
+  new:'Nueva / New', reviewing:'En revisión', lyrics_in_progress:'Letra en progreso',
+  waiting_on_customer:'Esperando cliente', song_in_progress:'Canción en progreso',
+  completed:'Completada', delivered:'Entregada', cancelled:'Cancelada',
+};
 
-/* Health gates ---------------------------------------------------------- */
+/* The token lives in sessionStorage: it dies with the tab, so a shared or
+   forgotten machine does not keep back-office access open indefinitely. */
+const TOKEN_KEY = 'shiaConsoleToken';
+let token = sessionStorage.getItem(TOKEN_KEY) ?? '';
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function toast(message) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = message;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', 'x-shia-console-token': token, ...(options.headers ?? {}) },
+  });
+  return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
+}
+
+/* ---------- unlock ---------- */
+async function unlock(candidate) {
+  token = candidate;
+  const { ok, status, data } = await api('/api/admin/products');
+  if (!ok) {
+    token = '';
+    sessionStorage.removeItem(TOKEN_KEY);
+    $('lockError').textContent = status === 401
+      ? 'Token rejected.'
+      : status === 503
+        ? (data.detail ?? 'Console access is not configured on the server.')
+        : 'Could not reach the server.';
+    $('lockError').classList.remove('hidden');
+    return false;
+  }
+  sessionStorage.setItem(TOKEN_KEY, token);
+  $('lockPanel').classList.add('hidden');
+  $('tabs').hidden = false;
+  $('lockBtn').hidden = false;
+  showTab('overview');
+  renderProducts(data.products ?? []);
+  loadSongs();
+  return true;
+}
+
+$('unlockBtn').addEventListener('click', () => {
+  const value = $('token').value.trim();
+  if (!value) return;
+  $('lockError').classList.add('hidden');
+  unlock(value);
+});
+$('token').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('unlockBtn').click(); });
+
+$('lockBtn').addEventListener('click', () => {
+  sessionStorage.removeItem(TOKEN_KEY);
+  location.reload();
+});
+
+/* ---------- tabs ---------- */
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === `panel-${name}`));
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+}
+$('tabs').addEventListener('click', (e) => {
+  const button = e.target.closest('button[data-tab]');
+  if (button) showTab(button.dataset.tab);
+});
+
+/* ---------- health + claims (public, no token needed) ---------- */
 async function loadHealth() {
   try {
     const res = await fetch('/api/health');
@@ -144,11 +283,10 @@ async function loadHealth() {
     const badge = $('modeBadge');
     badge.textContent = `${data.status} · ${data.backend}`;
     badge.className = 'badge ' + (data.status === 'healthy' ? 'ok' : data.status === 'degraded' ? 'warn' : 'bad');
-
     $('gates').innerHTML = data.gates.map((g) => `
       <div class="gate">
-        <span><strong>${g.id}</strong>${g.required ? '' : ' <span class="muted">(optional)</span>'}<br>
-          <span class="muted" style="font-size:.8rem">${escapeHtml(g.detail ?? '')}</span></span>
+        <span><strong>${esc(g.id)}</strong>${g.required ? '' : ' <span class="muted">(optional)</span>'}<br>
+          <span class="muted" style="font-size:.78rem">${esc(g.detail)}</span></span>
         <span class="badge ${g.ok ? (g.degraded ? 'warn' : 'ok') : 'bad'}">${g.ok ? (g.degraded ? 'degraded' : 'pass') : 'fail'}</span>
       </div>`).join('');
   } catch {
@@ -158,65 +296,199 @@ async function loadHealth() {
   }
 }
 
-/* Claims ledger --------------------------------------------------------- */
-const STATE_CLASS = { confirmed:'ok', proposed:'warn', evidence_gap:'bad', placeholder:'bad' };
-
 async function loadClaims() {
   try {
     const res = await fetch('/api/catalog');
-    const data = await res.json();
-    const claims = data.claims ?? [];
+    const { claims = [] } = await res.json();
     $('claimsBody').innerHTML = claims.map((c) => `
       <tr>
-        <td>${escapeHtml(c.text)}</td>
-        <td><span class="badge ${STATE_CLASS[c.evidence_state] ?? ''}">${c.evidence_state}</span></td>
-        <td class="muted">${escapeHtml(c.blocker ?? c.support ?? '—')}</td>
+        <td>${esc(c.text)}</td>
+        <td><span class="badge ${STATE_CLASS[c.evidence_state] ?? ''}">${esc(c.evidence_state)}</span></td>
+        <td class="muted">${esc(c.blocker ?? c.support ?? '—')}</td>
       </tr>`).join('');
     const confirmed = claims.filter((c) => c.evidence_state === 'confirmed').length;
-    $('claimScore').textContent = `${confirmed}/${claims.length}`;
+    $('mClaims').textContent = `${confirmed}/${claims.length}`;
   } catch {
     $('claimsBody').innerHTML = '<tr><td colspan="3" class="muted">Catalog unavailable.</td></tr>';
   }
 }
 
-/* Song orders ----------------------------------------------------------- */
-$('loadOrders').addEventListener('click', async () => {
-  const token = $('token').value.trim();
-  const out = $('ordersResult');
-  if (!token) { out.innerHTML = '<p class="notice warn">Enter the console token first.</p>'; return; }
+/* ---------- products ---------- */
+function renderProducts(products) {
+  $('mPublished').textContent = products.filter((p) => p.published && Number(p.stock) > 0).length;
 
-  out.innerHTML = '<p class="muted">Loading…</p>';
-  try {
-    const res = await fetch('/api/orders?limit=25', { headers: { 'x-shia-console-token': token } });
-    if (res.status === 401) { out.innerHTML = '<p class="notice danger">Token rejected.</p>'; return; }
-    if (res.status === 503) { out.innerHTML = '<p class="notice warn">Console access is not configured on the server (SHIA_CONSOLE_TOKEN unset).</p>'; return; }
-    if (!res.ok) throw new Error(String(res.status));
-
-    const data = await res.json();
-    const orders = data.orders ?? [];
-    $('orderCount').textContent = orders.length;
-    if (!orders.length) { out.innerHTML = '<p class="notice">No orders returned.</p>'; return; }
-
-    out.innerHTML = `<div style="overflow:auto"><table>
-      <thead><tr><th>#</th><th>Title</th><th>Created</th></tr></thead>
-      <tbody>${orders.map((o) => `<tr>
-        <td>${escapeHtml(String(o.order_number ?? '—'))}</td>
-        <td>${escapeHtml(o.title ?? o.couple_names ?? 'Custom song')}</td>
-        <td class="muted">${escapeHtml(String(o.created_at ?? '').slice(0, 10))}</td>
-      </tr>`).join('')}</tbody></table></div>`;
-  } catch {
-    out.innerHTML = '<p class="notice danger">Could not load orders.</p>';
+  if (!products.length) {
+    $('productsBody').innerHTML = '<tr><td colspan="9" class="muted">No products yet — import an inventory export above.</td></tr>';
+    return;
   }
-});
 
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (ch) => (
-    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]
-  ));
+  $('productsBody').innerHTML = products.map((p) => `
+    <tr data-id="${esc(p.id)}">
+      <td><input data-f="name" value="${esc(p.name)}"></td>
+      <td class="muted">${esc(p.sku ?? '—')}</td>
+      <td><input data-f="size" class="narrow" value="${esc(p.size ?? '')}"></td>
+      <td><input data-f="category" class="narrow" value="${esc(p.category ?? '')}"></td>
+      <td><input data-f="price" class="narrow" type="number" step="0.01" min="0" value="${((p.price_cents ?? 0) / 100).toFixed(2)}"></td>
+      <td><input data-f="stock" class="narrow" type="number" min="0" value="${esc(p.stock ?? 0)}"></td>
+      <td><input data-f="image_url" value="${esc(p.image_url ?? '')}" placeholder="https://…"></td>
+      <td><input data-f="published" type="checkbox" ${p.published ? 'checked' : ''} style="width:auto"></td>
+      <td><button class="btn-sm go" data-save="${esc(p.id)}" type="button">Save</button></td>
+    </tr>`).join('');
 }
 
+async function loadProducts() {
+  const { ok, data } = await api('/api/admin/products');
+  if (ok) renderProducts(data.products ?? []);
+}
+
+$('refreshProducts').addEventListener('click', loadProducts);
+
+$('productsBody').addEventListener('click', async (e) => {
+  const button = e.target.closest('button[data-save]');
+  if (!button) return;
+
+  const row = button.closest('tr');
+  const get = (f) => row.querySelector(`[data-f="${f}"]`);
+  const patch = {
+    id: row.dataset.id,
+    name: get('name').value.trim(),
+    size: get('size').value.trim() || null,
+    category: get('category').value.trim() || 'other',
+    price_cents: Math.round(Number(get('price').value) * 100),
+    stock: Number(get('stock').value),
+    image_url: get('image_url').value.trim() || null,
+    published: get('published').checked,
+  };
+
+  button.disabled = true;
+  const { ok } = await api('/api/admin/products', { method: 'PATCH', body: JSON.stringify(patch) });
+  button.disabled = false;
+  toast(ok ? 'Saved.' : 'Could not save.');
+  if (ok) loadProducts();
+});
+
+$('importBtn').addEventListener('click', async () => {
+  const raw = $('importBox').value.trim();
+  const out = $('importResult');
+  if (!raw) { out.innerHTML = '<p class="notice warn">Paste an inventory export first.</p>'; return; }
+
+  let payload;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    out.innerHTML = '<p class="notice danger">That is not valid JSON.</p>';
+    return;
+  }
+
+  out.innerHTML = '<p class="muted">Importing…</p>';
+  const { ok, data } = await api('/api/admin/products', { method: 'POST', body: JSON.stringify(payload) });
+
+  if (!ok) {
+    out.innerHTML = `<p class="notice danger">${esc(data.detail ?? data.error ?? 'Import failed.')}</p>`;
+    return;
+  }
+
+  const warnings = [];
+  if (data.rejected?.length) {
+    warnings.push(`<p class="notice warn" style="margin-top:.5rem"><strong>${data.rejected.length} row(s) skipped:</strong><br>` +
+      data.rejected.slice(0, 8).map((r) => `${esc(r.name ?? `row ${r.index + 1}`)} — ${esc(r.problems.join(', '))}`).join('<br>') + '</p>');
+  }
+  if (data.duplicate_skus?.length) {
+    warnings.push(`<p class="notice warn" style="margin-top:.5rem">Duplicate SKUs merged: ${esc(data.duplicate_skus.join(', '))}</p>`);
+  }
+  if (!data.persisted) {
+    warnings.push('<p class="notice warn" style="margin-top:.5rem">Backend not configured — imported in memory only, <strong>not durably stored</strong>.</p>');
+  }
+
+  out.innerHTML = `<p class="notice ok">Imported ${data.imported} product(s). ${esc(data.note ?? '')}</p>` + warnings.join('');
+  $('importBox').value = '';
+  loadProducts();
+});
+
+/* ---------- song orders ---------- */
+let songOrders = [];
+
+function renderSongs() {
+  const filter = $('statusFilter').value;
+  const list = filter ? songOrders.filter((o) => o.status === filter) : songOrders;
+
+  $('mOrders').textContent = songOrders.filter((o) => !['delivered', 'cancelled'].includes(o.status)).length;
+
+  if (!list.length) {
+    $('songsBody').innerHTML = '<tr><td colspan="7" class="muted">No orders to show.</td></tr>';
+    return;
+  }
+
+  const options = Object.entries(SONG_LABELS)
+    .map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
+
+  $('songsBody').innerHTML = list.map((o) => `
+    <tr data-id="${esc(o.id)}">
+      <td class="muted">${esc(o.order_number ?? '—')}</td>
+      <td>${esc(o.title ?? o.couple_names ?? 'Custom song')}</td>
+      <td class="muted">${esc(o.customer_name ?? o.customer_email ?? '—')}</td>
+      <td class="muted">${esc(String(o.created_at ?? '').slice(0, 10))}</td>
+      <td><select data-f="status">${options}</select></td>
+      <td><input data-f="notes" value="${esc(o.internal_notes ?? '')}" placeholder="internal only"></td>
+      <td><button class="btn-sm go" data-save="${esc(o.id)}" type="button">Save</button></td>
+    </tr>`).join('');
+
+  // Set each select to its current value after injection.
+  list.forEach((o) => {
+    const select = $('songsBody').querySelector(`tr[data-id="${CSS.escape(String(o.id))}"] [data-f="status"]`);
+    if (select) select.value = o.status ?? 'new';
+  });
+}
+
+async function loadSongs() {
+  const { ok, data } = await api('/api/admin/songs?limit=50');
+  if (!ok) {
+    $('songsBody').innerHTML = '<tr><td colspan="7" class="muted">Could not load orders.</td></tr>';
+    return;
+  }
+  songOrders = data.orders ?? [];
+
+  if (!$('statusFilter').dataset.built) {
+    $('statusFilter').innerHTML = '<option value="">All statuses</option>' +
+      (data.statuses ?? []).map((s) => `<option value="${s}">${esc(SONG_LABELS[s] ?? s)}</option>`).join('');
+    $('statusFilter').dataset.built = '1';
+  }
+
+  if (!songOrders.length && data.mode === 'memory') {
+    $('songsBody').innerHTML = `<tr><td colspan="7" class="notice warn" style="border:0">
+      Supabase is not configured for this deployment, so song orders cannot be read.
+      Set <code>SHIA_SUPABASE_URL</code> and <code>SHIA_SUPABASE_SERVICE_KEY</code> to connect the Songs app.
+    </td></tr>`;
+    return;
+  }
+  renderSongs();
+}
+
+$('statusFilter').addEventListener('change', renderSongs);
+$('refreshSongs').addEventListener('click', loadSongs);
+
+$('songsBody').addEventListener('click', async (e) => {
+  const button = e.target.closest('button[data-save]');
+  if (!button) return;
+
+  const row = button.closest('tr');
+  const body = {
+    id: row.dataset.id,
+    status: row.querySelector('[data-f="status"]').value,
+    internal_notes: row.querySelector('[data-f="notes"]').value,
+  };
+
+  button.disabled = true;
+  const { ok, data } = await api('/api/admin/songs', { method: 'PATCH', body: JSON.stringify(body) });
+  button.disabled = false;
+  toast(ok ? 'Order updated.' : (data.detail ?? 'Could not update.'));
+  if (ok) loadSongs();
+});
+
+/* ---------- boot ---------- */
 loadHealth();
 loadClaims();
+if (token) unlock(token);
 </script>
 </body>
 </html>

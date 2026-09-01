@@ -44,3 +44,56 @@ create index if not exists shia_subscribers_campaign_idx
 -- bypasses RLS. Enabling RLS with no permissive policy means an anon or
 -- authenticated client key cannot read this table even if it leaks.
 alter table public.shia_subscribers enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- Product catalog — the storefront's display of real inventory.
+--
+-- Populated by importing an export from the shia-baby-inventory app. `cost` is
+-- NOT stored here: wholesale pricing stays in the inventory tool, so it cannot
+-- leak from the public API even by accident.
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.shia_products (
+  id           bigint generated always as identity primary key,
+  sku          text unique,
+  gtin         text,
+  name         text        not null,
+  size         text,
+  category     text        not null default 'other',
+  price_cents  integer     not null check (price_cents >= 0),
+  currency     text        not null default 'USD',
+  stock        integer     not null default 0 check (stock >= 0),
+  vendor       text,
+  description  text,
+  image_url    text,
+  -- Imports land unpublished; nothing shows to customers until deliberately published.
+  published    boolean     not null default false,
+  source       text        not null default 'shia-baby-inventory',
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+-- The public storefront's only query shape.
+create index if not exists shia_products_published_idx
+  on public.shia_products (published, category, size)
+  where published = true;
+
+create index if not exists shia_products_name_idx on public.shia_products (name);
+
+-- Keep updated_at honest without application code remembering to set it.
+create or replace function public.shia_touch_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists shia_products_touch on public.shia_products;
+create trigger shia_products_touch
+  before update on public.shia_products
+  for each row execute function public.shia_touch_updated_at();
+
+-- Writes go through the service role key on the server. RLS on with no
+-- permissive policy means a leaked anon key still cannot read or write.
+alter table public.shia_products enable row level security;

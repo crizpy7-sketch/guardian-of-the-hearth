@@ -42,6 +42,7 @@ export const CAMPAIGN_REGISTRY = Object.freeze({
     { id: 'home', path: '/', purpose: 'Brand entry point and Milestone Club capture.' },
     { id: 'songs', path: '/#shia-songs', purpose: 'Hero product — personalized baby song.' },
     { id: 'bundles', path: '/#bundles', purpose: 'Gift bundles, highest AOV.' },
+    { id: 'shop', path: '/shop/', purpose: 'Full product catalog, filterable by size and category.' },
     { id: 'subscribe', path: '/#join', purpose: 'Primary conversion: Milestone Club signup.' },
   ],
   primary_kpi: 'confirmed_milestone_club_subscribers',
@@ -78,6 +79,18 @@ export const NAVIGATION = Object.freeze({
       dom_contract: 'data-agent attribute marks agent-navigable nodes.',
     },
     {
+      id: 'shop',
+      path: '/shop/',
+      audience: 'customer',
+      languages: ['en', 'es'],
+      role: 'product-catalog',
+      data_source: '/api/products',
+      filters: ['size', 'category', 'q'],
+      note:
+        'Live inventory. Only published, in-stock items appear, and wholesale ' +
+        'cost is never exposed.',
+    },
+    {
       id: 'console',
       path: '/console/',
       audience: 'operator',
@@ -101,7 +114,8 @@ export const NAVIGATION = Object.freeze({
   ],
   api: [
     { path: '/api/health', method: 'GET', purpose: 'Deployment health gates.' },
-    { path: '/api/catalog', method: 'GET', purpose: 'Products with evidence states.' },
+    { path: '/api/catalog', method: 'GET', purpose: 'Product lines and claims ledger with evidence states.' },
+    { path: '/api/products', method: 'GET', purpose: 'Live sellable inventory for the shop. Public.' },
     { path: '/api/agent/brief', method: 'GET', purpose: 'Full growth brief for GARY-001.' },
     { path: '/api/subscribe', method: 'POST', purpose: 'Milestone Club signup capture.' },
   ],

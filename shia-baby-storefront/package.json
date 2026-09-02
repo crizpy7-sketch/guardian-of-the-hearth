@@ -1,6 +1,6 @@
 {
   "name": "shia-baby-storefront",
-  "version": "1.0.0",
+  "version": "1.1.2",
   "private": true,
   "description": "Shia & Co. storefront — customer front end, operator console, and agent-readable growth surface.",
   "type": "module",

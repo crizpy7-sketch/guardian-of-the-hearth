@@ -1,6 +1,6 @@
 # STATUS — Shia & Co. Storefront
 
-**Version:** 1.1.1 · **Lifecycle:** pre-launch · **Last verified:** 2026-09-02
+**Version:** 1.1.2 · **Lifecycle:** pre-launch · **Last verified:** 2026-09-02
 
 Per Factory Constitution Law 4 and Invariant 17, this records only what was
 actually observed. Anything unverified is labelled as such.

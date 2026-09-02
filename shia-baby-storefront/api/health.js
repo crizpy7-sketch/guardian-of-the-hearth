@@ -13,6 +13,36 @@ import { probe, backendMode } from '../src/data-layer.js';
 import { PRODUCTS } from '../src/catalog.js';
 import { buildBrief } from '../src/agent-surface.js';
 
+/**
+ * Reports whether the operator token is usable, and — importantly — whether the
+ * stored value carries surrounding whitespace.
+ *
+ * Pasting a secret into a dashboard field commonly appends a newline. That made
+ * the stored value one byte longer than the header the console sends, so the
+ * constant-time comparison's length check failed first and every unlock returned
+ * a bare 401. `requireOperator()` now trims both sides, but the whitespace is
+ * still worth surfacing: it explains an otherwise invisible past failure, and it
+ * tells the operator their stored value is not exactly what they think it is.
+ */
+function inspectConsoleToken() {
+  const raw = process.env.SHIA_CONSOLE_TOKEN ?? '';
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return {
+      ok: true,
+      degraded: true,
+      detail: 'SHIA_CONSOLE_TOKEN is not set; admin endpoints refuse to serve.',
+    };
+  }
+  return {
+    ok: true,
+    degraded: false,
+    detail: raw === trimmed
+      ? 'operator token configured'
+      : 'operator token configured (note: stored value has surrounding whitespace; it is trimmed before comparison)',
+  };
+}
+
 export default async function handler(req, res) {
   const startedAt = Date.now();
   const gates = [];
@@ -26,7 +56,7 @@ export default async function handler(req, res) {
     id: 'catalog',
     required: true,
     ok: catalogOk,
-    detail: `${PRODUCTS.length} products`,
+    detail: `${PRODUCTS.length} product lines`,
   });
 
   // Gate 3 — agent surface: GARY-001's brief builds and separates claim states.
@@ -51,6 +81,17 @@ export default async function handler(req, res) {
     degraded: dataProbe.degraded,
     mode: dataProbe.mode,
     detail: dataProbe.reason ?? 'connected',
+  });
+
+  // Gate 5 — admin console. Not required: a storefront with no back office still
+  // serves customers correctly, and an unset token is a safe state, not a fault.
+  const consoleGate = inspectConsoleToken();
+  gates.push({
+    id: 'admin_console',
+    required: false,
+    ok: consoleGate.ok,
+    degraded: consoleGate.degraded,
+    detail: consoleGate.detail,
   });
 
   const requiredFailures = gates.filter((g) => g.required && !g.ok);

@@ -21,8 +21,11 @@
  * pretending a write was persisted.
  */
 
-const SUPABASE_URL = process.env.SHIA_SUPABASE_URL ?? '';
-const SUPABASE_KEY = process.env.SHIA_SUPABASE_SERVICE_KEY ?? '';
+// Trimmed for the same reason the console token is: values pasted into a
+// dashboard field routinely carry a trailing newline, and a URL with one
+// appended produces a confusing fetch failure rather than a clear config error.
+const SUPABASE_URL = (process.env.SHIA_SUPABASE_URL ?? '').trim().replace(/\/+$/, '');
+const SUPABASE_KEY = (process.env.SHIA_SUPABASE_SERVICE_KEY ?? '').trim();
 
 const SUBSCRIBERS_TABLE = process.env.SHIA_SUBSCRIBERS_TABLE ?? 'shia_subscribers';
 const SONG_ORDERS_TABLE = process.env.SHIA_SONG_ORDERS_TABLE ?? 'shia_song_orders';

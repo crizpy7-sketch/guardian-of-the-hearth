@@ -10,7 +10,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   toCatalogBatch, flattenCatalog, isPubliclySellable, toPublicSquareProduct,
-  formatMoney, squareStatus, ONLINE_VISIBLE,
+  formatMoney, squareStatus, ONLINE_VISIBLE, indexImages,
 } from '../src/square.js';
 
 /** The exact shape shia-baby-inventory's buildPayload() emits. */
@@ -180,4 +180,37 @@ test('the sandbox is the default environment', () => {
   // Defaulting to production would let a misconfiguration write to the real
   // catalog of a live boutique.
   assert.equal(squareStatus().environment, 'sandbox');
+});
+
+test('product photographs from Square are resolved onto the product', () => {
+  // Square returns image_ids on the item and URLs on separate IMAGE objects.
+  // Without this join every product renders a placeholder glyph — for a
+  // boutique selling how things look, that is a real defect, not a nicety.
+  const objects = [
+    { id: 'IMG_1', type: 'IMAGE', image_data: { url: 'https://square.example/footie.jpg' } },
+    {
+      id: 'ITEM_9', type: 'ITEM',
+      item_data: {
+        name: 'Ribbed Footie', ecom_visibility: ONLINE_VISIBLE, image_ids: ['IMG_1'],
+        variations: [{ id: 'VAR_9', type: 'ITEM_VARIATION', item_variation_data: { name: '0-3m', sku: 'RF-1', price_money: { amount: 2699, currency: 'USD' } } }],
+      },
+    },
+  ];
+  const rows = flattenCatalog(objects, new Map([['VAR_9', 2]]), indexImages(objects));
+  assert.equal(rows.length, 1, 'IMAGE objects must not become products');
+  assert.equal(rows[0].image_url, 'https://square.example/footie.jpg');
+  assert.equal(toPublicSquareProduct(rows[0]).image_url, 'https://square.example/footie.jpg');
+});
+
+test('an item whose image is missing still sells, without a broken image', () => {
+  const objects = [{
+    id: 'ITEM_10', type: 'ITEM',
+    item_data: {
+      name: 'No Photo', ecom_visibility: ONLINE_VISIBLE, image_ids: ['MISSING'],
+      variations: [{ id: 'VAR_10', type: 'ITEM_VARIATION', item_variation_data: { name: 'Regular', sku: 'NP-1', price_money: { amount: 1000, currency: 'USD' } } }],
+    },
+  }];
+  const rows = flattenCatalog(objects, new Map([['VAR_10', 1]]), indexImages(objects));
+  assert.equal(rows[0].image_url, null);
+  assert.ok(isPubliclySellable(rows[0]), 'a missing photo must not block a sale');
 });

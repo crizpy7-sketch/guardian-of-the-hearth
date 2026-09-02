@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shia &amp; Co. — Where first moments become forever</title>
+<meta name="description" content="Shia &amp; Co. — baby keepsakes and personalized baby songs for families in McAllen and the Rio Grande Valley.">
+
+<!-- Agent surface pointers. A crawling or campaign-building agent should read
+     the brief rather than scrape this document. -->
+<link rel="alternate" type="application/json" href="/api/agent/brief" title="Shia agent brief">
+<link rel="alternate" type="application/json" href="/api/catalog" title="Shia catalog">
+<meta name="shia:agent-brief" content="/api/agent/brief">
+<meta name="shia:agent-surface-version" content="1.0.0">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/theme.css">
+<style>
+  /* Page-specific layout. Shared primitives live in theme.css. */
+  .skip { position:absolute; left:-9999px; }
+  .skip:focus { left:1rem; top:1rem; z-index:100; background:#fff; padding:.75rem 1rem; border-radius:10px; }
+
+  .preview-bar { background:var(--indigo); color:#fff; font-size:.82rem; text-align:center; padding:.6rem 1rem; }
+  .preview-bar strong { color:var(--gold); }
+
+  header.site { position:sticky; top:0; z-index:40; background:rgba(247,241,232,.92); backdrop-filter:blur(12px); border-bottom:1px solid rgba(36,52,95,.12); }
+  .nav { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.85rem 0; }
+  .brand { display:flex; align-items:center; gap:.75rem; text-decoration:none; }
+  .mark { width:44px; height:44px; border-radius:50%; background:var(--indigo); color:#fff; display:grid; place-items:center; font-family:var(--serif); font-weight:700; font-size:1.05rem; letter-spacing:.04em; }
+  .brand h1 { font-size:1.5rem; }
+  .brand small { display:block; color:var(--muted); font-size:.68rem; letter-spacing:.03em; }
+  .nav-links { display:flex; align-items:center; gap:1.4rem; }
+  .nav-links a { text-decoration:none; font-weight:600; font-size:.9rem; color:var(--indigo); }
+  .nav-links a:hover { color:var(--gold-deep); }
+  .lang { display:flex; border:1.5px solid var(--gold); border-radius:999px; overflow:hidden; }
+  .lang button { border:0; background:transparent; padding:.4rem .85rem; font-weight:800; font-size:.78rem; color:var(--gold-deep); }
+  .lang button.active { background:var(--gold); color:#fff; }
+
+  .hero { padding:clamp(3rem,8vw,6.5rem) 0 clamp(2.5rem,6vw,4.5rem); background:linear-gradient(180deg,var(--cream) 0%, var(--cream-deep) 100%); text-align:center; }
+  .hero h2 { font-size:clamp(2.6rem,7vw,4.8rem); max-width:15ch; margin-inline:auto; }
+  .hero .lede { font-size:clamp(1.02rem,2.3vw,1.25rem); color:var(--muted); max-width:54ch; margin:1.2rem auto 2rem; }
+  .hero-actions { display:flex; gap:.8rem; justify-content:center; flex-wrap:wrap; }
+  .crest { font-size:2.4rem; margin-bottom:.5rem; }
+
+  section.band { padding:clamp(3rem,7vw,5.5rem) 0; }
+  .section-head { text-align:center; margin-bottom:2.5rem; }
+  .section-head h3 { font-size:clamp(2rem,5vw,3rem); }
+  .section-head p { color:var(--muted); max-width:56ch; margin:.7rem auto 0; }
+
+  /* Hero product */
+  .songs { background:linear-gradient(150deg,var(--indigo),var(--indigo-soft)); color:#fff; }
+  .songs h3, .songs .eyebrow { color:#fff; }
+  .songs .eyebrow { color:var(--gold); }
+  .songs .lede { color:rgba(255,255,255,.85); max-width:56ch; margin:1rem auto 1.6rem; text-align:center; }
+  .songs-inner { text-align:center; }
+  .price-line { font-family:var(--serif); font-style:italic; font-size:1.35rem; color:var(--gold); }
+
+  /* Bundles */
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1.3rem; }
+  .product { display:flex; flex-direction:column; text-align:center; }
+  .product .emoji { font-size:2.1rem; }
+  .product h4 { font-family:var(--serif); font-size:1.5rem; color:var(--indigo); margin:.5rem 0 .35rem; }
+  .product .desc { font-size:.92rem; color:var(--muted); flex:1; }
+  .product .price { margin-top:.9rem; font-weight:800; color:var(--gold-deep); font-size:1.15rem; }
+
+  /* Pillars */
+  .pillar { text-align:center; }
+  .pillar .emoji { font-size:2.2rem; }
+  .pillar h4 { font-family:var(--serif); font-size:1.6rem; margin:.4rem 0 .4rem; color:var(--indigo); }
+  .pillar p { color:var(--muted); font-size:.95rem; }
+
+  /* Join / conversion */
+  .join { background:var(--blue); }
+  .join-card { max-width:640px; margin-inline:auto; }
+  .join-card h3 { text-align:center; font-size:clamp(2rem,5vw,2.7rem); }
+  .join-card .sub { text-align:center; color:var(--muted); margin:.4rem 0 1.5rem; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  .checkline { display:flex; gap:.6rem; align-items:flex-start; font-size:.88rem; color:var(--muted); margin:.6rem 0 1.1rem; }
+  .checkline input { margin-top:.28rem; width:18px; height:18px; accent-color:var(--indigo); flex-shrink:0; }
+  #joinForm .btn { width:100%; }
+  .form-note { text-align:center; font-size:.72rem; color:var(--muted); margin-top:.8rem; }
+  .thanks { text-align:center; padding:1.5rem 0; }
+  .thanks .crest { font-size:2.8rem; }
+
+  footer.site { background:var(--indigo); color:var(--cream); padding:3rem 0 2rem; text-align:center; }
+  footer.site .mark { margin-inline:auto; background:var(--cream); color:var(--indigo); }
+  footer.site h4 { font-family:var(--serif); font-size:1.7rem; color:#fff; margin:.7rem 0 .2rem; }
+  footer.site .loc { color:var(--blue); font-size:.9rem; }
+  .socials { display:flex; gap:1.2rem; justify-content:center; flex-wrap:wrap; margin:1.2rem 0; }
+  .socials a { color:var(--cream); text-decoration:none; font-weight:600; font-size:.88rem; opacity:.85; }
+  .socials a:hover { opacity:1; color:var(--gold); }
+  .foot-tag { font-family:var(--serif); font-style:italic; color:var(--gold); font-size:1.05rem; }
+  .colophon { margin-top:1.4rem; font-size:.7rem; color:rgba(247,241,232,.5); }
+  .colophon a { color:rgba(247,241,232,.7); }
+
+  @media (max-width:720px) {
+    .nav-links a { display:none; }
+    .row2 { grid-template-columns:1fr; }
+    .brand small { display:none; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main" data-i18n="skip">Skip to content</a>
+
+<!-- Launch state banner. Pricing and opening date are strategy-proposed and not
+     owner-confirmed (see src/catalog.js claims ledger), so the page says so
+     rather than implying an open store with final prices. Flip LAUNCH_STATE to
+     'live' in the script below once the owner confirms. -->
+<div class="preview-bar" id="previewBar" data-agent="launch-state">
+  <span data-i18n="previewBar"><strong>Preview</strong> — pricing and opening date are not final.</span>
+</div>
+
+<header class="site">
+  <div class="wrap nav">
+    <a class="brand" href="#hero">
+      <span class="mark">S&amp;C</span>
+      <span>
+        <h1>Shia &amp; Co.</h1>
+        <small data-i18n="brandTag">Where first moments become forever</small>
+      </span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="/shop/" data-i18n="navShop">Shop</a>
+      <a href="/reveal/" data-i18n="navReveal">Reveal boxes</a>
+      <a href="#shia-songs" data-i18n="navSongs">Shia Songs</a>
+      <a href="#bundles" data-i18n="navGifts">Gifts</a>
+      <a href="#join" data-i18n="navJoin">Join</a>
+    </nav>
+    <div class="lang" role="group" aria-label="Language / Idioma">
+      <button id="langEn" class="active" type="button" onclick="setLang('en')">EN</button>
+      <button id="langEs" type="button" onclick="setLang('es')">ES</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero" id="hero" data-agent="hero">
+    <div class="wrap">
+      <div class="crest">🧸</div>
+      <h2 data-i18n="heroTitle">Where first moments become forever</h2>
+      <p class="lede" data-i18n="heroLede">Baby keepsakes and personalized baby songs, made for one family only — in McAllen, for the whole Rio Grande Valley.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#shia-songs" data-i18n="heroCta1" data-agent="cta-songs">Discover Shia Songs</a>
+        <a class="btn btn-ghost" href="#join" data-i18n="heroCta2" data-agent="cta-join">Join the Milestone Club</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="band songs" id="shia-songs" data-agent="hero-product">
+    <div class="wrap songs-inner">
+      <p class="eyebrow" data-i18n="songsEyebrow">Our signature</p>
+      <h3 data-i18n="songsTitle">Shia Songs — your baby’s first song</h3>
+      <p class="lede" data-i18n="songsBody">We take your family’s story and turn your baby’s name into a song written for them alone — to play at the shower, on the first birthday, and every year after.</p>
+      <p class="price-line" id="songsPrice" data-agent="price-songs">from $89</p>
+      <p style="margin-top:1.6rem">
+        <a class="btn btn-gold" href="#join" data-i18n="songsCta" data-agent="cta-songs-order">Start your baby’s song</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="bundles" data-agent="product-list">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow" data-i18n="bundlesEyebrow">Gifts worth keeping</p>
+        <h3 data-i18n="bundlesTitle">Signature gift sets</h3>
+        <p data-i18n="bundlesSub">Curated so you never have to guess what a new family actually needs.</p>
+      </div>
+      <!-- Rendered from /api/catalog, with this static markup as the fallback. -->
+      <div class="grid" id="productGrid"></div>
+      <p style="text-align:center;margin-top:2rem">
+        <a class="btn btn-ghost" href="/shop/" data-i18n="shopAll" data-agent="cta-shop">See everything in the shop</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="why" style="background:var(--cream-deep)" data-agent="value-proposition">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow" data-i18n="whyEyebrow">Why Shia &amp; Co.</p>
+        <h3 data-i18n="whyTitle">Made for the moments that matter</h3>
+      </div>
+      <div class="grid">
+        <div class="pillar"><div class="emoji">🕊️</div><h4 data-i18n="p1t">Timeless beauty</h4><p data-i18n="p1b">Heirloom pieces meant to be kept, not outgrown.</p></div>
+        <div class="pillar"><div class="emoji">✍️</div><h4 data-i18n="p2t">Made personal</h4><p data-i18n="p2b">Names, songs, and keepsakes made for one baby only.</p></div>
+        <div class="pillar"><div class="emoji">🏡</div><h4 data-i18n="p3t">Local &amp; bilingual</h4><p data-i18n="p3b">A McAllen family business, serving you in English or Spanish.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- No testimonial section is rendered. The claims ledger marks customer
+       testimonials and star ratings as placeholder/evidence_gap: none have been
+       collected, and publishing invented reviews would violate Factory
+       Constitution Law 4 and Invariant 17. Add real ones via the console. -->
+
+  <section class="band join" id="join" data-agent="conversion-form">
+    <div class="wrap">
+      <div class="card join-card">
+        <form id="joinForm" novalidate>
+          <h3 data-i18n="joinTitle">Be the first to know</h3>
+          <p class="sub" data-i18n="joinSub">New arrivals, and a gentle reminder at every milestone as your baby grows.</p>
+
+          <div style="margin-bottom:1rem">
+            <label for="firstName" data-i18n="lblFirst">First name</label>
+            <input class="field" id="firstName" name="first_name" autocomplete="given-name" required>
+          </div>
+          <div class="row2">
+            <div>
+              <label for="email" data-i18n="lblEmail">Email</label>
+              <input class="field" id="email" name="email" type="email" autocomplete="email" required>
+            </div>
+            <div>
+              <label for="phone" data-i18n="lblPhone">Phone</label>
+              <input class="field" id="phone" name="phone" type="tel" autocomplete="tel">
+            </div>
+          </div>
+          <div style="margin-top:1rem">
+            <label for="dueDate" data-i18n="lblDue">Baby’s due date or birthday (optional)</label>
+            <input class="field" id="dueDate" name="due_or_birthday" type="date">
+          </div>
+
+          <label class="checkline">
+            <input type="checkbox" id="smsOptIn" name="sms_opt_in">
+            <span data-i18n="lblSms">Yes, you may text me about new arrivals and milestones.</span>
+          </label>
+
+          <button type="submit" class="btn btn-primary" id="joinSubmit" data-i18n="joinBtn" data-agent="submit-join">Join the family</button>
+          <p class="form-note" data-i18n="formNote">We never share your information. Unsubscribe anytime.</p>
+          <p class="notice danger hidden" id="joinError" role="alert"></p>
+        </form>
+
+        <div class="thanks hidden" id="joinThanks" role="status">
+          <div class="crest">🤍</div>
+          <h3 data-i18n="thanksTitle">Welcome to the family</h3>
+          <p class="muted" data-i18n="thanksBody">We’re so glad you’re here. We’ll be in touch with the little things worth keeping.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="mark">S&amp;C</div>
+    <h4>Shia &amp; Co.</h4>
+    <p class="loc" data-i18n="footLoc">McAllen, Texas · Serving the Rio Grande Valley</p>
+    <nav class="socials" aria-label="Social">
+      <a href="#" rel="noopener">TikTok</a>
+      <a href="#" rel="noopener">Instagram</a>
+      <a href="#" rel="noopener">Facebook</a>
+      <a href="#" rel="noopener">Pinterest</a>
+    </nav>
+    <p class="foot-tag" data-i18n="brandTag">Where first moments become forever</p>
+    <p class="colophon">
+      <span data-i18n="colophon">Built to the Shia App Factory standard.</span>
+      <a href="/api/health">health</a> ·
+      <a href="/api/agent/brief">agent brief</a> ·
+      <a href="/console/">console</a>
+    </p>
+  </div>
+</footer>
+
+<!-- Structured data. Prices are intentionally omitted from JSON-LD while they
+     remain owner-unconfirmed, so search engines are not fed proposed numbers. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "Shia & Co.",
+  "alternateName": "Shia Baby",
+  "description": "Baby keepsakes and personalized baby songs for families in McAllen and the Rio Grande Valley.",
+  "address": { "@type": "PostalAddress", "addressLocality": "McAllen", "addressRegion": "TX", "addressCountry": "US" },
+  "areaServed": "Rio Grande Valley, Texas",
+  "availableLanguage": ["en", "es"]
+}
+</script>
+
+<script>
+/* =========================================================================
+   Launch state
+   Flip to 'live' once the owner confirms pricing and an opening date.
+   ========================================================================= */
+const LAUNCH_STATE = 'preview';
+if (LAUNCH_STATE === 'live') document.getElementById('previewBar').remove();
+
+/* =========================================================================
+   Bilingual copy. Spanish is a first-class track, not a courtesy translation:
+   a large share of the highest-value gift buyers in the RGV are Spanish-first.
+   ========================================================================= */
+const I18N = {
+  en: {
+    skip: 'Skip to content',
+    previewBar: '<strong>Preview</strong> — pricing and opening date are not final.',
+    brandTag: 'Where first moments become forever',
+    navShop: 'Shop', navReveal: 'Reveal boxes', navSongs: 'Shia Songs', navGifts: 'Gifts', navJoin: 'Join',
+    heroTitle: 'Where first moments become forever',
+    heroLede: 'Baby keepsakes and personalized baby songs, made for one family only — in McAllen, for the whole Rio Grande Valley.',
+    heroCta1: 'Discover Shia Songs', heroCta2: 'Join the Milestone Club',
+    songsEyebrow: 'Our signature',
+    songsTitle: 'Shia Songs — your baby’s first song',
+    songsBody: 'We take your family’s story and turn your baby’s name into a song written for them alone — to play at the shower, on the first birthday, and every year after.',
+    songsCta: 'Start your baby’s song',
+    bundlesEyebrow: 'Gifts worth keeping', bundlesTitle: 'Signature gift sets',
+    bundlesSub: 'Curated so you never have to guess what a new family actually needs.',
+    whyEyebrow: 'Why Shia & Co.', whyTitle: 'Made for the moments that matter',
+    p1t: 'Timeless beauty', p1b: 'Heirloom pieces meant to be kept, not outgrown.',
+    p2t: 'Made personal', p2b: 'Names, songs, and keepsakes made for one baby only.',
+    p3t: 'Local & bilingual', p3b: 'A McAllen family business, serving you in English or Spanish.',
+    joinTitle: 'Be the first to know',
+    joinSub: 'New arrivals, and a gentle reminder at every milestone as your baby grows.',
+    lblFirst: 'First name', lblEmail: 'Email', lblPhone: 'Phone',
+    lblDue: 'Baby’s due date or birthday (optional)',
+    lblSms: 'Yes, you may text me about new arrivals and milestones.',
+    joinBtn: 'Join the family',
+    formNote: 'We never share your information. Unsubscribe anytime.',
+    thanksTitle: 'Welcome to the family',
+    thanksBody: 'We’re so glad you’re here. We’ll be in touch with the little things worth keeping.',
+    footLoc: 'McAllen, Texas · Serving the Rio Grande Valley',
+    colophon: 'Built to the Shia App Factory standard.',
+    shopAll: 'See everything in the shop',
+    errRequired: 'Please add your first name and a valid email.',
+    errGeneric: 'Something went wrong. Please try again.',
+  },
+  es: {
+    skip: 'Saltar al contenido',
+    previewBar: '<strong>Vista previa</strong> — los precios y la fecha de apertura no son definitivos.',
+    brandTag: 'Donde los primeros momentos se vuelven para siempre',
+    navShop: 'Tienda', navReveal: 'Cajas de revelación', navSongs: 'Shia Songs', navGifts: 'Regalos', navJoin: 'Únete',
+    heroTitle: 'Donde los primeros momentos se vuelven para siempre',
+    heroLede: 'Recuerdos de bebé y canciones personalizadas, hechas para una sola familia — en McAllen, para todo el Valle del Río Grande.',
+    heroCta1: 'Descubre Shia Songs', heroCta2: 'Únete al Club de Momentos',
+    songsEyebrow: 'Nuestra firma',
+    songsTitle: 'Shia Songs — la primera canción de tu bebé',
+    songsBody: 'Tomamos la historia de tu familia y convertimos el nombre de tu bebé en una canción escrita solo para él — para el baby shower, el primer cumpleaños y cada año después.',
+    songsCta: 'Comienza la canción de tu bebé',
+    bundlesEyebrow: 'Regalos para guardar', bundlesTitle: 'Sets de regalo',
+    bundlesSub: 'Seleccionados para que nunca tengas que adivinar qué necesita una familia nueva.',
+    whyEyebrow: 'Por qué Shia & Co.', whyTitle: 'Hecho para los momentos que importan',
+    p1t: 'Belleza atemporal', p1b: 'Piezas de herencia hechas para guardarse, no para quedar pequeñas.',
+    p2t: 'Hecho personal', p2b: 'Nombres, canciones y recuerdos hechos para un solo bebé.',
+    p3t: 'Local y bilingüe', p3b: 'Un negocio familiar de McAllen, que te atiende en español o inglés.',
+    joinTitle: 'Sé la primera en saber',
+    joinSub: 'Novedades y un recordatorio en cada etapa mientras tu bebé crece.',
+    lblFirst: 'Nombre', lblEmail: 'Correo electrónico', lblPhone: 'Teléfono',
+    lblDue: 'Fecha de parto o cumpleaños del bebé (opcional)',
+    lblSms: 'Sí, pueden enviarme mensajes sobre novedades y etapas.',
+    joinBtn: 'Únete a la familia',
+    formNote: 'Nunca compartimos tu información. Cancela cuando quieras.',
+    thanksTitle: 'Bienvenida a la familia',
+    thanksBody: 'Nos alegra mucho tenerte aquí. Te escribiremos con las pequeñas cosas que vale la pena guardar.',
+    footLoc: 'McAllen, Texas · Al servicio del Valle del Río Grande',
+    colophon: 'Construido con el estándar Shia App Factory.',
+    shopAll: 'Ver todo en la tienda',
+    errRequired: 'Agrega tu nombre y un correo electrónico válido.',
+    errGeneric: 'Algo salió mal. Inténtalo de nuevo.',
+  },
+};
+
+let lang = (new URLSearchParams(location.search).get('lang') === 'es' || navigator.language?.startsWith('es')) ? 'es' : 'en';
+
+function setLang(next) {
+  lang = next;
+  document.documentElement.lang = next;
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const value = I18N[next][el.dataset.i18n];
+    if (value === undefined) return;
+    // Only the preview bar carries inline markup; everything else is text.
+    if (value.includes('<')) el.innerHTML = value; else el.textContent = value;
+  });
+  document.getElementById('langEn').classList.toggle('active', next === 'en');
+  document.getElementById('langEs').classList.toggle('active', next === 'es');
+  renderProducts();
+}
+
+/* =========================================================================
+   Catalog rendering — hydrated from /api/catalog so the page and the agent
+   brief can never drift apart. The inline fallback keeps the page useful if
+   the function is cold or unavailable.
+   ========================================================================= */
+const FALLBACK_PRODUCTS = [
+  { id:'first-song-set', emoji:'🎶', name:{en:'The First Song Set',es:'El Set de la Primera Canción'}, summary:{en:'A Shia Song, a framed lyric keepsake, and an heirloom onesie.',es:'Una Shia Song, un recuerdo con la letra enmarcada y un mameluco de herencia.'}, price:{display:'$89'} },
+  { id:'welcome-home-box', emoji:'🧺', name:{en:'The Welcome Home Box',es:'La Caja de Bienvenida'}, summary:{en:'Newborn essentials, a blanket, a teddy, and a keepsake in one box.',es:'Esenciales para recién nacido, una cobija, un osito y un recuerdo en una caja.'}, price:{display:'$129'} },
+  { id:'rainbow-blessing', emoji:'🌈', name:{en:'The Rainbow Blessing',es:'La Bendición Arcoíris'}, summary:{en:'A tribute set for rainbow babies — keepsake, song, and a hand-written note.',es:'Un set tributo para bebés arcoíris — recuerdo, canción y una nota escrita a mano.'}, price:{display:'$99'} },
+  { id:'abuela-gift', emoji:'💝', name:{en:'The Abuela Gift',es:'El Regalo de la Abuela'}, summary:{en:'Concierge-picked and beautifully wrapped — chosen for you.',es:'Elegido a mano y bellamente envuelto — seleccionado para ti.'}, price:{display:'$75–$150'} },
+];
+const EMOJI = { 'first-song-set':'🎶','welcome-home-box':'🧺','rainbow-blessing':'🌈','abuela-gift':'💝','shia-songs':'🎵' };
+
+let products = FALLBACK_PRODUCTS;
+
+function renderProducts() {
+  const grid = document.getElementById('productGrid');
+  grid.innerHTML = '';
+  products.forEach((p) => {
+    const card = document.createElement('article');
+    card.className = 'card product';
+    card.dataset.agent = `product:${p.id}`;
+    const name = p.name?.[lang] ?? p.name?.en ?? p.id;
+    const desc = p.summary?.[lang] ?? p.summary?.en ?? '';
+    card.innerHTML =
+      `<div class="emoji">${EMOJI[p.id] ?? '🎁'}</div>` +
+      `<h4></h4><p class="desc"></p><div class="price"></div>`;
+    card.querySelector('h4').textContent = name;
+    card.querySelector('.desc').textContent = desc;
+    card.querySelector('.price').textContent = p.price?.display ?? '';
+    grid.appendChild(card);
+  });
+}
+
+async function hydrateCatalog() {
+  try {
+    const res = await fetch('/api/catalog');
+    if (!res.ok) return;
+    const data = await res.json();
+    const bundles = (data.products ?? []).filter((p) => p.id !== 'shia-songs');
+    if (bundles.length) { products = bundles; renderProducts(); }
+    const songs = (data.products ?? []).find((p) => p.id === 'shia-songs');
+    if (songs?.price?.display) document.getElementById('songsPrice').textContent = songs.price.display;
+  } catch {
+    /* Fallback content is already rendered; a cold function must not blank the page. */
+  }
+}
+
+/* =========================================================================
+   Milestone Club signup. UTM parameters are forwarded so a campaign can be
+   attributed to a real confirmed subscriber rather than to impressions.
+   ========================================================================= */
+const params = new URLSearchParams(location.search);
+
+document.getElementById('joinForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.target;
+  const errorBox = document.getElementById('joinError');
+  const submit = document.getElementById('joinSubmit');
+  errorBox.classList.add('hidden');
+
+  const payload = {
+    first_name: form.first_name.value.trim(),
+    email: form.email.value.trim(),
+    phone: form.phone.value.trim(),
+    sms_opt_in: form.sms_opt_in.checked,
+    due_or_birthday: form.due_or_birthday.value || null,
+    locale: lang,
+    source: 'storefront',
+    utm_campaign: params.get('utm_campaign') ?? '',
+    utm_source: params.get('utm_source') ?? '',
+    utm_medium: params.get('utm_medium') ?? '',
+  };
+
+  if (!payload.first_name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(payload.email)) {
+    errorBox.textContent = I18N[lang].errRequired;
+    errorBox.classList.remove('hidden');
+    return;
+  }
+
+  submit.disabled = true;
+  try {
+    const res = await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    form.classList.add('hidden');
+    document.getElementById('joinThanks').classList.remove('hidden');
+  } catch {
+    errorBox.textContent = I18N[lang].errGeneric;
+    errorBox.classList.remove('hidden');
+    submit.disabled = false;
+  }
+});
+
+setLang(lang);
+hydrateCatalog();
+</script>
+</body>
+</html>

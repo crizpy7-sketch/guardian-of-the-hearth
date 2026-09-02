@@ -1,0 +1,51 @@
+schema_version: "1.0"
+app:
+  id: shia-baby-storefront
+  name: Shia & Co. Storefront
+  type: customer-storefront + operator-console + agent-surface
+  lifecycle_stage: pre-launch
+blueprint: null
+risk:
+  baseline_tier: T2
+  escalate_to_T3_when:
+    - Changes to src/data-layer.js or api/orders.js (customer data access).
+    - Any promotion of a claim evidence_state to `confirmed`.
+    - Changes to deployment configuration or health gates.
+  reasons:
+    - Handles customer contact data and SMS consent.
+    - Publishes claims that an autonomous growth agent may repeat externally.
+stack:
+  frontend: static-html
+  language: [JavaScript]
+  backend: vercel-serverless-functions
+  data: supabase-rest
+  source_control: GitHub
+  deployment: [Vercel]
+  build_step: none
+required_roles: [shia-core, quality-gate]
+conditional_roles: [design-director, gary]
+quality:
+  unit: required
+  integration: required
+  browser_e2e: recommended
+  visual_qa: required-for-ui-changes
+  accessibility: required-for-ui-changes
+  security: required
+  performance: not-required-at-current-scale
+approvals:
+  human_before_merge: true
+  human_before_deploy: false   # preview deploys are safe; production is owner-gated
+  human_before_claim_promotion: true
+  human_before_campaign_publish: true
+reuse_search_required: true
+status_document: docs/STATUS.md
+linked_systems:
+  - id: shia-songs
+    repo: crizpy7-sketch/Shia-songs
+    relationship: read-only consumer of shia_song_orders
+  - id: shia-baby-inventory
+    repo: crizpy7-sketch/shia-baby-inventory
+    relationship: shares design tokens; product/SKU authority
+  - id: GARY-001
+    repo: crizpy7-sketch/Shia-factory
+    relationship: consumes /api/agent/brief

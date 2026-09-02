@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # No dependencies to install: this app has no build step by design.
+      - name: Contract tests
+        run: npm test
+
+      # Defence in depth. tests/integrity.test.js also checks this, but a
+      # committed secret is severe enough to warrant a second, independent gate.
+      - name: Fail on committed secrets
+        run: |
+          if grep -rEn 'eyJ[A-Za-z0-9_-]{20,}\.' --include='*.js' --include='*.html' --include='*.json' --include='*.md' . ; then
+            echo "::error::A JWT-like secret appears to be committed."
+            exit 1
+          fi
+          if [ -f .env ]; then
+            echo "::error::.env must never be committed."
+            exit 1
+          fi
+          echo "No committed secrets detected."
+
+  health:
+    name: Post-deploy health gates
+    runs-on: ubuntu-latest
+    needs: verify
+    # Only meaningful once a deployment URL is available. Provide DEPLOY_URL as a
+    # repository variable to enable; otherwise this job reports and skips.
+    steps:
+      - name: Probe /api/health
+        env:
+          DEPLOY_URL: ${{ vars.DEPLOY_URL }}
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "DEPLOY_URL not set — skipping live health gates."
+            exit 0
+          fi
+          echo "Probing $DEPLOY_URL/api/health"
+          status=$(curl -sS -o /tmp/health.json -w '%{http_code}' "$DEPLOY_URL/api/health")
+          cat /tmp/health.json
+          # APP_BUILD_STANDARD §7: a required-gate failure must fail the deploy.
+          if [ "$status" != "200" ]; then
+            echo "::error::Health gates failed with HTTP $status"
+            exit 1
+          fi
+          echo "Health gates passed."

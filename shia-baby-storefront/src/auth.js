@@ -29,7 +29,11 @@ function timingSafeEqual(a, b) {
  * caller to send. Returning rather than writing keeps handlers testable.
  */
 export function requireOperator(req) {
-  const expected = process.env.SHIA_CONSOLE_TOKEN ?? '';
+  // Trimmed on both sides. Pasting a token into a dashboard field very often
+  // carries a trailing newline, which made the stored value one byte longer
+  // than the header and produced an unexplained 401. Surrounding whitespace is
+  // never meaningful in a shared secret, so it must not decide authentication.
+  const expected = (process.env.SHIA_CONSOLE_TOKEN ?? '').trim();
   if (!expected) {
     return {
       status: 503,
@@ -40,7 +44,7 @@ export function requireOperator(req) {
     };
   }
 
-  const presented = String(req.headers?.['x-shia-console-token'] ?? '');
+  const presented = String(req.headers?.['x-shia-console-token'] ?? '').trim();
   if (!timingSafeEqual(presented, expected)) {
     return { status: 401, body: { error: 'unauthorized' } };
   }

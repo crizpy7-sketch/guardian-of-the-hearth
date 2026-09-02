@@ -45,6 +45,45 @@ test('admin songs fails closed when no token is configured', async () => {
   assert.ok(!('orders' in res.body));
 });
 
+test('a stored token with surrounding whitespace still authenticates', async () => {
+  // Pasting into a dashboard field commonly appends a newline. That made the
+  // env value one byte longer than the header the console sends (which is
+  // trimmed), so the length check failed and every unlock returned 401 with no
+  // explanation. Whitespace must never decide authentication.
+  process.env.SHIA_CONSOLE_TOKEN = `  ${TOKEN}\n`;
+  const res = mockRes();
+  await adminProducts(authed({ method: 'GET' }), res);
+  assert.equal(res.statusCode, 200, 'trailing newline in the env var must not reject a correct token');
+});
+
+test('a presented token with surrounding whitespace still authenticates', async () => {
+  process.env.SHIA_CONSOLE_TOKEN = TOKEN;
+  const res = mockRes();
+  await adminProducts(
+    { headers: { 'x-shia-console-token': ` ${TOKEN} ` }, query: {}, method: 'GET' },
+    res,
+  );
+  assert.equal(res.statusCode, 200);
+});
+
+test('trimming does not weaken the check — a wrong token is still rejected', async () => {
+  process.env.SHIA_CONSOLE_TOKEN = `${TOKEN}\n`;
+  const res = mockRes();
+  await adminProducts(
+    { headers: { 'x-shia-console-token': 'not-the-token-at-all' }, query: {}, method: 'GET' },
+    res,
+  );
+  assert.equal(res.statusCode, 401);
+});
+
+test('a whitespace-only token counts as unconfigured, not as a valid secret', async () => {
+  process.env.SHIA_CONSOLE_TOKEN = '   ';
+  const res = mockRes();
+  await adminProducts({ headers: { 'x-shia-console-token': '   ' }, query: {}, method: 'GET' }, res);
+  assert.equal(res.statusCode, 503, 'blank-after-trim must fail closed, never authenticate');
+  assert.equal(res.body.error, 'console_not_configured');
+});
+
 test('admin endpoints reject a wrong token', async () => {
   process.env.SHIA_CONSOLE_TOKEN = TOKEN;
   const res = mockRes();

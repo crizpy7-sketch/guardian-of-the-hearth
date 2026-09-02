@@ -1,14 +1,19 @@
 /**
  * AC-5 — customer order data must never be publicly readable.
  *
- * `/api/orders` exposes real customer song orders. The dangerous failure mode
- * is defaulting open when the token env var is missing, so that case is tested
- * first and explicitly.
+ * `/api/admin/songs` exposes real customer song orders. The dangerous failure
+ * mode is defaulting open when the token env var is missing, so that case is
+ * tested first and explicitly.
+ *
+ * These tests previously ran against `/api/orders`, a legacy alias that carried
+ * its own copy of the token comparison. That copy drifted out of sync with the
+ * shared guard and rejected tokens the console accepted, so the route was
+ * deleted rather than kept in step. The guarantees moved here with it.
  */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import ordersHandler from '../api/orders.js';
+import ordersHandler from '../api/admin/songs.js';
 import subscribeHandler from '../api/subscribe.js';
 
 /** Minimal Vercel-style response recorder. */
@@ -51,10 +56,13 @@ test('orders endpoint rejects a missing or wrong token', async () => {
   delete process.env.SHIA_CONSOLE_TOKEN;
 });
 
-test('orders endpoint rejects non-GET methods', async () => {
+test('orders endpoint rejects unsupported methods', async () => {
   process.env.SHIA_CONSOLE_TOKEN = 'token';
   const res = mockRes();
-  await ordersHandler({ method: 'DELETE', headers: {}, query: {} }, res);
+  await ordersHandler(
+    { method: 'DELETE', headers: { 'x-shia-console-token': 'token' }, query: {} },
+    res,
+  );
   assert.equal(res.statusCode, 405);
   delete process.env.SHIA_CONSOLE_TOKEN;
 });
@@ -98,4 +106,27 @@ test('no endpoint sets a permissive CORS header on customer data', async () => {
   await ordersHandler({ method: 'GET', headers: {}, query: {} }, res);
   assert.notEqual(res.headers['access-control-allow-origin'], '*');
   delete process.env.SHIA_CONSOLE_TOKEN;
+});
+
+test('checkout refuses to sell when Square is not connected', async () => {
+  // Failing closed matters more here than anywhere: the alternative is taking
+  // an order the boutique has no record of and cannot fulfil.
+  const { default: checkoutHandler } = await import('../api/checkout.js');
+  const res = mockRes();
+  await checkoutHandler(
+    { method: 'POST', headers: {}, query: {}, body: { items: [{ id: 'x', quantity: 1 }] } },
+    res,
+  );
+  assert.equal(res.statusCode, 503);
+  assert.equal(res.body.error, 'checkout_unavailable');
+});
+
+test('the Square invoice sync is operator-gated and fails closed', async () => {
+  // An open sync endpoint would let anyone rewrite the boutique's prices.
+  delete process.env.SHIA_CONSOLE_TOKEN;
+  const { default: syncHandler } = await import('../api/square/sync.js');
+  const res = mockRes();
+  await syncHandler({ method: 'POST', headers: {}, query: {}, body: { items: [] } }, res);
+  assert.equal(res.statusCode, 503);
+  assert.equal(res.body.error, 'console_not_configured');
 });

@@ -1,6 +1,6 @@
 # STATUS — Shia & Co. Storefront
 
-**Version:** 1.1.2 · **Lifecycle:** pre-launch · **Last verified:** 2026-09-02
+**Version:** 1.2.0 · **Lifecycle:** pre-launch · **Last verified:** 2026-09-02
 
 Per Factory Constitution Law 4 and Invariant 17, this records only what was
 actually observed. Anything unverified is labelled as such.
@@ -48,8 +48,8 @@ as unconfigured rather than as a valid secret.
 
 ## Verified — repository
 
-`npm test` → **65 passing, 0 failing** (i18n, agent surface, data layer,
-integrity, security, products, admin).
+`npm test` → **111 passing, 0 failing** (i18n, agent surface, data layer,
+integrity, security, products, admin, square, reveal, barcode, deploy manifest).
 
 Notable guarantees under test:
 - Wholesale `cost` and `margin` never appear in a public product payload
@@ -65,7 +65,37 @@ Notable guarantees under test:
 `x-robots-tag: noindex, nofollow`) and `/assets/theme.css` were each verified
 200 on the v1.0.0 deployment and ship unchanged-or-extended in v1.1.0.
 
-## What v1.1.0 adds
+## What v1.2.0 adds — the shop actually sells
+
+**Square is now the source of truth.** The invented `shia_products` table is no
+longer what customers see. `/api/products` reads the live Square catalog and
+stock, because the register sells from Square and a website showing anything
+else advertises stock that is not on the shelf.
+
+**The connector `shia-baby-inventory` has always called now exists.** That app's
+"Send to Square connector" button posts to "a secure backend endpoint you
+control" — an endpoint that was never built, so every invoice sync since that app
+was written has been a dead end. `POST /api/square/sync` accepts its payload
+verbatim; the app needs only its endpoint field pointed here.
+
+**Checkout.** `POST /api/checkout` validates a cart against live Square stock and
+returns a Square-hosted payment link. The browser sends ids and quantities only —
+every price is re-derived server-side, so a tampered client can ask to buy
+something but cannot say what it costs. No card data touches this deployment.
+
+**Reveal & experience boxes** (`/reveal/`) with confidential gender capture. The
+buyer never submits the gender and never sees it; a separate single-use link lets
+the person who knows submit it. Buyer-facing status does not change when the
+secret arrives, because that alone would leak it.
+
+**The invoice → barcode tool moved into the site** (`/console/invoice/`): paste an
+invoice, price it by markup, generate SKUs, push to Square, print Code 128
+labels. The encoder is the one from `shia-baby-inventory`, now a tested module.
+
+**Design handoff** (`docs/DESIGN_SYSTEM.md`) — tokens, component classes, the API
+contract, and the four invariants a redesign must not break.
+
+## What v1.1.0 added
 
 **The shop** (`/shop/`) — full catalog page with search and size/category/price
 filters, bilingual, rendering real inventory from `/api/products`. Only
@@ -103,8 +133,17 @@ step (branch `claude/publish-to-storefront`) that POSTs rows straight to
    repository-creation permission.
 5. **Deploys are file-direct, not push-to-deploy.** Until the repo is linked to
    the Vercel project, `APP_BUILD_STANDARD.md` §2 is only partially satisfied.
-6. **No checkout.** The shop displays and filters products; it does not sell
-   them. Payments are out of scope for 1.x.
+6. **Square is not connected yet.** `SQUARE_ACCESS_TOKEN` / `SQUARE_LOCATION_ID`
+   are unset, so `/api/products` returns an empty catalog and `/api/checkout`
+   refuses with 503. **This is now the gap that matters most**: everything needed
+   to sell is built and tested, and nothing can be sold until these are set.
+7. **The Square integration is untested against a real Square account.** The
+   catalog mapping, stock counts, visibility flag and checkout are covered by
+   unit tests against known payload shapes, but no call has been made to Square
+   itself from this session — there are no credentials to make one with. Treat
+   the first sandbox sync as the real test.
+8. **Reveal orders need Supabase.** Without it they are accepted in memory and
+   lost on the next cold start, which for a paid order is worse than useless.
 
 ## Claims status
 
@@ -114,9 +153,14 @@ ratings, store-open date.
 
 ## Next actions (owner)
 
-1. Set `SHIA_SUPABASE_URL` + `SHIA_SUPABASE_SERVICE_KEY`, then run
-   `docs/schema.sql` (creates `shia_subscribers` and `shia_products`).
-2. ~~Set `SHIA_CONSOLE_TOKEN` to unlock the console.~~ **Done** — configured and
+1. **Connect Square** — `SQUARE_ACCESS_TOKEN`, `SQUARE_LOCATION_ID`,
+   `SQUARE_ENVIRONMENT=sandbox`. Nothing sells until this is done. Start in
+   sandbox, run one invoice through `/console/invoice/`, then buy something from
+   `/shop/` end to end before switching to production.
+2. Set `SHIA_SUPABASE_URL` + `SHIA_SUPABASE_SERVICE_KEY`, then run
+   `docs/schema.sql` (creates `shia_subscribers`, `shia_products` and
+   `shia_reveal_orders`). Reveal orders are not durable without it.
+3. ~~Set `SHIA_CONSOLE_TOKEN` to unlock the console.~~ **Done** — configured and
    verified live on 2026-09-02.
 3. Supply the Shia-songs Supabase credentials to connect song orders.
 4. Confirm retail pricing → promote `claim-pricing` → flip `LAUNCH_STATE` to `live`.

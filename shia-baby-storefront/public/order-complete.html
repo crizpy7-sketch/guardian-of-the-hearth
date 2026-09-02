@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thank you — Shia &amp; Co.</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/theme.css">
+<style>
+  body { display:grid; place-items:center; min-height:100vh; padding:1.5rem; }
+  .sheet { max-width:520px; width:100%; text-align:center; }
+  .crest { font-size:3.2rem; margin-bottom:.4rem; }
+  h1 { font-size:clamp(2rem,5vw,2.8rem); }
+  .lede { color:var(--muted); margin:.9rem 0 1.6rem; }
+  .actions { display:flex; gap:.7rem; justify-content:center; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<main class="card sheet">
+  <div class="crest">🤍</div>
+  <h1 data-i18n="title">Thank you</h1>
+  <p class="lede" data-i18n="body">
+    Your order is in. Square has emailed your receipt, and we’ll be in touch as soon
+    as your pieces are on their way.
+  </p>
+  <div class="actions">
+    <a class="btn btn-primary" href="/shop/" data-i18n="back">Back to the shop</a>
+    <a class="btn btn-ghost" href="/" data-i18n="home">Home</a>
+  </div>
+</main>
+
+<script>
+// The cart is emptied only here, after Square has taken the payment. Clearing it
+// at checkout time would lose the customer's basket if they abandoned the
+// payment page or their card was declined.
+try { localStorage.removeItem('shiaCart'); } catch { /* private mode */ }
+
+const ES = {
+  title: 'Gracias',
+  body: 'Tu pedido está listo. Square te envió tu recibo y te avisaremos en cuanto tus piezas vayan en camino.',
+  back: 'Volver a la tienda',
+  home: 'Inicio',
+};
+if (new URLSearchParams(location.search).get('lang') === 'es' || navigator.language?.startsWith('es')) {
+  document.documentElement.lang = 'es';
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    if (ES[el.dataset.i18n]) el.textContent = ES[el.dataset.i18n];
+  });
+}
+</script>
+</body>
+</html>

@@ -10,6 +10,7 @@
  */
 
 import { probe, backendMode } from '../src/data-layer.js';
+import { probeSquare, squareStatus } from '../src/square.js';
 import { PRODUCTS } from '../src/catalog.js';
 import { buildBrief } from '../src/agent-surface.js';
 
@@ -92,6 +93,21 @@ export default async function handler(req, res) {
     ok: consoleGate.ok,
     degraded: consoleGate.degraded,
     detail: consoleGate.detail,
+  });
+
+  // Gate 6 — Square. NOT required, because the storefront still serves pages and
+  // takes Milestone Club signups without it. But it is the gate that decides
+  // whether the site can take money, so its detail says so plainly rather than
+  // reporting a bare "degraded" that reads like a minor issue.
+  const square = await probeSquare();
+  gates.push({
+    id: 'square',
+    required: false,
+    ok: square.ok,
+    degraded: square.degraded,
+    mode: squareStatus().environment,
+    detail: square.reason ?? `connected (${squareStatus().environment})`,
+    sells: square.ok && !square.degraded,
   });
 
   const requiredFailures = gates.filter((g) => g.required && !g.ok);

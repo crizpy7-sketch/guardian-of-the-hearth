@@ -97,3 +97,55 @@ create trigger shia_products_touch
 -- Writes go through the service role key on the server. RLS on with no
 -- permissive policy means a leaked anon key still cannot read or write.
 alter table public.shia_products enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- Reveal & experience box orders.
+--
+-- CONFIDENTIALITY
+-- ---------------
+-- `secret_gender` is the answer the buyer must not see. It is deliberately in
+-- the same row as the order rather than a separate table, because the risk here
+-- is not database access — the service role reads everything either way — it is
+-- an application selecting `*` into a customer-facing response. That is guarded
+-- in code by toBuyerView() and covered by tests/reveal.test.js.
+--
+-- `keeper_token_hash` stores only a SHA-256 hash. If this table leaked, the
+-- hashes could not be replayed as working secret-keeper links.
+-- ---------------------------------------------------------------------------
+create table if not exists public.shia_reveal_orders (
+  id                  uuid primary key,
+  kind                text not null,
+  status              text not null default 'awaiting_secret',
+  buyer_name          text not null,
+  buyer_email         text not null,
+  buyer_phone         text,
+  baby_family_name    text,
+  outfit_size         text,
+  reveal_date         date,
+  song_notes          text,
+  keeper_email        text,
+  keeper_token_hash   text,
+  keeper_submitted_at timestamptz,
+  secret_gender       text,
+  square_order_id     text,
+  internal_notes      text,
+  locale              text not null default 'en',
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now()
+);
+
+-- The secret-keeper lookup is by hash on every visit to the link, so it is the
+-- one query that must not table-scan.
+create unique index if not exists shia_reveal_keeper_hash_idx
+  on public.shia_reveal_orders (keeper_token_hash)
+  where keeper_token_hash is not null;
+
+create index if not exists shia_reveal_status_idx on public.shia_reveal_orders (status);
+create index if not exists shia_reveal_created_idx on public.shia_reveal_orders (created_at desc);
+
+drop trigger if exists shia_reveal_touch on public.shia_reveal_orders;
+create trigger shia_reveal_touch
+  before update on public.shia_reveal_orders
+  for each row execute function public.shia_touch_updated_at();
+
+alter table public.shia_reveal_orders enable row level security;

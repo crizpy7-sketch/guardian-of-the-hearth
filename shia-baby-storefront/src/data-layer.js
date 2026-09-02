@@ -31,7 +31,7 @@ const SUBSCRIBERS_TABLE = process.env.SHIA_SUBSCRIBERS_TABLE ?? 'shia_subscriber
 const SONG_ORDERS_TABLE = process.env.SHIA_SONG_ORDERS_TABLE ?? 'shia_song_orders';
 
 /** In-memory fallback store, used only when Supabase is not configured. */
-const memory = { subscribers: [], products: [] };
+const memory = { subscribers: [], products: [], reveals: [] };
 
 export function isConfigured() {
   return Boolean(SUPABASE_URL && SUPABASE_KEY);
@@ -260,6 +260,103 @@ export async function updateSongOrder(id, { status, internal_notes }) {
   return { updated: Array.isArray(rows) ? rows.length : 0, mode: 'supabase', persisted: true };
 }
 
+/* ------------------------------------------------------------------ *
+ * Reveal & experience box orders.
+ * ------------------------------------------------------------------ */
+
+const REVEAL_TABLE = process.env.SHIA_REVEAL_TABLE ?? 'shia_reveal_orders';
+
+export async function createRevealOrder(row) {
+  if (!isConfigured()) {
+    memory.reveals.push(row);
+    return { stored: true, persisted: false, mode: 'memory', order: row };
+  }
+  const [created] = (await supabaseRequest(REVEAL_TABLE, {
+    method: 'POST',
+    body: row,
+    prefer: 'return=representation',
+  })) ?? [row];
+  return { stored: true, persisted: true, mode: 'supabase', order: created };
+}
+
+/**
+ * Finds an order by the HASH of a keeper token.
+ *
+ * The lookup is by hash so the raw token from the link is never compared against
+ * anything stored, and a leaked database yields no usable links.
+ */
+export async function findRevealByKeeperHash(tokenHash) {
+  if (!isConfigured()) {
+    return memory.reveals.find((r) => r.keeper_token_hash === tokenHash) ?? null;
+  }
+  const rows = await supabaseRequest(
+    `${REVEAL_TABLE}?select=*&keeper_token_hash=eq.${encodeURIComponent(tokenHash)}&limit=1`,
+  );
+  return Array.isArray(rows) && rows.length ? rows[0] : null;
+}
+
+/**
+ * Records the secret and advances the order.
+ *
+ * One-shot by design: it only applies while the order is still awaiting a
+ * secret, so a link that has already been used cannot be replayed to change the
+ * answer after the song has been written.
+ */
+export async function recordRevealSecret(id, gender) {
+  const patch = {
+    secret_gender: gender,
+    keeper_submitted_at: new Date().toISOString(),
+    status: 'ready_to_write',
+  };
+
+  if (!isConfigured()) {
+    const order = memory.reveals.find((r) => r.id === id);
+    if (!order || order.status !== 'awaiting_secret') return { updated: 0, mode: 'memory' };
+    Object.assign(order, patch);
+    return { updated: 1, mode: 'memory', persisted: false };
+  }
+
+  const rows = await supabaseRequest(
+    `${REVEAL_TABLE}?id=eq.${encodeURIComponent(id)}&status=eq.awaiting_secret`,
+    { method: 'PATCH', body: patch, prefer: 'return=representation' },
+  );
+  return { updated: Array.isArray(rows) ? rows.length : 0, mode: 'supabase', persisted: true };
+}
+
+export async function listRevealOrders({ limit = 50 } = {}) {
+  if (!isConfigured()) {
+    return { orders: [...memory.reveals], mode: 'memory' };
+  }
+  const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
+  const rows = await supabaseRequest(
+    `${REVEAL_TABLE}?select=*&order=created_at.desc&limit=${safeLimit}`,
+  );
+  return { orders: Array.isArray(rows) ? rows : [], mode: 'supabase' };
+}
+
+export async function updateRevealOrder(id, patch) {
+  const allowed = ['status', 'internal_notes', 'outfit_size', 'reveal_date', 'song_notes'];
+  const body = {};
+  for (const key of allowed) {
+    if (patch[key] !== undefined) body[key] = patch[key];
+  }
+  if (!Object.keys(body).length) return { updated: 0, mode: backendMode() };
+
+  if (!isConfigured()) {
+    const order = memory.reveals.find((r) => r.id === id);
+    if (!order) return { updated: 0, mode: 'memory' };
+    Object.assign(order, body);
+    return { updated: 1, mode: 'memory', persisted: false };
+  }
+
+  const rows = await supabaseRequest(`${REVEAL_TABLE}?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body,
+    prefer: 'return=representation',
+  });
+  return { updated: Array.isArray(rows) ? rows.length : 0, mode: 'supabase', persisted: true };
+}
+
 /** Connectivity probe used by the health gates. */
 export async function probe() {
   if (!isConfigured()) {
@@ -286,5 +383,10 @@ export default {
   listPublishedProducts,
   upsertProducts,
   updateProduct,
+  createRevealOrder,
+  findRevealByKeeperHash,
+  recordRevealSecret,
+  listRevealOrders,
+  updateRevealOrder,
   probe,
 };

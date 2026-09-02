@@ -32,8 +32,13 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const PUBLIC_FILES = Object.freeze([
   'public/index.html',
   'public/shop/index.html',
+  'public/reveal/index.html',
+  'public/reveal-secret.html',
+  'public/order-complete.html',
   'public/console/index.html',
+  'public/console/invoice/index.html',
   'public/assets/theme.css',
+  'public/assets/barcode.js',
   'public/agent/README.md',
 ]);
 
@@ -43,7 +48,9 @@ export const API_FILES = Object.freeze([
   'api/catalog.js',
   'api/products.js',
   'api/subscribe.js',
-  'api/orders.js',
+  'api/checkout.js',
+  'api/reveal.js',
+  'api/square/sync.js',
   'api/agent/brief.js',
   'api/admin/products.js',
   'api/admin/songs.js',
@@ -56,6 +63,9 @@ export const SRC_FILES = Object.freeze([
   'src/data-layer.js',
   'src/products.js',
   'src/auth.js',
+  'src/square.js',
+  'src/reveal.js',
+  'src/barcode.js',
 ]);
 
 export const CONFIG_FILES = Object.freeze(['vercel.json', 'package.json']);

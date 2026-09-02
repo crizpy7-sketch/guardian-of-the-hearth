@@ -279,8 +279,8 @@ export async function syncInvoice(payload) {
  * Related objects (images) are requested so the shop can show real photographs
  * instead of category emoji.
  */
-export async function listCatalog({ cursor, acc = [] } = {}) {
-  const query = new URLSearchParams({ types: 'ITEM' });
+export async function listCatalog({ cursor, acc = [], types = 'ITEM,IMAGE' } = {}) {
+  const query = new URLSearchParams({ types });
   if (cursor) query.set('cursor', cursor);
 
   const result = await squareRequest(`/v2/catalog/list?${query}`, { method: 'GET' });
@@ -313,15 +313,35 @@ export async function getInventoryCounts(variationIds) {
   return counts;
 }
 
+/** Builds id → URL from the IMAGE objects returned alongside the items. */
+export function indexImages(objects) {
+  const map = new Map();
+  for (const object of objects) {
+    if (object.type === 'IMAGE' && !object.is_deleted && object.image_data?.url) {
+      map.set(object.id, object.image_data.url);
+    }
+  }
+  return map;
+}
+
+/** First resolvable image for an item, or null. */
+function resolveImage(imageIds, imagesById) {
+  for (const id of imageIds ?? []) {
+    const url = imagesById.get(id);
+    if (url) return url;
+  }
+  return null;
+}
+
 /**
  * Flattens Square's ITEM/ITEM_VARIATION tree into one sellable row per
  * variation, which is what a shopper actually buys and what a cart line needs.
  */
-export function flattenCatalog(items, stockById = new Map()) {
+export function flattenCatalog(items, stockById = new Map(), imagesById = new Map()) {
   const rows = [];
 
   for (const item of items) {
-    if (item.is_deleted) continue;
+    if (item.is_deleted || item.type !== 'ITEM') continue;
     const data = item.item_data ?? {};
 
     for (const variation of data.variations ?? []) {
@@ -341,7 +361,11 @@ export function flattenCatalog(items, stockById = new Map()) {
         currency: v.price_money?.currency ?? 'USD',
         stock: stockById.get(variation.id) ?? 0,
         description: data.description ?? null,
-        image_ids: data.image_ids ?? [],
+        // Square returns image_ids on the item and the URLs on separate IMAGE
+        // objects. Resolving them here is what puts a real photograph on the
+        // shop instead of a placeholder glyph — for a boutique selling how
+        // things look, that is not a cosmetic detail.
+        image_url: resolveImage(data.image_ids, imagesById),
         // Square's own online-visibility flag decides what customers see.
         // Using it rather than a private "published" column means the owner can
         // list an item from this console OR from Square itself and get the same
@@ -356,10 +380,11 @@ export function flattenCatalog(items, stockById = new Map()) {
 
 /** The catalog as sellable rows, with live stock attached. */
 export async function fetchSellableCatalog() {
-  const items = await listCatalog();
-  const flattened = flattenCatalog(items);
+  const objects = await listCatalog();
+  const images = indexImages(objects);
+  const flattened = flattenCatalog(objects, new Map(), images);
   const stock = await getInventoryCounts(flattened.map((r) => r.square_variation_id));
-  return flattenCatalog(items, stock);
+  return flattenCatalog(objects, stock, images);
 }
 
 /** Square's visibility value that means "customers may see and buy this". */
@@ -507,7 +532,7 @@ export function formatMoney(cents, currency = 'USD') {
 export default {
   isSquareConfigured, squareStatus, squareBase,
   toCatalogBatch, upsertCatalog, setInventoryCounts, syncInvoice,
-  listCatalog, getInventoryCounts, flattenCatalog, fetchSellableCatalog,
+  listCatalog, getInventoryCounts, flattenCatalog, fetchSellableCatalog, indexImages,
   isPubliclySellable, setOnlineVisibility, toPublicSquareProduct, formatMoney,
   ONLINE_VISIBLE, createCheckout, probeSquare,
 };

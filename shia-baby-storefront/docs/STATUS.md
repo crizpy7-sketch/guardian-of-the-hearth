@@ -1,38 +1,54 @@
 # STATUS — Shia & Co. Storefront
 
-**Version:** 1.1.0 · **Lifecycle:** pre-launch · **Last verified:** 2026-09-01
+**Version:** 1.1.1 · **Lifecycle:** pre-launch · **Last verified:** 2026-09-02
 
 Per Factory Constitution Law 4 and Invariant 17, this records only what was
 actually observed. Anything unverified is labelled as such.
 
-## Deployment — VERIFIED LIVE (v1.1.0)
+## Deployment — VERIFIED LIVE (v1.1.1)
 
 | Item | Value |
 | --- | --- |
 | Vercel project | `shia-baby-storefront` (`prj_8tVxaB0d5XBpMvjhUUAWEDIMBgJO`) |
 | Production URL | https://shia-baby-storefront.vercel.app |
-| Deployment | `dpl_4WamTkkRoyESvBZ14LGLuaLd39B7` |
+| Deployment | `dpl_B4n3iMoJjCgE57qUU5zGq7PvJrB4` (READY, 8 lambdas, iad1) |
 | Functions | 8 Node serverless functions + static assets |
 
-### Live evidence (fetched from the production alias)
+### Live evidence (fetched from the production alias, 2026-09-02)
 
 | Route | Result |
 | --- | --- |
 | `/api/health` | **200** — `degraded`, all 3 required gates pass, 5 gates reported |
 | `/api/products` | **200** — `count: 0`, `backend: memory` (nothing imported yet) |
-| `/api/admin/products` | **503** — `console_not_configured`, **fails closed** ✅ |
+| `/api/admin/products` | **401** `unauthorized` with no token — token now configured |
 
 `/api/health` gates: `web` pass · `catalog` pass (5 product lines) ·
 `agent_surface` pass (3 approved / 5 blocked claims) · `data_layer` degraded
-(Supabase unset) · `admin_console` degraded (token unset).
+(Supabase unset) · `admin_console` **pass, no longer degraded**.
 
-The 503 on the admin route is the correct, intended behaviour: with no
-`SHIA_CONSOLE_TOKEN` set, no customer order data or wholesale figure is
-reachable by anyone.
+The move from 503 to 401 on the admin route is the meaningful change: 503 meant
+"no token configured, admin disabled"; 401 means the token is configured and the
+request simply did not present it. Unauthenticated access is still refused.
+
+## Fixed in 1.1.1 — the "token rejected" bug
+
+Unlocking the console failed with an unexplained 401 even with the correct
+token. Cause was in this repo, not the operator's input: `src/auth.js` compared
+the raw `SHIA_CONSOLE_TOKEN` against a value the console had already trimmed
+before sending. Pasting a secret into a dashboard field commonly appends a
+newline, so the stored value was one byte longer, the constant-time comparison's
+length check failed first, and the result was a 401 with no diagnostic.
+
+Both sides are now trimmed before comparison, and the health gate reports when
+the stored value carries surrounding whitespace — as this deployment's does,
+which is direct confirmation of the diagnosis. Four regression tests in
+`tests/admin.test.js` cover it, including that trimming does not weaken the
+check (a wrong token is still rejected) and that a whitespace-only value counts
+as unconfigured rather than as a valid secret.
 
 ## Verified — repository
 
-`npm test` → **61 passing, 0 failing** (i18n, agent surface, data layer,
+`npm test` → **65 passing, 0 failing** (i18n, agent surface, data layer,
 integrity, security, products, admin).
 
 Notable guarantees under test:
@@ -74,8 +90,10 @@ step (branch `claude/publish-to-storefront`) that POSTs rows straight to
 1. **Data layer is in memory mode.** `SHIA_SUPABASE_URL` /
    `SHIA_SUPABASE_SERVICE_KEY` are unset on Vercel, so signups and products are
    accepted but **not durably stored** (`persisted: false`).
-2. **Admin is disabled in production.** `SHIA_CONSOLE_TOKEN` is unset, so admin
-   endpoints return 503 by design.
+2. **Admin is enabled but has nothing durable behind it.** `SHIA_CONSOLE_TOKEN`
+   is set and the console authenticates, but because the data layer is in memory
+   mode (item 1), anything imported or edited there is lost on the next cold
+   start. The console is usable for verification, not yet for real operating.
 3. **The Shia-songs Supabase project is unreachable from this account.** That app
    points at project ref `bjnkgxkcbbnbtazelsjs`, which is not in the Supabase
    organization available here. Song-order administration cannot be verified
@@ -98,7 +116,8 @@ ratings, store-open date.
 
 1. Set `SHIA_SUPABASE_URL` + `SHIA_SUPABASE_SERVICE_KEY`, then run
    `docs/schema.sql` (creates `shia_subscribers` and `shia_products`).
-2. Set `SHIA_CONSOLE_TOKEN` to unlock the console.
+2. ~~Set `SHIA_CONSOLE_TOKEN` to unlock the console.~~ **Done** — configured and
+   verified live on 2026-09-02.
 3. Supply the Shia-songs Supabase credentials to connect song orders.
 4. Confirm retail pricing → promote `claim-pricing` → flip `LAUNCH_STATE` to `live`.
 5. Create the `shia-baby-storefront` GitHub repo and link it to Vercel.
